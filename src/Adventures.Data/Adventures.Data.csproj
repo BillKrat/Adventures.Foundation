@@ -8,7 +8,7 @@
 
   <PropertyGroup>
 	<PackageId>Adventures.Data</PackageId>
-	<Version>0.2.1</Version>
+	<Version>0.2.2</Version>
 	<Authors>Bill Kratochvil</Authors>
 	<Description>Generic, tenant/org-scoped entity data access (JSONB Hybrid + W3C N-Quads storage model) over PostgreSQL - shared data foundation for Adventures.* projects.</Description>
 	<PackageLicenseExpression>MIT</PackageLicenseExpression>
