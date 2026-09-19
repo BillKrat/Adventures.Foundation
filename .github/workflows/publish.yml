@@ -1,9 +1,21 @@
 name: Publish packages to nuget.org
 
 # Triggered by pushing a tag like "v0.1.0" - deliberately not on every push to main, so a build
-# on main doesn't accidentally publish a new public package version. Requires a NUGET_API_KEY
-# repository secret (from nuget.org > API Keys) - this job will fail at the push step until
-# that's configured; build/test still runs and reports success/failure independently of it.
+# on main doesn't accidentally publish a new public package version.
+#
+# Uses nuget.org's Trusted Publishing (OIDC) rather than a long-lived NUGET_API_KEY secret: this
+# job requests a GitHub-signed OIDC token, exchanges it for a NuGet API key that's valid for one
+# hour, and uses that to push - nothing to store, rotate, or leak. Requires a one-time Trusted
+# Publishing policy configured on nuget.org (Account -> Trusted Publishing -> Add):
+#   Repository Owner: BillKrat
+#   Repository:        Adventures.Foundation
+#   Workflow File:      publish.yml   (file name only, not the .github/workflows/ path)
+#   Environment:         (left blank - this workflow doesn't use a GitHub Actions environment)
+#   Scope glob:          Adventures.*  (covers both current packages and future ones in this repo)
+# A brand-new policy against a public repo may sit in a 7-day "pending" state until the first
+# successful publish locks it to this repo's IDs (see nuget.org's Trusted Publishing docs) - if
+# the first tag push after configuring the policy fails, check the policy's status before assuming
+# the workflow itself is wrong.
 on:
   push:
     tags:
@@ -12,6 +24,8 @@ on:
 jobs:
   pack-and-publish:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # required for GitHub to issue the OIDC token NuGet/login exchanges
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,5 +49,11 @@ jobs:
           dotnet pack src/Adventures.Security -c Release -o ./nupkgs --no-build
           dotnet pack src/Adventures.Data -c Release -o ./nupkgs --no-build
 
+      - name: NuGet login (OIDC -> temporary API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: BillKrat
+
       - name: Push to nuget.org
-        run: dotnet nuget push "./nupkgs/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push "./nupkgs/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate

@@ -54,10 +54,25 @@ A consumer repo's `nuget.config` should add that folder as a package source (see
 auth needed to *consume* — deliberately not GitHub Packages, since GitHub Packages requires
 authentication to restore even public packages, which would force anyone cloning
 `ai-research-blog` to configure a PAT just to build it. That contradicts the whole point of a
-"starter kit," so nuget.org is the actual target feed, not a stopgap). Publishing requires a
-`NUGET_API_KEY` repository secret to be configured before the `publish` GitHub Actions job (see
-`.github/workflows/build.yml`) will do anything beyond build+test — not yet set up as of this
-repo's creation.
+"starter kit," so nuget.org is the actual target feed, not a stopgap).
+
+Publishing is done via nuget.org's **Trusted Publishing** (OIDC), not a stored `NUGET_API_KEY`
+secret — no long-lived credential to create, rotate, or leak. This needs a one-time policy
+configured on nuget.org (Account → Trusted Publishing → Add) before the first tag push will work:
+
+| Field | Value |
+|---|---|
+| Repository Owner | `BillKrat` |
+| Repository | `Adventures.Foundation` |
+| Workflow File | `publish.yml` (file name only, not the `.github/workflows/` path) |
+| Environment | *(leave blank — this workflow doesn't use a GitHub Actions environment)* |
+| Scope glob | `Adventures.*` (covers both current packages and future ones added to this repo) |
+
+Once that policy exists, pushing a tag like `v0.1.0` triggers [`.github/workflows/publish.yml`](.github/workflows/publish.yml),
+which builds, tests, packs, and publishes both packages. A brand-new policy against a public repo
+may sit in nuget.org's 7-day "pending" state until the first successful publish locks it to this
+repo's IDs — if the first tag push fails, check the policy's status on nuget.org before assuming
+the workflow is broken.
 
 ## Versioning
 
