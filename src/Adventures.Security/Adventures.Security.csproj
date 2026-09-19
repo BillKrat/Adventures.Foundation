@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<TargetFramework>net10.0</TargetFramework>
+	<Nullable>enable</Nullable>
+	<ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+	<PackageId>Adventures.Security</PackageId>
+	<Version>0.1.0</Version>
+	<Authors>Bill Kratochvil</Authors>
+	<Description>Self-hosted JWT issuing/validation, OAuth2 client-credentials (M2M) auth, scope-based authorization, and PBKDF2 password hashing - shared security foundation for Adventures.* projects.</Description>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	<RepositoryUrl>https://github.com/BillKrat/Adventures.Foundation</RepositoryUrl>
+	<PackageTags>jwt;auth;oauth2;client-credentials;security</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>
