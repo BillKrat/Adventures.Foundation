@@ -157,4 +157,41 @@ public class PostgresEntityRepositoryTests
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => repository.ListAsync(null!));
     }
+
+    [Fact]
+    public async Task FindByStandardFieldAsync_ReturnsMatchFromExecutor()
+    {
+        var expected = SampleEntity();
+        var executor = new FakeSqlExecutor();
+        executor.QuerySingleOrDefaultHandler = (_, _) => expected;
+        var repository = new PostgresEntityRepository(executor);
+
+        var result = await repository.FindByStandardFieldAsync("acme.com", "user", "username", "admin");
+
+        Assert.NotNull(result);
+        Assert.Equal(expected.Id, result!.Id);
+        Assert.Contains("standard_fields ->> @FieldName", executor.QuerySingleCalls[0].Sql);
+    }
+
+    [Fact]
+    public async Task FindByStandardFieldAsync_ReturnsNullWhenNotFound()
+    {
+        var repository = new PostgresEntityRepository(new FakeSqlExecutor());
+
+        var result = await repository.FindByStandardFieldAsync("acme.com", "user", "username", "nobody");
+
+        Assert.Null(result);
+    }
+
+    [Theory]
+    [InlineData("", "user", "username", "admin")]
+    [InlineData("acme.com", "", "username", "admin")]
+    [InlineData("acme.com", "user", "", "admin")]
+    [InlineData("acme.com", "user", "username", "")]
+    public async Task FindByStandardFieldAsync_ThrowsForBlankArguments(string tenant, string entityType, string fieldName, string fieldValue)
+    {
+        var repository = new PostgresEntityRepository(new FakeSqlExecutor());
+
+        await Assert.ThrowsAsync<ArgumentException>(() => repository.FindByStandardFieldAsync(tenant, entityType, fieldName, fieldValue));
+    }
 }

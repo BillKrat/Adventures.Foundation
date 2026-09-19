@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<TargetFramework>net10.0</TargetFramework>
+	<Nullable>enable</Nullable>
+	<ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+	<PackageId>Adventures.Identity</PackageId>
+	<Version>0.1.0</Version>
+	<Authors>Bill Kratochvil</Authors>
+	<Description>User login/credential-vault service composing Adventures.Data's generic entity store with Adventures.Security's password hashing and JWT issuance - shared identity foundation for Adventures.* projects.</Description>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	<RepositoryUrl>https://github.com/BillKrat/Adventures.Foundation</RepositoryUrl>
+	<PackageTags>identity;login;authentication;users</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<ProjectReference Include="..\Adventures.Data\Adventures.Data.csproj" />
+	<ProjectReference Include="..\Adventures.Security\Adventures.Security.csproj" />
+  </ItemGroup>
+
+</Project>

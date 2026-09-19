@@ -79,4 +79,26 @@ public sealed class PostgresEntityRepository(ISqlExecutor executor) : IEntityRep
 
         return _executor.QueryAsync<Entity>(sql, query, cancellationToken);
     }
+
+    public Task<Entity?> FindByStandardFieldAsync(string tenant, string entityType, string fieldName, string fieldValue, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
+        ArgumentException.ThrowIfNullOrWhiteSpace(entityType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fieldName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fieldValue);
+
+        const string sql = """
+            SELECT id AS Id, tenant AS Tenant, org AS Org, entity_type AS EntityType,
+                   standard_fields::text AS StandardFieldsJson, created_at AS CreatedAt,
+                   updated_at AS UpdatedAt, row_version AS RowVersion
+            FROM entities
+            WHERE tenant = @Tenant AND entity_type = @EntityType AND standard_fields ->> @FieldName = @FieldValue
+            LIMIT 1
+            """;
+
+        return _executor.QuerySingleOrDefaultAsync<Entity>(
+            sql,
+            new { Tenant = tenant, EntityType = entityType, FieldName = fieldName, FieldValue = fieldValue },
+            cancellationToken);
+    }
 }

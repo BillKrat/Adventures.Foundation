@@ -21,8 +21,17 @@ store, start here instead of re-implementing it.
   N-Quad-style triples scoped by a `graph` value (`ITripleStore`). This is what lets an app built
   on this library support user-designed custom fields/forms per tenant/org/user without schema
   migrations. `Sql/schema.sql` has the DDL.
+- **`Adventures.Identity`** (`src/Adventures.Identity/`) — `IUserAccountService`, composing
+  `Adventures.Data`'s generic entity store with `Adventures.Security`'s password hashing and JWT
+  issuance into an actual login flow: finds the user by tenant+username, checks the
+  `user_credentials` vault (`Adventures.Data`'s `Sql/schema-users.sql`) for lockout/disabled
+  status, verifies the password, and issues a JWT whose `sub` claim is the user's `entities.id`
+  UUID — never a password or secret, matching the "credentials never travel past the point of
+  login" design goal. `AddUserIdentity()` wires up the DI registrations; the host still separately
+  registers `Adventures.Data`'s `ISqlExecutor`/`IEntityRepository` (a real Postgres connection) and
+  `Adventures.Security`'s `AddSharedJwtAuthentication`.
 
-Both are plain class libraries with no web framework dependency beyond what's needed for JWT
+All three are plain class libraries with no web framework dependency beyond what's needed for JWT
 bearer validation (`Adventures.Security` only) — safe to reference from an ASP.NET Core host, a
 console app, an Azure Function, etc.
 

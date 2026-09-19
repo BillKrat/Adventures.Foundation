@@ -32,4 +32,4 @@ CREATE TABLE IF NOT EXISTS user_credentials (
 -- Fast lookup of a user by (tenant, username) at login time, without scanning JSONB.
 CREATE INDEX IF NOT EXISTS ix_entities_user_tenant_username
 	ON entities ((standard_fields ->> 'username'))
-	WHERE e
+	WHERE entity_type = 'user';

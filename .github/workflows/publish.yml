@@ -48,6 +48,7 @@ jobs:
         run: |
           dotnet pack src/Adventures.Security -c Release -o ./nupkgs --no-build
           dotnet pack src/Adventures.Data -c Release -o ./nupkgs --no-build
+          dotnet pack src/Adventures.Identity -c Release -o ./nupkgs --no-build
 
       - name: NuGet login (OIDC -> temporary API key)
         uses: NuGet/login@v1

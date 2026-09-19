@@ -28,4 +28,14 @@ public interface IEntityRepository
 
     /// <summary>Lists entities matching the given filter criteria.</summary>
     Task<IReadOnlyList<Entity>> ListAsync(EntityQuery query, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Finds a single entity within a tenant whose <c>standard_fields</c> JSONB has
+    /// <paramref name="fieldName"/> set to <paramref name="fieldValue"/> - e.g. finding a user by
+    /// username at login time via the partial index on <c>standard_fields ->> 'username'</c> (see
+    /// <c>Sql/schema-users.sql</c>). Returns <c>null</c> if no match. Callers are responsible for
+    /// the field actually being unique within (tenant, entityType); if more than one row matches,
+    /// which one is returned is unspecified.
+    /// </summary>
+    Task<Entity?> FindByStandardFieldAsync(string tenant, string entityType, string fieldName, string fieldValue, CancellationToken cancellationToken = default);
 }
