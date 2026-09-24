@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<TargetFramework>net10.0</TargetFramework>
+	<Nullable>enable</Nullable>
+	<ImplicitUsings>enable</ImplicitUsings>
+	<IsPackable>false</IsPackable>
+	<IsTestProject>true</IsTestProject>
+	<UserSecretsId>adventures-data-nquad-tests-6f3e2b1a-9c4d-4e7f-8a2b-1d5c6e9f0a3b</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+	<PackageReference Include="xunit" Version="2.9.2" />
+	<PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+	<PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
+	<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.0" />
+	<PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<ProjectReference Include="..\..\src\Adventures.Data.NQuad\Adventures.Data.NQuad.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed.nq" Link="Sql\seed\seed.nq" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
+
