@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<TargetFramework>net10.0</TargetFramework>
+	<Nullable>enable</Nullable>
+	<ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+	<PackageId>Adventures.Entities</PackageId>
+	<Version>0.1.0</Version>
+	<Authors>Bill Kratochvil</Authors>
+	<Description>Reusable, schema-driven dynamic entity model (User, generic DynamicEntity, EntitySchema) shared across Adventures.* applications - decoupled from any specific storage engine (Postgres/N-Quads is one adapter, not a dependency).</Description>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	<RepositoryUrl>https://github.com/BillKrat/Adventures.Foundation</RepositoryUrl>
+	<PackageTags>entities;dynamic;schema;rdf</PackageTags>
+  </PropertyGroup>
+
+</Project>
+

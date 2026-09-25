@@ -22,6 +22,10 @@
   </ItemGroup>
 
   <ItemGroup>
+	<ProjectReference Include="..\Adventures.Entities\Adventures.Entities.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
 	<None Include="Sql\**\*.sql" Pack="true" PackagePath="contentFiles\any\any\Sql\%(RecursiveDir)%(Filename)%(Extension)">
 	  <PackageBuildAction>None</PackageBuildAction>
 	</None>
