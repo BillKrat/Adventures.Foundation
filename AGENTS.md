@@ -39,9 +39,9 @@ Owner: Claude. Reusable .NET class libraries for the `Adventures.*` family, extr
 **Remaining:** awaiting the human's stage review (not pushed). Next: stage 2, a CRUDL data layer with an interface over `DynamicEntity`-derived classes, User first; then the exception-handling design and the DI store switch. Plan and decisions: [docs/Claude-inmemory-nquad-store-plan.md](docs/Claude-inmemory-nquad-store-plan.md).
 ## Copilot
 
-**Last worked on (2026-09-24):** created `Adventures.Entities` and `NQuadUserAdapter`.
+**Last worked on (2026-09-27):** pair-programmed with Bill on the N-Quad store's DI story: `INQuadStore` resolution by key, two ways side by side - a hand-rolled `Func<string, INQuadStore>` dispatcher (`NQuadStoreTests.cs`) and .NET's built-in keyed services (`AddKeyedSingleton`/`NQuadStoreKeyedServiceTests.cs`). Shared contract-driving helpers moved to `NQuadStoreTestSupport.cs`; both Postgres facts share an xUnit collection so they don't race the real `n_quads` table. Landed the reusable bit in production code: `KeyedServiceResolutionExtensions.TryGetKeyedService<TService>` in `Adventures.Data.NQuad`, so callers resolving a dynamic key never need `if (key == "postgres")` - one fallback path regardless of key or why it failed.
 
-**Remaining:** see the Copilot section in the `ai-research-blog` repo (open next-increment decision).
+**Remaining:** see the Copilot section in the `ai-research-blog` repo (open next-increment decision). Candidate follow-up: apply the same keyed-registration pattern to a future `ITools`-style interface.
 
 ## LM Studio
 
