@@ -11,6 +11,7 @@ namespace Adventures.Data.NQuad.Tests;
 /// (logs and returns, does not fail) when "ConnectionStrings:Postgres" is not configured, since
 /// this is an opt-in integration tool, not something CI should require.
 /// </summary>
+[Collection(NQuadStorePostgresCollection.Name)]
 public sealed class NQuadStoreToolTests(PostgresConnectionFixture connectionFixture, ITestOutputHelper output)
     : IClassFixture<PostgresConnectionFixture>
 {
