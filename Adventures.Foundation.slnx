@@ -1,12 +1,16 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/Adventures.Security/Adventures.Security.csproj" />
+    <Project Path="src/Adventures.Data.NQuad/Adventures.Data.NQuad.csproj" />
     <Project Path="src/Adventures.Data/Adventures.Data.csproj" />
+    <Project Path="src/Adventures.Entities/Adventures.Entities.csproj" />
     <Project Path="src/Adventures.Identity/Adventures.Identity.csproj" />
+    <Project Path="src/Adventures.Security/Adventures.Security.csproj" />
   </Folder>
   <Folder Name="/test/">
-    <Project Path="test/Adventures.Security.Tests/Adventures.Security.Tests.csproj" />
+    <Project Path="test/Adventures.Data.NQuad.Tests/Adventures.Data.NQuad.Tests.csproj" />
     <Project Path="test/Adventures.Data.Tests/Adventures.Data.Tests.csproj" />
+    <Project Path="test/Adventures.Entities.Tests/Adventures.Entities.Tests.csproj" />
     <Project Path="test/Adventures.Identity.Tests/Adventures.Identity.Tests.csproj" />
+    <Project Path="test/Adventures.Security.Tests/Adventures.Security.Tests.csproj" />
   </Folder>
 </Solution>
