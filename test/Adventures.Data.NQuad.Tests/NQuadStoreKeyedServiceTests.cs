@@ -93,6 +93,11 @@ public class NQuadStoreKeyedServiceTests
         }
 
         // "memory" always resolves; "postgres" resolves only when configured - both handled identically above.
+        if (dynamicKey == "memory")
+        {
+            Assert.True(resolved);
+        }
+
         Assert.Equal(resolved, store is not null);
     }
 }

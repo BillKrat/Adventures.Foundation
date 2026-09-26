@@ -1,3 +1,4 @@
+using System.Reflection;
 using Xunit;
 
 namespace Adventures.Data.NQuad.Tests;
@@ -57,6 +58,7 @@ internal static class NQuadStoreTestSupport
         await contract.InitializeAsync();
         try
         {
+            Assert.NotEmpty(ProvidedStoreContractTests.Checks);
             foreach (var check in ProvidedStoreContractTests.Checks)
             {
                 await store.PurgeAsync();
@@ -76,21 +78,13 @@ internal static class NQuadStoreTestSupport
     /// </summary>
     private sealed class ProvidedStoreContractTests(INQuadStore store) : NQuadStoreContractTests
     {
-        public static readonly Func<ProvidedStoreContractTests, Task>[] Checks =
-        [
-            c => c.Insert_then_query_by_subject_returns_the_quad(),
-            c => c.Insert_rejects_a_duplicate_id(),
-            c => c.InsertMany_inserts_every_quad_and_returns_the_count(),
-            c => c.InsertMany_with_an_empty_batch_returns_zero(),
-            c => c.InsertMany_is_all_or_nothing_when_a_batch_contains_a_duplicate_id(),
-            c => c.Query_with_no_terms_returns_every_quad(),
-            c => c.Query_filters_by_each_term_and_by_combinations(),
-            c => c.A_null_graph_round_trips_as_the_default_graph(),
-            c => c.Purge_removes_every_quad(),
-            c => c.An_already_cancelled_token_cancels_the_operation(),
-            c => c.Initialize_can_be_called_repeatedly_without_losing_data(),
-            c => c.Seeding_from_the_official_seed_file_loads_every_quad(),
-        ];
+        // Every [Fact] declared on the contract class, discovered by reflection so a new fact can never be skipped on the DI path.
+        // Delegates (not MethodInfo.Invoke) so assertion failures surface unwrapped.
+        public static readonly Func<ProvidedStoreContractTests, Task>[] Checks = typeof(NQuadStoreContractTests)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(m => m.GetCustomAttribute<FactAttribute>() is not null)
+            .Select(m => (Func<ProvidedStoreContractTests, Task>)(c => ((Func<Task>)Delegate.CreateDelegate(typeof(Func<Task>), c, m))()))
+            .ToArray();
 
         protected override Task<INQuadStore?> CreateStoreAsync() => Task.FromResult<INQuadStore?>(store);
 
