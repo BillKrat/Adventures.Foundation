@@ -31,9 +31,9 @@ Owner: Claude. Reusable .NET class libraries for the `Adventures.*` family, extr
 
 ## Claude
 
-**Last worked on (2026-09-25):** context restructure. No open code work.
+**Last worked on (2026-09-25):** context restructure, database password rotation (validated), and a full test run: 103 of 103 green in this repo. Wrote the plan for the next task.
 
-**Remaining:** none queued; ask the human.
+**Remaining:** next task, code deliberately not started: pull the POC in-memory store into `Adventures.Data.NQuad` as `InMemoryNQuadStore`, add `INQuadStore` matching `NpgsqlNQuadStore` (async, `CancellationToken`), and make both implement it so dev and tests avoid PostgreSQL. Plan, contract behaviours, and 5 open questions: [docs/Claude-inmemory-nquad-store-plan.md](docs/Claude-inmemory-nquad-store-plan.md). Start by answering those questions with the human.
 
 ## Copilot
 
@@ -49,4 +49,8 @@ Owner: Claude. Reusable .NET class libraries for the `Adventures.*` family, extr
 
 ## Docs index
 
-No docs files yet. Design rationale lives in the `ai-research-blog` repo (`docs/Claude-architecture-decisions.md`).
+| File | Summary |
+|---|---|
+| [docs/Claude-inmemory-nquad-store-plan.md](docs/Claude-inmemory-nquad-store-plan.md) | Plan for `INQuadStore` and `InMemoryNQuadStore`: gap analysis, contract behaviours, test approach, open questions |
+
+Design rationale lives in the `ai-research-blog` repo (`docs/Claude-architecture-decisions.md`).
