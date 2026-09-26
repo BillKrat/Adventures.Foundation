@@ -1,6 +1,6 @@
 # Stage review: N-Quad store interface, in-memory store, shared contract (stage 1)
 
-Date: 2026-09-26. Repo: `Adventures.Foundation`, branch `nguid-slice`. Committed locally; not pushed until you review.
+Date: 2026-09-26. Repo: `Adventures.Foundation`, branch `nguid-slice`. Reviewed and pushed 2026-09-26.
 
 ## What was built
 - `INQuadStore`: `InsertAsync`, `InsertManyAsync`, `QueryAsync`, `CountAsync`, `PurgeAsync` (all with `CancellationToken`). The Postgres surface, minus what is not store maintenance.
