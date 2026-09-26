@@ -1,0 +1,1 @@
+Read `AGENTS.md` at the repo root first and follow it, including the core guardrails. Edit only the Copilot section and files under `docs/` prefixed `Copilot-`. Keep this file a pointer; put nothing else here.
