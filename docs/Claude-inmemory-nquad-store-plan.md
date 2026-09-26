@@ -46,10 +46,11 @@ The two surfaces only partly overlap. Postgres has query-by-terms, count, bulk i
 
 Register through DI (for example an `AddNQuadStore` extension) with a configuration switch such as `NQuad:Store = InMemory | Postgres`, so tests and dev default to in-memory and deploy uses Postgres.
 
-## Open questions for the morning
+## Decisions (answered 2026-09-26) and status
+1. **By-id ops:** not in this layer. Two concerns: store maintenance (`INQuadStore`, this plan) and CRUDL over `DynamicEntity`-derived classes, User first (next stage, its own interface).
+2. **Duplicate id:** the store throws; the type is not pinned. Exception handling is a separate design: [Claude-decision-2026-09-exception-handling-direction.md](Claude-decision-2026-09-exception-handling-direction.md).
+3. **Scratch table:** yes; `NpgsqlNQuadStore(connectionString, tableName = "n_quads")`.
+4. **`CreateTableAsync`:** behind `INQuadStoreInitializer`.
+5. **Consumers this stage:** only the two stores.
 
-1. Add by-id `Get`/`Update`/`Delete` to the interface now, or stage it after the interface and in-memory store are green?
-2. Duplicate-id behaviour: which exception type is the contract?
-3. Make the Postgres table name configurable for scratch runs?
-4. Where does `CreateTableAsync` live?
-5. Does anything in `NQuadUserAdapter` or `Adventures.Entities` need to consume the interface in this stage, or only the two stores?
+**Stage 1 is built and green** (interface, initializer, in-memory store, shared contract run against both stores): see [artifacts/Claude-2026-09-26-nquad-store-stage-1.md](artifacts/Claude-2026-09-26-nquad-store-stage-1.md). Still to do from this plan: the DI switch (`NQuad:Store`).

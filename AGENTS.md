@@ -34,10 +34,9 @@ Owner: Claude. Reusable .NET class libraries for the `Adventures.*` family, extr
 
 ## Claude
 
-**Last worked on (2026-09-25):** context restructure, database password rotation (validated), and a full test run: 103 of 103 green in this repo. Wrote the plan for the next task.
+**Last worked on (2026-09-26):** stage 1 of the N-Quad store built test-first and green: `INQuadStore`, `INQuadStoreInitializer`, `InMemoryNQuadStore`, `NpgsqlNQuadStore` implementing both (configurable table, atomic batch), and one shared contract run against both stores (in-memory and real Postgres via scratch tables). 127 tests passing in this repo. Review: [docs/artifacts/Claude-2026-09-26-nquad-store-stage-1.md](docs/artifacts/Claude-2026-09-26-nquad-store-stage-1.md). Recorded the exception-handling direction (design only).
 
-**Remaining:** next task, code deliberately not started: pull the POC in-memory store into `Adventures.Data.NQuad` as `InMemoryNQuadStore`, add `INQuadStore` matching `NpgsqlNQuadStore` (async, `CancellationToken`), and make both implement it so dev and tests avoid PostgreSQL. Plan, contract behaviours, and 5 open questions: [docs/Claude-inmemory-nquad-store-plan.md](docs/Claude-inmemory-nquad-store-plan.md). Start by answering those questions with the human.
-
+**Remaining:** awaiting the human's stage review (not pushed). Next: stage 2, a CRUDL data layer with an interface over `DynamicEntity`-derived classes, User first; then the exception-handling design and the DI store switch. Plan and decisions: [docs/Claude-inmemory-nquad-store-plan.md](docs/Claude-inmemory-nquad-store-plan.md).
 ## Copilot
 
 **Last worked on (2026-09-24):** created `Adventures.Entities` and `NQuadUserAdapter`.
@@ -57,3 +56,5 @@ Owner: Claude. Reusable .NET class libraries for the `Adventures.*` family, extr
 | [docs/Claude-inmemory-nquad-store-plan.md](docs/Claude-inmemory-nquad-store-plan.md) | Plan for `INQuadStore` and `InMemoryNQuadStore`: gap analysis, contract behaviours, test approach, open questions |
 
 Design rationale lives in the `ai-research-blog` repo (`docs/Claude-architecture-decisions.md`).
+| [docs/Claude-decision-2026-09-exception-handling-direction.md](docs/Claude-decision-2026-09-exception-handling-direction.md) | Direction only: exception signature lookup, ErrorType and ErrorEx DynamicEntity schema, rethrow to the BLL |
+| [docs/artifacts/Claude-2026-09-26-nquad-store-stage-1.md](docs/artifacts/Claude-2026-09-26-nquad-store-stage-1.md) | Stage 1 review: store interface, in-memory store, shared contract, decisions applied |

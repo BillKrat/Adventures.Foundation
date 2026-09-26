@@ -1,52 +1,76 @@
-﻿using Dapper;
+using System.Text.RegularExpressions;
+using Dapper;
 using Npgsql;
 
 namespace Adventures.Data.NQuad;
 
 /// <summary>
-/// Real PostgreSQL-backed store for <see cref="NQuad"/> rows in the "n_quads" table (see
+/// Real PostgreSQL-backed <see cref="INQuadStore"/> for <see cref="NQuad"/> rows in an "n_quads" table (see
 /// Sql/schema-nquads.sql). Deliberately self-contained (no dependency on Adventures.Data/
 /// ISqlExecutor) so this library can evolve in parallel with, and eventually replace, the
 /// existing JSONB Hybrid + N-Quads model without either biasing the other. Also doubles as
 /// the "tool" used by Adventures.Data.NQuad.Tests to create/purge/reseed/query during
 /// red-green development.
 /// </summary>
-public sealed class NpgsqlNQuadStore(string connectionString)
+/// <remarks>
+/// <paramref name="tableName"/> defaults to "n_quads". Tests pass a scratch name so contract runs never truncate the dev
+/// table. The name is validated as a plain lower-case identifier because it is interpolated into SQL.
+/// </remarks>
+public sealed partial class NpgsqlNQuadStore : INQuadStore, INQuadStoreInitializer
 {
-    private const string CreateTableSql = """
-        CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    public const string DefaultTableName = "n_quads";
 
-        CREATE TABLE IF NOT EXISTS n_quads (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            subject TEXT NOT NULL,
-            predicate TEXT NOT NULL,
-            object TEXT NOT NULL,
-            graph TEXT NULL,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        );
+    [GeneratedRegex("^[a-z_][a-z0-9_]{0,62}$")]
+    private static partial Regex TableNameRegex();
 
-        CREATE INDEX IF NOT EXISTS ix_n_quads_subject ON n_quads (subject);
-        CREATE INDEX IF NOT EXISTS ix_n_quads_predicate ON n_quads (predicate);
-        CREATE INDEX IF NOT EXISTS ix_n_quads_graph ON n_quads (graph);
-        """;
+    private readonly string _connectionString;
+    private readonly string _table;
 
-    private readonly string _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
-
-    /// <summary>Creates the "n_quads" table (and its indexes) if it does not already exist.</summary>
-    public async Task CreateTableAsync(CancellationToken cancellationToken = default)
+    public NpgsqlNQuadStore(string connectionString, string tableName = DefaultTableName)
     {
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        var command = new CommandDefinition(CreateTableSql, cancellationToken: cancellationToken);
-        await connection.ExecuteAsync(command);
+        _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+        ArgumentNullException.ThrowIfNull(tableName);
+        if (!TableNameRegex().IsMatch(tableName))
+        {
+            throw new ArgumentException("Table name must be a lower-case identifier (letters, digits, underscore; max 63 characters).", nameof(tableName));
+        }
+
+        _table = tableName;
     }
 
-    /// <summary>Deletes every row from "n_quads", leaving the table itself intact.</summary>
+    /// <summary>Creates the table (and its indexes) if it does not already exist.</summary>
+    public async Task CreateTableAsync(CancellationToken cancellationToken = default)
+    {
+        var sql = $"""
+            CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+            CREATE TABLE IF NOT EXISTS {_table} (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                subject TEXT NOT NULL,
+                predicate TEXT NOT NULL,
+                object TEXT NOT NULL,
+                graph TEXT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+
+            CREATE INDEX IF NOT EXISTS ix_{_table}_subject ON {_table} (subject);
+            CREATE INDEX IF NOT EXISTS ix_{_table}_predicate ON {_table} (predicate);
+            CREATE INDEX IF NOT EXISTS ix_{_table}_graph ON {_table} (graph);
+            """;
+        await using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(sql, cancellationToken: cancellationToken));
+    }
+
+    /// <inheritdoc />
+    public Task InitializeAsync(CancellationToken cancellationToken = default) => CreateTableAsync(cancellationToken);
+
+    /// <summary>Deletes every row, leaving the table itself intact.</summary>
     public async Task<int> PurgeAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
-        var command = new CommandDefinition("TRUNCATE TABLE n_quads;", cancellationToken: cancellationToken);
+        var command = new CommandDefinition($"TRUNCATE TABLE {_table};", cancellationToken: cancellationToken);
         return await connection.ExecuteAsync(command);
     }
 
@@ -57,40 +81,36 @@ public sealed class NpgsqlNQuadStore(string connectionString)
         return InsertManyAsync([quad], cancellationToken);
     }
 
-    /// <summary>Inserts a batch of quads in a single round trip.</summary>
+    /// <summary>Inserts a batch of quads inside one transaction (all-or-nothing).</summary>
     public async Task<int> InsertManyAsync(IReadOnlyCollection<NQuad> quads, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(quads);
+        cancellationToken.ThrowIfCancellationRequested();
         if (quads.Count == 0)
         {
             return 0;
         }
 
-        const string sql = """
-            INSERT INTO n_quads (id, subject, predicate, object, graph)
+        var sql = $"""
+            INSERT INTO {_table} (id, subject, predicate, object, graph)
             VALUES (@Id, @Subject, @Predicate, @Object, @Graph);
             """;
 
         await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
-        var command = new CommandDefinition(sql, quads, cancellationToken: cancellationToken);
-        return await connection.ExecuteAsync(command);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        var command = new CommandDefinition(sql, quads, transaction, cancellationToken: cancellationToken);
+        var inserted = await connection.ExecuteAsync(command);
+        await transaction.CommitAsync(cancellationToken);
+        return inserted;
     }
 
-    /// <summary>Parses a ".nq" file (see Sql/seed/seed.nq) and inserts every quad it contains. Returns the number of quads seeded.</summary>
-    public async Task<int> SeedFromFileAsync(string nQuadFilePath, CancellationToken cancellationToken = default)
-    {
-        var text = await File.ReadAllTextAsync(nQuadFilePath, cancellationToken);
-        var quads = new NQuadFileParser().Parse(text);
-        return await InsertManyAsync(quads, cancellationToken);
-    }
-
-    /// <summary>Returns every row in "n_quads", optionally filtered by any combination of terms.</summary>
+    /// <summary>Returns every row, optionally filtered by any combination of terms.</summary>
     public async Task<IReadOnlyList<NQuad>> QueryAsync(string? subject = null, string? predicate = null, string? @object = null, string? graph = null, CancellationToken cancellationToken = default)
     {
-        const string sql = """
+        var sql = $"""
             SELECT id AS "Id", subject AS "Subject", predicate AS "Predicate", object AS "Object", graph AS "Graph"
-            FROM n_quads
+            FROM {_table}
             WHERE (@Subject IS NULL OR subject = @Subject)
               AND (@Predicate IS NULL OR predicate = @Predicate)
               AND (@Object IS NULL OR object = @Object)
@@ -104,13 +124,12 @@ public sealed class NpgsqlNQuadStore(string connectionString)
         return results.AsList();
     }
 
-    /// <summary>Returns the total row count in "n_quads".</summary>
+    /// <summary>Returns the total row count.</summary>
     public async Task<long> CountAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
-        var command = new CommandDefinition("SELECT COUNT(*) FROM n_quads;", cancellationToken: cancellationToken);
+        var command = new CommandDefinition($"SELECT COUNT(*) FROM {_table};", cancellationToken: cancellationToken);
         return await connection.ExecuteScalarAsync<long>(command);
     }
 }
-
