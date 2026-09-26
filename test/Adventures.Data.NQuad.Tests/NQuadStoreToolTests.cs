@@ -20,7 +20,9 @@ public sealed class NQuadStoreToolTests(PostgresConnectionFixture connectionFixt
     {
         if (connectionFixture.ConnectionString is null)
         {
-            output.WriteLine("SKIPPED: ConnectionStrings:Postgres is not configured (set via 'dotnet user-secrets set ConnectionStrings:Postgres ...' for this test project to run against a real database).");
+            output.WriteLine("SKIPPED: ConnectionStrings:Postgres is not configured" +
+                " (set via 'dotnet user-secrets set ConnectionStrings:Postgres ...' for this " +
+                "test project to run against a real database).");
             store = null!;
             return true;
         }

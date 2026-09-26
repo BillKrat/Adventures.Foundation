@@ -77,10 +77,7 @@ public sealed class NpgsqlNQuadStore(string connectionString)
         return await connection.ExecuteAsync(command);
     }
 
-    /// <summary>
-    /// Parses a ".nq" file (see Sql/seed/seed.nq) and inserts every quad it contains. Returns the
-    /// number of quads seeded.
-    /// </summary>
+    /// <summary>Parses a ".nq" file (see Sql/seed/seed.nq) and inserts every quad it contains. Returns the number of quads seeded.</summary>
     public async Task<int> SeedFromFileAsync(string nQuadFilePath, CancellationToken cancellationToken = default)
     {
         var text = await File.ReadAllTextAsync(nQuadFilePath, cancellationToken);
@@ -89,12 +86,7 @@ public sealed class NpgsqlNQuadStore(string connectionString)
     }
 
     /// <summary>Returns every row in "n_quads", optionally filtered by any combination of terms.</summary>
-    public async Task<IReadOnlyList<NQuad>> QueryAsync(
-        string? subject = null,
-        string? predicate = null,
-        string? @object = null,
-        string? graph = null,
-        CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<NQuad>> QueryAsync(string? subject = null, string? predicate = null, string? @object = null, string? graph = null, CancellationToken cancellationToken = default)
     {
         const string sql = """
             SELECT id AS "Id", subject AS "Subject", predicate AS "Predicate", object AS "Object", graph AS "Graph"
