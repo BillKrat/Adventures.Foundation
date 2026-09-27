@@ -2,7 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
-namespace Adventures.Tests.Extensions
+namespace Adventures.Ioc.Extensions
 {
     public static class ServiceCollectionExtensions
     {

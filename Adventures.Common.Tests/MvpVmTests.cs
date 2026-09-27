@@ -1,5 +1,5 @@
 ﻿using Adventures.Tests.Base;
-using Adventures.Tests.Extensions;
+using Adventures.Ioc.Extensions;
 using Adventures.Tests.Mocks.Events;
 using Adventures.Tests.Mocks.Interfaces;
 using Adventures.Tests.Mocks.MvpVm;

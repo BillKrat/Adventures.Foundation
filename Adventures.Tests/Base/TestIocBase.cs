@@ -1,4 +1,4 @@
-﻿using Adventures.Tests.Extensions;
+﻿using Adventures.Ioc.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 

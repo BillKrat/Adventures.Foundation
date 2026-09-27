@@ -1,6 +1,6 @@
 ﻿using Adventures.Ioc.Interfaces;
 using Adventures.Tests.Base;
-using Adventures.Tests.Extensions;
+using Adventures.Ioc.Extensions;
 using Adventures.Tests.Mocks.Foo;
 using Adventures.Tests.Mocks.Interfaces;
 using Adventures.Tests.Mocks.MvpVm;
