@@ -60,6 +60,15 @@ public abstract class DynamicEntity : DynamicObject, IDynamicEntity
             ? values.ToArray()
             : [];
 
+    /// <summary>
+    /// Returns every value <paramref name="propertyName"/> held as of the last <c>AcceptChanges</c> (i.e. as
+    /// materialized from the store), not just the first. <see cref="DynamicFieldState.OriginalValue"/> only exposes
+    /// the first for display purposes; a repository superseding a dirty multi-valued field (e.g. a User with two
+    /// Email values, replaced by one) needs all of them to mark every prior quad superseded, not just the first.
+    /// </summary>
+    public IReadOnlyList<FieldValue> GetOriginalFieldValues(string propertyName) =>
+        GetFieldValuesFrom(_originalValues, propertyName);
+
     internal IEnumerable<KeyValuePair<string, IReadOnlyList<FieldValue>>> Values =>
         _values.Select(entry =>
             new KeyValuePair<string, IReadOnlyList<FieldValue>>(entry.Key, entry.Value));
@@ -88,7 +97,13 @@ public abstract class DynamicEntity : DynamicObject, IDynamicEntity
         return this;
     }
 
-    internal void AcceptChanges()
+    /// <summary>
+    /// Marks every currently-held value as the new baseline (clears <see cref="DirtyFieldIds"/>). A repository
+    /// calls this after successfully persisting the entity - it lives on the public surface, not just internally,
+    /// because a storage-specific repository lives in a different assembly (e.g. <c>Adventures.Data.NQuad</c>)
+    /// from <see cref="DynamicEntity"/> itself.
+    /// </summary>
+    public void AcceptChanges()
     {
         _originalValues.Clear();
         foreach (var entry in _values)
