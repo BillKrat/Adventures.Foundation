@@ -36,4 +36,14 @@ public static class KeyedServiceResolutionExtensions
 
         return service is not null;
     }
+
+    /// <summary>
+    /// Attempts to resolve a keyed service from an <see cref="IServiceScope"/>, treating "key not registered" and
+    /// "registered but construction failed" as the same negative result.
+    /// </summary>
+    public static bool TryGetScopedKeyService<TService>(this IServiceScope scope, object? serviceKey, [NotNullWhen(true)] out TService? service)
+        where TService : class
+    {
+        return scope.ServiceProvider.TryGetKeyedService(serviceKey, out service);
+    }
 }
