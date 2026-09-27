@@ -1,8 +1,6 @@
-﻿using System;
-using System.Linq;
-using System.Reflection;
-using Adventures.Ioc.Interfaces;
+﻿using Adventures.Ioc.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace Adventures.Tests.Extensions
 {
@@ -81,7 +79,46 @@ namespace Adventures.Tests.Extensions
                 }
 
                 services.Add(new ServiceDescriptor(interfaceType, implementationType, lifetime.Value));
+                services.Add(new ServiceDescriptor(interfaceType, implementationType.Name, implementationType, lifetime.Value));
             }
+        }
+
+        public static T? ResolveKey<T>(this IServiceProvider serviceProvider, string key)
+             where T : class
+        {
+            return serviceProvider.GetRequiredKeyedService<T>(key);
+        }
+
+        public static T? ResolveKey<T>(this IServiceScope serviceScope, string key)
+             where T : class
+        {
+            return serviceScope.ServiceProvider.GetRequiredKeyedService<T>(key);
+        }
+
+        public static bool ResolveKey<T>(this IServiceProvider serviceProvider, string key, out T? service)
+             where T : class
+        {
+            service = serviceProvider.GetKeyedService<T>(key);
+            return service is not null;
+        }
+
+        public static bool ResolveKey<T>(this IServiceScope serviceScope, string key, out T? service)
+             where T : class
+        {
+            return serviceScope.ServiceProvider.ResolveKey(key, out service);
+        }
+
+        public static bool Resolve<T>(this IServiceProvider serviceProvider, out T? service)
+             where T : class
+        {
+            service = serviceProvider.GetService<T>();
+            return service is not null;
+        }
+
+        public static bool Resolve<T>(this IServiceScope serviceScope, out T? service)
+             where T : class
+        {
+            return serviceScope.ServiceProvider.Resolve(out service);
         }
     }
 }

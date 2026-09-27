@@ -1,6 +1,6 @@
 ﻿using Adventures.Ioc.Interfaces;
 
-namespace Adventures.Tests.Mocks
+namespace Adventures.Tests.Mocks.Foo
 {
     public class FooScoped : IScopedLifetime
     {

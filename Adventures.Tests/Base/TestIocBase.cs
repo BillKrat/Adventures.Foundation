@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using Adventures.Tests.Extensions;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Adventures.Tests.Base
@@ -39,6 +40,9 @@ namespace Adventures.Tests.Base
         {
             // 1. Arrange: Use WebApplication.CreateBuilder to set up the host environment
             var builder = WebApplication.CreateBuilder();
+
+            // Automatically register services based on lifetime interfaces
+            builder.Services.AddLifetimeServices();
 
             this.ConfigureServices(builder.Services);
 

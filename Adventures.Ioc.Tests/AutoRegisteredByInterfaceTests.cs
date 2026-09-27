@@ -1,7 +1,7 @@
 ﻿using Adventures.Ioc.Interfaces;
 using Adventures.Tests.Base;
 using Adventures.Tests.Extensions;
-using Adventures.Tests.Mocks;
+using Adventures.Tests.Mocks.Foo;
 using Adventures.Tests.Mocks.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,23 +11,23 @@ namespace Adventures.Ioc.Tests
     {
         protected override void ConfigureServices(IServiceCollection services)
         {
-            services.AddLifetimeServices();
+            // Register additional services if needed for testing
         }
 
         [Fact]
         public void KeyedLifetimeServices_AreResolvable()
         {
-            Assert.True(ServiceProvider.TryGetKeyedService<ISingletonLifetime>(nameof(FooSingleton), out var fooSingleton));
-            Assert.True(ServiceProvider.TryGetKeyedService<ITransientLifetime>(nameof(FooTransient), out var fooTransient));
-            Assert.True(ScopedServiceProvider.TryGetScopedKeyService<IScopedLifetime>(nameof(FooScoped), out var fooScoped));
+            Assert.True(ServiceProvider.ResolveKey<ISingletonLifetime>(nameof(FooSingleton), out var fooSingleton));
+            Assert.True(ServiceProvider.ResolveKey<ITransientLifetime>(nameof(FooTransient), out var fooTransient));
+            Assert.True(ScopedServiceProvider.ResolveKey<IScopedLifetime>(nameof(FooScoped), out var fooScoped));
         }
 
         [Fact]
         public void DerivedLifetimeInterfaces_AreResolvable()
         {
-            Assert.True(ServiceProvider.TryGetKeyedService<IFooBarSingleton>(null, out var fooBarSingleton));
-            Assert.True(ServiceProvider.TryGetKeyedService<IFooBarTransient>(null, out var fooBarTransient));
-            Assert.True(ScopedServiceProvider.TryGetScopedKeyService<IFooBarScoped>(null, out var fooBarScoped));
+            Assert.True(ServiceProvider.Resolve<IFooBarSingleton>(out var fooBarSingleton));
+            Assert.True(ServiceProvider.Resolve<IFooBarTransient>(out var fooBarTransient));
+            Assert.True(ScopedServiceProvider.Resolve<IFooBarScoped>(out var fooBarScoped));
         }
 
 
