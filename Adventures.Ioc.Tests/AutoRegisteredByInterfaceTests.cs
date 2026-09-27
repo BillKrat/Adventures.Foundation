@@ -3,6 +3,7 @@ using Adventures.Tests.Base;
 using Adventures.Tests.Extensions;
 using Adventures.Tests.Mocks.Foo;
 using Adventures.Tests.Mocks.Interfaces;
+using Adventures.Tests.Mocks.MvpVm;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Adventures.Ioc.Tests
@@ -30,6 +31,13 @@ namespace Adventures.Ioc.Tests
             Assert.True(ScopedServiceProvider.Resolve<IFooBarScoped>(out var fooBarScoped));
         }
 
+        [Fact]
+        public void InterfaceWithMultipleImplementations_HasNoUnkeyedRegistration()
+        {
+            Assert.False(ServiceProvider.Resolve<IMockBll>(out _));
+            Assert.True(ServiceProvider.ResolveKey<IMockBll>(nameof(MockBll), out _));
+            Assert.True(ServiceProvider.ResolveKey<IMockBll>(nameof(MockBllV2), out _));
+        }
 
     }
 }
