@@ -94,6 +94,31 @@ public sealed class SchemaEntityRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SchemaBll_LoadEntitySchemaAsync_BuildsEntitySchemaFromPersistedEntities()
+    {
+        var idFieldId = Guid.NewGuid().ToString();
+        var nameFieldId = Guid.NewGuid().ToString();
+        await _fieldRepository.CreateAsync(NewField(idFieldId, "Id", "Guid", "urn:widget#id"));
+        await _fieldRepository.CreateAsync(NewField(nameFieldId, "Name", "String", "urn:widget#name"));
+
+        var schemaId = "Widget-" + Guid.NewGuid();
+        var schema = new SchemaEntity(SchemaEntity.MetaSchema)
+            .Set(DynamicEntity.EntityIdPropertyName, schemaId, schemaId)
+            .Set("Field", Guid.NewGuid().ToString(), EntityConstants.Schema.FieldEntityBaseIri + idFieldId) as SchemaEntity
+            ?? throw new InvalidOperationException();
+        schema.Add("Field", Guid.NewGuid().ToString(), EntityConstants.Schema.FieldEntityBaseIri + nameFieldId);
+        await _schemaRepository.CreateAsync(schema);
+
+        var bll = new SchemaBll(_schemaRepository, _fieldRepository);
+        var entitySchema = await bll.LoadEntitySchemaAsync(schemaId);
+
+        Assert.Equal(schemaId, entitySchema.SchemaIri);
+        Assert.Equal(2, entitySchema.Fields.Count);
+        Assert.Equal("Guid", entitySchema.Fields["Id"].Type);
+        Assert.Equal("urn:widget#name", entitySchema.Fields["Name"].Predicate);
+    }
+
+    [Fact]
     public async Task UpdateAsync_SchemaFieldEntity_SupersedesOldQuad()
     {
         var id = Guid.NewGuid().ToString();
