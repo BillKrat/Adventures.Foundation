@@ -3,28 +3,13 @@
 namespace Adventures.Data.NQuad;
 
 /// <summary>
-/// Builds strongly-typed <see cref="User"/> and <see cref="EntitySchema"/> instances
-/// from raw <see cref="NQuad"/> rows. Each stored field value is paired with the id of
-/// the originating NQuad row (<see cref="FieldValue"/>) so update/delete operations can
-/// target that exact row later - the raw value alone is not enough.
+/// Builds strongly-typed <see cref="User"/> instances from raw <see cref="NQuad"/> rows, given
+/// an already-built <see cref="EntitySchema"/> (see <see cref="SchemaDal.Load"/>). Each stored
+/// field value is paired with the id of the originating NQuad row (<see cref="FieldValue"/>) so
+/// update/delete operations can target that exact row later - the raw value alone is not enough.
 /// </summary>
 public static class NQuadUserAdapter
 {
-    public static EntitySchema LoadUserSchema(IEnumerable<Adventures.Data.NQuad.NQuad> quads)
-    {
-        var triples = quads.Select(q => (q.Subject, q.Predicate, q.Object));
-        return EntitySchema.Load(
-            triples,
-            schemaIri: EntityConstants.Schema.UserIri,
-            typePredicate: EntityConstants.Schema.TypePredicate,
-            typeIri: EntityConstants.Schema.TypeIri,
-            fieldPredicate: EntityConstants.Schema.FieldPredicate,
-            fieldNamePredicate: EntityConstants.Schema.FieldNamePredicate,
-            fieldTypePredicate: EntityConstants.Schema.FieldTypePredicate,
-            fieldRdfPredicate: EntityConstants.Schema.FieldRdfPredicate,
-            fieldValuePrefixPredicate: EntityConstants.Schema.FieldValuePrefixPredicate);
-    }
-
     /// <summary>
     /// Materializes every distinct User subject found in <paramref name="quads"/> into a
     /// <see cref="User"/>. The Id field is derived from the subject IRI itself

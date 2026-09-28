@@ -19,7 +19,7 @@ public sealed class UserAndUserSchemaTests
         var nquadText = File.ReadAllText(seedPath);
         var quads = new NQuadFileParser().Parse(nquadText);
 
-        var schema = NQuadUserAdapter.LoadUserSchema(quads);
+        var schema = SchemaDal.Load(quads, EntityConstants.Schema.UserIri);
         Assert.Equal(EntityConstants.Schema.UserIri, schema.SchemaIri);
         Assert.Contains("Id", schema.Fields.Keys);
         Assert.Contains("First", schema.Fields.Keys);

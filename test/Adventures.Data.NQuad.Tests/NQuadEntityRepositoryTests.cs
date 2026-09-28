@@ -17,7 +17,7 @@ public class NQuadEntityRepositoryTests : IAsyncLifetime
         _store = new InMemoryNQuadStore();
         await _store.SeedFromFileAsync(NQuadStoreTestSupport.SeedFilePath);
         var allQuads = await _store.QueryAsync();
-        _schema = NQuadUserAdapter.LoadUserSchema(allQuads);
+        _schema = SchemaDal.Load(allQuads, EntityConstants.Schema.UserIri);
         _repository = new NQuadEntityRepository<User>(
             _store,
             _schema,
