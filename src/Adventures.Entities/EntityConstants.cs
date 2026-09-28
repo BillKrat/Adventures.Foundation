@@ -18,6 +18,32 @@ public static class EntityConstants
         public const string FieldTypePredicate = BaseIri + "fieldType";
         public const string FieldRdfPredicate = BaseIri + "predicate";
         public const string FieldValuePrefixPredicate = BaseIri + "valuePrefix";
+
+        /// <summary>
+        /// The placeholder predicate every schema's own "Id" field declares (see e.g. seed.nq's
+        /// <c>schema/User/Id</c>). Never actually written to the store - <c>NQuadEntityRepository</c>
+        /// always derives an entity's id from its subject IRI instead - but <see cref="DynamicEntity.Set"/>
+        /// still requires "Id" to be a declared field, so every schema needs one.
+        /// </summary>
+        public const string IdentifierPredicate = BaseIri + "identifier";
+
+        /// <summary>
+        /// IRIs for <see cref="Adventures.Entities.SchemaEntity"/> instances - a schema definition
+        /// (e.g. the seed-authored "User" and "AuditRecord" schemas) treated as an ordinary
+        /// <c>NQuadEntityRepository{TEntity}</c>-managed entity, discovered the same way every other
+        /// entity is: a standard rdf:type triple, not the <see cref="TypePredicate"/> marker
+        /// <c>SchemaDal</c> reads. <see cref="EntityTypeIri"/> deliberately reuses <see cref="TypeIri"/> -
+        /// same "this is a Schema" concept, just paired with the standard rdf:type predicate instead of
+        /// the schema-describing one.
+        /// </summary>
+        public const string EntityBaseIri = "https://global-webnet.com/schema/";
+
+        public const string EntityTypeIri = TypeIri;
+
+        /// <summary>IRIs for <see cref="Adventures.Entities.SchemaFieldEntity"/> instances.</summary>
+        public const string FieldEntityBaseIri = "https://global-webnet.com/schema-field/";
+
+        public const string FieldEntityTypeIri = BaseIri + "Field";
     }
 
     public static class User
