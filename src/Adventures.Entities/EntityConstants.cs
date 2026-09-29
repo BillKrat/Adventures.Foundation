@@ -49,6 +49,7 @@ public static class EntityConstants
     public static class User
     {
         public const string BaseIri = "https://global-webnet.com/id/user/";
+        public const string DefaultGraph = "https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df";
         public const string TypeIri = "http://xmlns.com/foaf/0.1/Person";
     }
 
