@@ -15,7 +15,7 @@ public sealed class UserBllTests : IAsyncLifetime
     private const string Graph = "https://global-webnet.com/graph/test";
 
     private InMemoryNQuadStore _store = null!;
-    private UserBll _bll = null!;
+    private IUserBll _bll = null!;
 
     public async Task InitializeAsync()
     {

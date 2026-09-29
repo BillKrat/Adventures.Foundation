@@ -109,7 +109,7 @@ public sealed class SchemaEntityRepositoryTests : IAsyncLifetime
         schema.Add("Field", Guid.NewGuid().ToString(), EntityConstants.Schema.FieldEntityBaseIri + nameFieldId);
         await _schemaRepository.CreateAsync(schema);
 
-        var bll = new SchemaBll(_schemaRepository, _fieldRepository);
+        ISchemaBll bll = new SchemaBll(_schemaRepository, _fieldRepository);
         var entitySchema = await bll.LoadEntitySchemaAsync(schemaId);
 
         Assert.Equal(schemaId, entitySchema.SchemaIri);

@@ -1,17 +1,13 @@
 namespace Adventures.Entities;
 
 /// <summary>
-/// The business-rules layer for <see cref="SchemaEntity"/>/<see cref="SchemaFieldEntity"/> -
-/// storage-agnostic, depends only on <see cref="IEntityRepository{TEntity}"/>. Two jobs:
-/// <see cref="LoadEntitySchemaAsync"/> composes a <see cref="SchemaEntity"/> and its
-/// <see cref="SchemaFieldEntity"/> instances (fetched through the ordinary, unmodified generic
-/// repositories - no separate Dal wrapper needed, since <c>NQuadEntityRepository{SchemaEntity}</c>
-/// already is the Dal) into an <see cref="EntitySchema"/>; <see cref="ToEntitySchema"/> is the
-/// synchronous translation, checking each field carries the literal values (Name/FieldType/
-/// Predicate) a well-formed field definition needs - something <see cref="EntitySchema.Create"/>
-/// itself can't check, since it only ever sees already-built <see cref="EntitySchemaField"/> records.
+/// Implementation of <see cref="ISchemaBll"/> - see that interface for the contract and rationale.
+/// <see cref="ToEntitySchema"/> is the synchronous translation <see cref="LoadEntitySchemaAsync"/>
+/// delegates to: it checks each field carries the literal values (Name/FieldType/Predicate) a
+/// well-formed field definition needs - something <see cref="EntitySchema.Create"/> itself cannot
+/// check, since it only ever sees already-built <see cref="EntitySchemaField"/> records.
 /// </summary>
-public sealed class SchemaBll
+public sealed class SchemaBll : ISchemaBll
 {
     private readonly IEntityRepository<SchemaEntity> _schemas;
     private readonly IEntityRepository<SchemaFieldEntity> _fields;
@@ -22,13 +18,6 @@ public sealed class SchemaBll
         _fields = fields ?? throw new ArgumentNullException(nameof(fields));
     }
 
-    /// <summary>
-    /// Fetches <paramref name="schemaEntityId"/> and every <see cref="SchemaFieldEntity"/> its
-    /// "Field" values reference, then builds the <see cref="EntitySchema"/> other entities need at
-    /// construction time. Only works for a schema created through the new, generic-repository
-    /// convention - a legacy, hand-seeded schema (still read via <c>Adventures.Data.NQuad.SchemaDal</c>)
-    /// has no <see cref="SchemaFieldEntity"/> instances under this convention's base IRI to fetch.
-    /// </summary>
     public async Task<EntitySchema> LoadEntitySchemaAsync(string schemaEntityId, CancellationToken cancellationToken = default)
     {
         var schema = await _schemas.GetAsync(schemaEntityId, cancellationToken: cancellationToken).ConfigureAwait(false)
