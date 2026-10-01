@@ -1,3 +1,4 @@
+using Adventures.Data.NQuad;
 using Xunit;
 
 namespace Adventures.Entities.Tests;
@@ -5,14 +6,33 @@ namespace Adventures.Entities.Tests;
 /// <summary>
 /// <see cref="SchemaBll.ToEntitySchema"/> is pure/storage-agnostic - tested here with plain,
 /// in-memory <see cref="SchemaEntity"/>/<see cref="SchemaFieldEntity"/> instances, no store
-/// involved. The async, repository-composing side (<see cref="SchemaBll.LoadEntitySchemaAsync"/>)
-/// is covered against a real store in Adventures.Data.NQuad.Tests.
+/// touched by the logic under test. Their own <see cref="EntitySchema"/> is loaded from seed.nq
+/// once in <see cref="InitializeAsync"/> (no hardcoded <c>MetaSchema"/> exists anymore - see
+/// <see cref="SchemaEntity"/>'s doc comment), then reused as plain in-memory fixtures. The async,
+/// repository-composing side (<see cref="SchemaBll.LoadEntitySchemaAsync"/>) is covered against a
+/// real store in Adventures.Data.NQuad.Tests.
 /// </summary>
-public sealed class SchemaBllTests
+public sealed class SchemaBllTests : IAsyncLifetime
 {
-    private static SchemaFieldEntity NewField(string id, string name, string fieldType, string predicate, string? valuePrefix = null)
+    private EntitySchema _schemaEntitySchema = null!;
+    private EntitySchema _schemaFieldEntitySchema = null!;
+
+    public async Task InitializeAsync()
     {
-        var field = new SchemaFieldEntity(SchemaFieldEntity.MetaSchema)
+        var store = new InMemoryNQuadStore();
+        var seedPath = Path.Combine(AppContext.BaseDirectory, "Sql", "seed", "seed.nq");
+        await store.SeedFromFileAsync(seedPath);
+        var quads = await store.QueryAsync();
+
+        _schemaEntitySchema = SchemaDal.Load(quads, EntityConstants.Schema.EntityTypeIri);
+        _schemaFieldEntitySchema = SchemaDal.Load(quads, EntityConstants.Schema.FieldEntityTypeIri);
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
+
+    private SchemaFieldEntity NewField(string id, string name, string fieldType, string predicate, string? valuePrefix = null)
+    {
+        var field = new SchemaFieldEntity(_schemaFieldEntitySchema)
             .Set(DynamicEntity.EntityIdPropertyName, id, id)
             .Set("Name", Guid.NewGuid().ToString(), name)
             .Set("FieldType", Guid.NewGuid().ToString(), fieldType)
@@ -27,8 +47,8 @@ public sealed class SchemaBllTests
         return field;
     }
 
-    private static SchemaEntity NewSchema(string id) =>
-        new SchemaEntity(SchemaEntity.MetaSchema)
+    private SchemaEntity NewSchema(string id) =>
+        new SchemaEntity(_schemaEntitySchema)
             .Set(DynamicEntity.EntityIdPropertyName, id, id) as SchemaEntity
         ?? throw new InvalidOperationException();
 
@@ -51,13 +71,13 @@ public sealed class SchemaBllTests
     public void ToEntitySchema_FieldMissingName_Throws()
     {
         var schema = NewSchema("Widget");
-        var field = new SchemaFieldEntity(SchemaFieldEntity.MetaSchema)
+        var field = new SchemaFieldEntity(_schemaFieldEntitySchema)
             .Set(DynamicEntity.EntityIdPropertyName, "id-1", "id-1")
             .Set("FieldType", Guid.NewGuid().ToString(), "String")
             .Set("Predicate", Guid.NewGuid().ToString(), "urn:widget#x") as SchemaFieldEntity
             ?? throw new InvalidOperationException();
 
-        Assert.Throws<InvalidOperationException>(() => SchemaBll.ToEntitySchema(schema, [field]));
+        Assert.Throws<InvalidOperationException>(() => { SchemaBll.ToEntitySchema(schema, [field]); });
     }
 
     [Fact]
@@ -67,7 +87,7 @@ public sealed class SchemaBllTests
         var a = NewField("id-1", "A", "String", "urn:widget#same");
         var b = NewField("id-2", "B", "String", "urn:widget#same");
 
-        Assert.Throws<InvalidOperationException>(() => SchemaBll.ToEntitySchema(schema, [a, b]));
+        Assert.Throws<InvalidOperationException>(() => { SchemaBll.ToEntitySchema(schema, [a, b]); });
     }
 
     [Fact]
@@ -75,6 +95,6 @@ public sealed class SchemaBllTests
     {
         var schema = NewSchema("Widget");
 
-        Assert.Throws<InvalidOperationException>(() => SchemaBll.ToEntitySchema(schema, []));
+        Assert.Throws<InvalidOperationException>(() => { SchemaBll.ToEntitySchema(schema, []); });
     }
 }

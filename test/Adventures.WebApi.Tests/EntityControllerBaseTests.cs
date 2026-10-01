@@ -17,20 +17,26 @@ public sealed class EntityControllerBaseTests : IAsyncLifetime
 
     private TestEntityController _controller = null!;
 
-    public Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         var store = new InMemoryNQuadStore();
+        var seedPath = Path.Combine(AppContext.BaseDirectory, "Sql", "seed", "seed.nq");
+        await store.SeedFromFileAsync(seedPath);
+        var quads = await store.QueryAsync();
+
+        // No hardcoded MetaSchema anymore - loaded the same way any other schema is, via SchemaDal.
+        var schemaEntitySchema = SchemaDal.Load(quads, EntityConstants.Schema.EntityTypeIri);
+
         var repository = new NQuadEntityRepository<SchemaEntity>(
             store,
-            SchemaEntity.MetaSchema,
+            schemaEntitySchema,
             EntityConstants.Schema.EntityBaseIri,
             EntityConstants.Schema.EntityTypeIri,
             Graph,
             schema => new SchemaEntity(schema));
-        var presenter = new EntityPresenter<SchemaEntity>(repository, SchemaEntity.MetaSchema, schema => new SchemaEntity(schema));
+        var presenter = new EntityPresenter<SchemaEntity>(repository, schemaEntitySchema, schema => new SchemaEntity(schema));
 
         _controller = new TestEntityController(presenter);
-        return Task.CompletedTask;
     }
 
     public Task DisposeAsync() => Task.CompletedTask;

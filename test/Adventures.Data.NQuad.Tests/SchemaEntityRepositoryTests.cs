@@ -18,18 +18,25 @@ public sealed class SchemaEntityRepositoryTests : IAsyncLifetime
     private InMemoryNQuadStore _store = null!;
     private NQuadEntityRepository<SchemaEntity> _schemaRepository = null!;
     private NQuadEntityRepository<SchemaFieldEntity> _fieldRepository = null!;
+    private EntitySchema _schemaEntitySchema = null!;
+    private EntitySchema _schemaFieldEntitySchema = null!;
     private int _nextId;
 
     public async Task InitializeAsync()
     {
         _store = new InMemoryNQuadStore();
         await _store.SeedFromFileAsync(NQuadStoreTestSupport.SeedFilePath);
+        var quads = await _store.QueryAsync();
+
+        // No hardcoded MetaSchema anymore - loaded the same way any other schema is, via SchemaDal.
+        _schemaEntitySchema = SchemaDal.Load(quads, EntityConstants.Schema.EntityTypeIri);
+        _schemaFieldEntitySchema = SchemaDal.Load(quads, EntityConstants.Schema.FieldEntityTypeIri);
 
         var clock = () => new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero).AddSeconds(_nextId++);
 
         _schemaRepository = new NQuadEntityRepository<SchemaEntity>(
             _store,
-            SchemaEntity.MetaSchema,
+            _schemaEntitySchema,
             EntityConstants.Schema.EntityBaseIri,
             EntityConstants.Schema.EntityTypeIri,
             Graph,
@@ -38,7 +45,7 @@ public sealed class SchemaEntityRepositoryTests : IAsyncLifetime
 
         _fieldRepository = new NQuadEntityRepository<SchemaFieldEntity>(
             _store,
-            SchemaFieldEntity.MetaSchema,
+            _schemaFieldEntitySchema,
             EntityConstants.Schema.FieldEntityBaseIri,
             EntityConstants.Schema.FieldEntityTypeIri,
             Graph,
@@ -48,8 +55,8 @@ public sealed class SchemaEntityRepositoryTests : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    private static SchemaFieldEntity NewField(string id, string name, string fieldType, string predicate) =>
-        new SchemaFieldEntity(SchemaFieldEntity.MetaSchema)
+    private SchemaFieldEntity NewField(string id, string name, string fieldType, string predicate) =>
+        new SchemaFieldEntity(_schemaFieldEntitySchema)
             .Set(DynamicEntity.EntityIdPropertyName, id, id)
             .Set("Name", Guid.NewGuid().ToString(), name)
             .Set("FieldType", Guid.NewGuid().ToString(), fieldType)
@@ -79,7 +86,7 @@ public sealed class SchemaEntityRepositoryTests : IAsyncLifetime
         await _fieldRepository.CreateAsync(NewField(nameFieldId, "Name", "String", "urn:widget#name"));
 
         var schemaId = "Widget-" + Guid.NewGuid();
-        var schema = new SchemaEntity(SchemaEntity.MetaSchema)
+        var schema = new SchemaEntity(_schemaEntitySchema)
             .Set(DynamicEntity.EntityIdPropertyName, schemaId, schemaId)
             .Set("Field", Guid.NewGuid().ToString(), EntityConstants.Schema.FieldEntityBaseIri + idFieldId) as SchemaEntity
             ?? throw new InvalidOperationException();
@@ -102,7 +109,7 @@ public sealed class SchemaEntityRepositoryTests : IAsyncLifetime
         await _fieldRepository.CreateAsync(NewField(nameFieldId, "Name", "String", "urn:widget#name"));
 
         var schemaId = "Widget-" + Guid.NewGuid();
-        var schema = new SchemaEntity(SchemaEntity.MetaSchema)
+        var schema = new SchemaEntity(_schemaEntitySchema)
             .Set(DynamicEntity.EntityIdPropertyName, schemaId, schemaId)
             .Set("Field", Guid.NewGuid().ToString(), EntityConstants.Schema.FieldEntityBaseIri + idFieldId) as SchemaEntity
             ?? throw new InvalidOperationException();
@@ -139,7 +146,7 @@ public sealed class SchemaEntityRepositoryTests : IAsyncLifetime
     public async Task DeleteAsync_SchemaEntity_TombstonesEntity_HiddenByDefaultVisibleWithIncludeDeleted()
     {
         var schemaId = "Widget-" + Guid.NewGuid();
-        var schema = new SchemaEntity(SchemaEntity.MetaSchema)
+        var schema = new SchemaEntity(_schemaEntitySchema)
             .Set(DynamicEntity.EntityIdPropertyName, schemaId, schemaId)
             .Set("Field", Guid.NewGuid().ToString(), "urn:placeholder") as SchemaEntity
             ?? throw new InvalidOperationException();
@@ -154,7 +161,7 @@ public sealed class SchemaEntityRepositoryTests : IAsyncLifetime
     public async Task ListAsync_OnlyFindsRepositoryCreatedSchemas_NotTheLegacySeedAuthoredOnes()
     {
         var schemaId = "Widget-" + Guid.NewGuid();
-        var schema = new SchemaEntity(SchemaEntity.MetaSchema)
+        var schema = new SchemaEntity(_schemaEntitySchema)
             .Set(DynamicEntity.EntityIdPropertyName, schemaId, schemaId)
             .Set("Field", Guid.NewGuid().ToString(), "urn:placeholder") as SchemaEntity
             ?? throw new InvalidOperationException();

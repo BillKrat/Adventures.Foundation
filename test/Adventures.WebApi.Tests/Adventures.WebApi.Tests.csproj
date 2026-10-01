@@ -20,4 +20,8 @@
     <ProjectReference Include="..\..\src\Adventures.Data.NQuad\Adventures.Data.NQuad.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed.nq" Link="Sql\seed\seed.nq" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

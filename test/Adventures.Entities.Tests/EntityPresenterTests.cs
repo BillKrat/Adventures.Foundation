@@ -7,7 +7,11 @@ namespace Adventures.Entities.Tests;
 /// <see cref="EntityPresenter{TEntity}"/> against a real <see cref="NQuadEntityRepository{TEntity}"/> +
 /// <see cref="InMemoryNQuadStore"/>, using <see cref="SchemaEntity"/> as the entity under test -
 /// proves the generic base needs zero entity-specific code (no SchemaPresenter subclass exists
-/// here, same reasoning <c>NQuadEntityRepository{TEntity}</c> itself needs none).
+/// here, same reasoning <c>NQuadEntityRepository{TEntity}</c> itself needs none). The store is
+/// seeded from seed.nq so <see cref="SchemaEntity"/>'s own <see cref="EntitySchema"/> can be loaded
+/// via <c>SchemaDal.Load</c> (no hardcoded <c>MetaSchema</c> anymore) - the seed's legacy
+/// schema-describing quads use a different marker than standard rdf:type, so they do not interfere
+/// with this test's own Create/List/Update/Delete calls, same finding as stage 2.
 /// </summary>
 public sealed class EntityPresenterTests : IAsyncLifetime
 {
@@ -15,19 +19,23 @@ public sealed class EntityPresenterTests : IAsyncLifetime
 
     private IEntityPresenter<SchemaEntity> _presenter = null!;
 
-    public Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         var store = new InMemoryNQuadStore();
+        var seedPath = Path.Combine(AppContext.BaseDirectory, "Sql", "seed", "seed.nq");
+        await store.SeedFromFileAsync(seedPath);
+        var quads = await store.QueryAsync();
+        var schemaEntitySchema = SchemaDal.Load(quads, EntityConstants.Schema.EntityTypeIri);
+
         var repository = new NQuadEntityRepository<SchemaEntity>(
             store,
-            SchemaEntity.MetaSchema,
+            schemaEntitySchema,
             EntityConstants.Schema.EntityBaseIri,
             EntityConstants.Schema.EntityTypeIri,
             Graph,
             schema => new SchemaEntity(schema));
 
-        _presenter = new EntityPresenter<SchemaEntity>(repository, SchemaEntity.MetaSchema, schema => new SchemaEntity(schema));
-        return Task.CompletedTask;
+        _presenter = new EntityPresenter<SchemaEntity>(repository, schemaEntitySchema, schema => new SchemaEntity(schema));
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
