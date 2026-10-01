@@ -102,9 +102,9 @@ public sealed class NQuadStoreToolTests(PostgresConnectionFixture connectionFixt
         var actualCount = await store.CountAsync();
         Assert.Equal(expectedCount, actualCount);
 
-        var billQuads = await store.QueryAsync(subject: "https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df");
-        Assert.NotEmpty(billQuads);
-        Assert.Contains(billQuads, q => q.Predicate == "http://xmlns.com/foaf/0.1/givenName" && q.Object == "Bill");
+        var adminQuads = await store.QueryAsync(subject: "https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df");
+        Assert.NotEmpty(adminQuads);
+        Assert.Contains(adminQuads, q => q.Predicate == "http://xmlns.com/foaf/0.1/givenName" && q.Object == "Admin");
     }
 }
 

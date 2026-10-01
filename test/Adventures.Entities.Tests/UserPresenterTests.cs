@@ -34,10 +34,10 @@ public sealed class UserPresenterTests : IAsyncLifetime
     [Fact]
     public async Task GetFormByUserNameAsync_ExistingUser_ReturnsForm()
     {
-        var form = await _presenter.GetFormByUserNameAsync("BillKrat");
+        var form = await _presenter.GetFormByUserNameAsync("Admin");
 
         Assert.NotNull(form);
-        Assert.Equal("BillKrat", form!.Entity.Values["UserName"]);
+        Assert.Equal("Admin", form!.Entity.Values["UserName"]);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class UserPresenterTests : IAsyncLifetime
     [Fact]
     public async Task DeleteAsync_OwnAccount_Throws()
     {
-        var form = await _presenter.GetFormByUserNameAsync("BillKrat");
+        var form = await _presenter.GetFormByUserNameAsync("Admin");
         var id = form!.Entity.EntityId;
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => _presenter.DeleteAsync(id, id));
@@ -58,13 +58,13 @@ public sealed class UserPresenterTests : IAsyncLifetime
     [Fact]
     public async Task DeleteAsync_OtherAccount_Succeeds()
     {
-        var bill = await _presenter.GetFormByUserNameAsync("BillKrat");
-        var billId = bill!.Entity.EntityId;
+        var admin = await _presenter.GetFormByUserNameAsync("Admin");
+        var adminId = admin!.Entity.EntityId;
 
         var created = await _presenter.CreateAsync(new EntityDataModel(
             string.Empty, new Dictionary<string, string?> { ["UserName"] = "Temp" }));
 
-        var deleted = await _presenter.DeleteAsync(created.Entity.EntityId, billId);
+        var deleted = await _presenter.DeleteAsync(created.Entity.EntityId, adminId);
 
         Assert.True(deleted);
     }

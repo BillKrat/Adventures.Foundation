@@ -1,12 +1,15 @@
 <https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
-<https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <http://xmlns.com/foaf/0.1/givenName> "Bill" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
-<https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <http://xmlns.com/foaf/0.1/familyName> "Kratochvil" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
-<https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <http://xmlns.com/foaf/0.1/phone> "806-340-1044" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
-<https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <http://xmlns.com/foaf/0.1/birthday> "11-19-1961" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
-<https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <http://xmlns.com/foaf/0.1/accountName> "BillKrat" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
-<https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <https://global-webnet.com/ontology/user#displayName> "Bill Kratochvil" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
-<https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <http://xmlns.com/foaf/0.1/mbox> <mailto:bill@global-webnet.com> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
-<https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <http://xmlns.com/foaf/0.1/mbox> <mailto:bill@adventuresontheedge.net> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <http://xmlns.com/foaf/0.1/givenName> "Admin" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <http://xmlns.com/foaf/0.1/familyName> "User" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <http://xmlns.com/foaf/0.1/accountName> "Admin" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <https://global-webnet.com/ontology/user#displayName> "Admin User" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/id/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> <http://xmlns.com/foaf/0.1/mbox> <mailto:admin@global-webnet.com> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+
+<https://global-webnet.com/id/user/c70b2b9b-43bf-4c76-84cb-ff9162b34449> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/id/user/c70b2b9b-43bf-4c76-84cb-ff9162b34449> <http://xmlns.com/foaf/0.1/givenName> "Claude" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/id/user/c70b2b9b-43bf-4c76-84cb-ff9162b34449> <http://xmlns.com/foaf/0.1/accountName> "Claude" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/id/user/c70b2b9b-43bf-4c76-84cb-ff9162b34449> <https://global-webnet.com/ontology/user#displayName> "Claude" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/id/user/c70b2b9b-43bf-4c76-84cb-ff9162b34449> <http://xmlns.com/foaf/0.1/mbox> <mailto:claude@global-webnet.com> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
 
 <https://global-webnet.com/id/role/6207931e-e521-437a-ac9b-39281de6ac50> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://global-webnet.com/ontology/tenant#Role> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
 <https://global-webnet.com/id/role/6207931e-e521-437a-ac9b-39281de6ac50> <https://global-webnet.com/ontology/tenant#name> "Admin" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .

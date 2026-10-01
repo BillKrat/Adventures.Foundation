@@ -41,16 +41,16 @@ public sealed class UserBllTests : IAsyncLifetime
     [Fact]
     public async Task FindByUserNameAsync_ExistingUser_ReturnsUser()
     {
-        var found = await _bll.FindByUserNameAsync("BillKrat");
+        var found = await _bll.FindByUserNameAsync("Admin");
 
         Assert.NotNull(found);
-        Assert.Equal("BillKrat", found!.GetValue("UserName"));
+        Assert.Equal("Admin", found!.GetValue("UserName"));
     }
 
     [Fact]
     public async Task FindByUserNameAsync_CaseInsensitive_ReturnsUser()
     {
-        var found = await _bll.FindByUserNameAsync("billkrat");
+        var found = await _bll.FindByUserNameAsync("admin");
 
         Assert.NotNull(found);
     }
@@ -66,30 +66,38 @@ public sealed class UserBllTests : IAsyncLifetime
     [Fact]
     public async Task DeleteAsync_OwnAccount_Throws()
     {
-        var bill = await _bll.FindByUserNameAsync("BillKrat");
-        var billId = bill!.EntityId!.Value;
+        var admin = await _bll.FindByUserNameAsync("Admin");
+        var adminId = admin!.EntityId!.Value;
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _bll.DeleteAsync(billId, billId));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _bll.DeleteAsync(adminId, adminId));
     }
 
     [Fact]
     public async Task DeleteAsync_OtherAccount_Succeeds()
     {
-        var bill = await _bll.FindByUserNameAsync("BillKrat");
-        var billId = bill!.EntityId!.Value;
+        var admin = await _bll.FindByUserNameAsync("Admin");
+        var adminId = admin!.EntityId!.Value;
 
-        var claudeId = Guid.NewGuid().ToString();
-        var claude = new User(await LoadSchemaAsync())
-            .Set(DynamicEntity.EntityIdPropertyName, claudeId, claudeId)
-            .Set("UserName", Guid.NewGuid().ToString(), "Claude")
-            .Set("First", Guid.NewGuid().ToString(), "Claude") as User
+        var tempId = Guid.NewGuid().ToString();
+        var temp = new User(await LoadSchemaAsync())
+            .Set(DynamicEntity.EntityIdPropertyName, tempId, tempId)
+            .Set("UserName", Guid.NewGuid().ToString(), "Temp")
+            .Set("First", Guid.NewGuid().ToString(), "Temp") as User
             ?? throw new InvalidOperationException();
-        await _bll.CreateAsync(claude);
+        await _bll.CreateAsync(temp);
 
-        var deleted = await _bll.DeleteAsync(claudeId, billId);
+        var deleted = await _bll.DeleteAsync(tempId, adminId);
 
         Assert.True(deleted);
-        Assert.Null(await _bll.GetAsync(claudeId));
+        Assert.Null(await _bll.GetAsync(tempId));
+    }
+
+    [Fact]
+    public async Task FindByUserNameAsync_SeedFile_AlsoHasClaude()
+    {
+        var found = await _bll.FindByUserNameAsync("Claude");
+
+        Assert.NotNull(found);
     }
 
     private async Task<EntitySchema> LoadSchemaAsync()

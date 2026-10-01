@@ -1,4 +1,4 @@
-﻿using Adventures.Data.NQuad;
+using Adventures.Data.NQuad;
 using Xunit;
 
 namespace Adventures.Entities.Tests;
@@ -13,7 +13,7 @@ namespace Adventures.Entities.Tests;
 public sealed class UserAndUserSchemaTests
 {
     [Fact]
-    public void LoadUserSchema_And_LoadUsers_MaterializeBillFromSeedFile()
+    public void LoadUserSchema_And_LoadUsers_MaterializeAdminFromSeedFile()
     {
         var seedPath = Path.Combine(AppContext.BaseDirectory, "Sql", "seed", "seed.nq");
         var nquadText = File.ReadAllText(seedPath);
@@ -30,15 +30,26 @@ public sealed class UserAndUserSchemaTests
         Assert.Contains("DOB", schema.Fields.Keys);
 
         var users = NQuadUserAdapter.LoadUsers(quads, schema).ToArray();
-        var bill = Assert.Single(users);
+        var admin = Assert.Single(users, u => u.GetValue("UserName")?.ToString() == "Admin");
 
-        Assert.NotNull(bill.EntityId);
-        Assert.Equal("BillKrat", bill.GetValue("UserName"));
-        Assert.Equal("806-340-1044", bill.GetValue("Phone"));
+        Assert.NotNull(admin.EntityId);
+        Assert.Equal("Admin User", admin.GetValue("DisplayName"));
 
-        var userNameFieldValue = bill.GetFieldValue("UserName");
+        var userNameFieldValue = admin.GetFieldValue("UserName");
         Assert.NotNull(userNameFieldValue);
         Assert.False(string.IsNullOrWhiteSpace(userNameFieldValue!.Id.Value));
-        Assert.Equal("BillKrat", userNameFieldValue.Value);
+        Assert.Equal("Admin", userNameFieldValue.Value);
+    }
+
+    [Fact]
+    public void LoadUsers_SeedFile_AlsoIncludesClaude()
+    {
+        var seedPath = Path.Combine(AppContext.BaseDirectory, "Sql", "seed", "seed.nq");
+        var quads = new NQuadFileParser().Parse(File.ReadAllText(seedPath));
+        var schema = SchemaDal.Load(quads, EntityConstants.Schema.UserIri);
+
+        var users = NQuadUserAdapter.LoadUsers(quads, schema).ToArray();
+
+        Assert.Contains(users, u => u.GetValue("UserName")?.ToString() == "Claude");
     }
 }
