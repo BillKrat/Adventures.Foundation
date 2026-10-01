@@ -21,6 +21,7 @@ Start with the workspace `AGENTS.md` (`M:\Dev\repos\AGENTS.md`) if you have it. 
 14. Real failures (a broken build, test or lint, a runtime fault, or a standard violation confirmed by evidence) are resolved by Claude, and only Claude, to the best of its reasoning, including in another AI's material. Claude first makes sure that AI's work is committed as-is (never edit uncommitted work of another AI), fixes in a separate `Claude:` commit that names whose material and why, records the evidence in a review file (rule 2), updates the affected context (`AGENTS.md`, docs), and pushes. An unpushed commit may be dropped only after its hash and diff summary are written to the review file; a pushed commit is undone with `git revert`, never a history rewrite.
 <!-- core:end -->
 
+
 ## Repo overview
 
 Owner: Claude. Reusable .NET class libraries for the `Adventures.*` family, extracted from `ai-research-blog` on 2026-09-19. `Adventures.*` means reusable across products; `<Product>.*` means specific to one. Package descriptions, consuming and publishing instructions: `README.md`.
@@ -42,6 +43,8 @@ Owner: Claude. Reusable .NET class libraries for the `Adventures.*` family, extr
 **Last worked on (2026-09-27):** pair-programmed with Bill on the N-Quad store's DI story: `INQuadStore` resolution by key, two ways side by side - a hand-rolled `Func<string, INQuadStore>` dispatcher (`NQuadStoreTests.cs`) and .NET's built-in keyed services (`AddKeyedSingleton`/`NQuadStoreKeyedServiceTests.cs`). Shared contract-driving helpers moved to `NQuadStoreTestSupport.cs`; both Postgres facts share an xUnit collection so they don't race the real `n_quads` table. Landed the reusable bit in production code: `KeyedServiceResolutionExtensions.TryGetKeyedService<TService>` in `Adventures.Data.NQuad`, so callers resolving a dynamic key never need `if (key == "postgres")` - one fallback path regardless of key or why it failed.
 
 **Remaining:** see the Copilot section in the `ai-research-blog` repo (open next-increment decision). Candidate follow-up: apply the same keyed-registration pattern to a future `ITools`-style interface.
+
+Constraint: any file write (create or edit, any file type, not just AGENTS.md) targeting a sibling repo outside this workspace hangs Visual Studio's "edit outside workspace" dialog; use terminal PowerShell (Set-Content/Add-Content/-replace) for all such writes instead of the editor tool. See [ai-research-blog/docs/Copilot-vs-edit-outside-workspace-hang.md](../ai-research-blog/docs/Copilot-vs-edit-outside-workspace-hang.md) (workspace root doc, shared across sibling repos).
 
 ## LM Studio
 
