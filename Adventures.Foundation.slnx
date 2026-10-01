@@ -7,6 +7,7 @@
     <Project Path="src/Adventures.Entities/Adventures.Entities.csproj" />
     <Project Path="src/Adventures.Identity/Adventures.Identity.csproj" />
     <Project Path="src/Adventures.Security/Adventures.Security.csproj" />
+    <Project Path="src/Adventures.WebApi/Adventures.WebApi.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="Adventures.Common.Tests/Adventures.Common.Tests.csproj" Id="4dbfa63c-a21c-44a0-b03a-a91d6e2c8861" />
@@ -17,5 +18,6 @@
     <Project Path="test/Adventures.Entities.Tests/Adventures.Entities.Tests.csproj" />
     <Project Path="test/Adventures.Identity.Tests/Adventures.Identity.Tests.csproj" />
     <Project Path="test/Adventures.Security.Tests/Adventures.Security.Tests.csproj" />
+    <Project Path="test/Adventures.WebApi.Tests/Adventures.WebApi.Tests.csproj" />
   </Folder>
 </Solution>
