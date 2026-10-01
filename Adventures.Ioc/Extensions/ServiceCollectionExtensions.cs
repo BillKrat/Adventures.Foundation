@@ -11,6 +11,16 @@ namespace Adventures.Ioc.Extensions
             typeof(ISingletonLifetime), typeof(IScopedLifetime), typeof(ITransientLifetime)
         ];
 
+        /// <summary>
+        /// Registers every discovered type via a factory delegate (<see cref="ActivatorUtilities.CreateInstance"/>),
+        /// not a direct <c>ServiceDescriptor(serviceType, implementationType, lifetime)</c> registration. A
+        /// factory-based descriptor is opaque to the container - ASP.NET Core's <c>ValidateOnBuild</c> (on by
+        /// default in Development) has nothing to recurse into, so it cannot fail <c>Build()</c> over a type this
+        /// reflection scan found but the host never actually resolves (e.g. a Bll from a referenced library the
+        /// host does not use yet, whose own dependencies the host never registered). A type the host does resolve
+        /// is unaffected: a missing dependency still throws immediately and clearly at that first resolution,
+        /// exactly as plain DI would. See <c>docs/artifacts</c> for the incident this was found from.
+        /// </summary>
         public static IServiceCollection AddLifetimeServices(this IServiceCollection services)
         {
             var registrations = DiscoverLifetimeRegistrations();
@@ -21,10 +31,11 @@ namespace Adventures.Ioc.Extensions
 
                 foreach (var registration in implementations)
                 {
+                    var implementationType = registration.ImplementationType;
                     services.Add(new ServiceDescriptor(
                         registration.InterfaceType,
-                        registration.ImplementationType.Name,
-                        registration.ImplementationType,
+                        implementationType.Name,
+                        (serviceProvider, _) => ActivatorUtilities.CreateInstance(serviceProvider, implementationType),
                         registration.Lifetime));
                 }
 
@@ -35,11 +46,11 @@ namespace Adventures.Ioc.Extensions
                 // getting whichever implementation the scan happened to see last.
                 if (!IsBaseLifetimeInterface(group.Key) && implementations.Count == 1)
                 {
-                    var registration = implementations[0];
+                    var implementationType = implementations[0].ImplementationType;
                     services.Add(new ServiceDescriptor(
-                        registration.InterfaceType,
-                        registration.ImplementationType,
-                        registration.Lifetime));
+                        group.Key,
+                        serviceProvider => ActivatorUtilities.CreateInstance(serviceProvider, implementationType),
+                        implementations[0].Lifetime));
                 }
             }
 
