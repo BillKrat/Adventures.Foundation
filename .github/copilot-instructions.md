@@ -1,0 +1,1 @@
+Read `AGENTS.md` at the repo root first; it embeds the core guardrails and points to the workspace-wide version at `M:\Dev\repos\AGENTS.md`. Follow both. Edit only the Copilot section of `AGENTS.md` and files under `docs/` prefixed `Copilot-`. Keep this file a pointer; put nothing else here.

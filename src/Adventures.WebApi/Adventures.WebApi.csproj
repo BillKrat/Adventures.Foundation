@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Adventures.WebApi</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Bill Kratochvil</Authors>
+    <Description>Reusable ASP.NET Core controller base classes for the Adventures.Entities CRUDL engine - the generic action bodies a new app's controllers call into, so spinning up CRUDL for a schema-driven entity is a small, concrete, attribute-decorated subclass rather than hand-written plumbing.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/BillKrat/Adventures.Foundation</RepositoryUrl>
+    <PackageTags>webapi;controllers;entities;crudl</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Adventures.Entities\Adventures.Entities.csproj" />
+  </ItemGroup>
+
+</Project>

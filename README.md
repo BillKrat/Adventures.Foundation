@@ -38,7 +38,7 @@ console app, an Azure Function, etc.
 ## Why extracted, not just referenced in place
 
 `ai-research-blog` is an open-source, cost-conscious "AI starter kit" (see its own
-`docs/SESSION_HANDOFF.md` for that project's full rationale, e.g. why it rejected Auth0's M2M
+`docs/Claude-architecture-decisions.md` for that project's full rationale, e.g. why it rejected Auth0's M2M
 free-tier quota). A second, separate Angular/backend app — a security-provider/admin UI mirroring
 what Auth0's own dashboard does, for managing tenants/orgs/users/M2M clients — needs the *same*
 security and data foundation without depending on `ai-research-blog`'s source tree. Packaging
