@@ -57,8 +57,11 @@ public class EntityPresenter<TEntity>(
     /// Applies every value in <paramref name="data"/> except "Id" - the entity id is derived from
     /// the store subject, never a settable field, same convention <c>NQuadEntityRepository</c>
     /// itself follows. When <paramref name="entityId"/> is supplied (Create), sets it first. No
-    /// validation yet (declared scope for this stage) - a null value is simply skipped rather than
-    /// clearing the field.
+    /// validation yet (declared scope for this stage) - a null or empty-string value is simply
+    /// skipped rather than clearing the field. Empty string needs the same treatment as null: a
+    /// browser form round-tripping every field has no way to distinguish "never set" from
+    /// "cleared" for an input it renders empty, and sends "" either way - without this, a
+    /// non-string field (DateOnly, Guid, ...) that happens to be unset throws trying to parse "".
     /// </summary>
     private static TEntity ApplyValues(TEntity entity, EntityDataModel data, string? entityId)
     {
@@ -69,7 +72,7 @@ public class EntityPresenter<TEntity>(
 
         foreach (var (name, value) in data.Values)
         {
-            if (name.Equals(DynamicEntity.EntityIdPropertyName, StringComparison.OrdinalIgnoreCase) || value is null)
+            if (name.Equals(DynamicEntity.EntityIdPropertyName, StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(value))
             {
                 continue;
             }

@@ -68,4 +68,32 @@ public sealed class UserPresenterTests : IAsyncLifetime
 
         Assert.True(deleted);
     }
+
+    /// <summary>
+    /// Reproduces a real failure found manually: Admin has no DOB (never set in seed.nq), so an
+    /// Angular form that round-trips every field posts back "" (not null) for the untouched DOB
+    /// input - the browser has no way to distinguish "the field was never set" from "the user
+    /// cleared it", and a form's bound value for an empty date input is "". Previously this threw
+    /// a FormatException trying to DateOnly.ParseExact an empty string; it should instead be
+    /// skipped, same as a null value already is, since "" is simply the DateOnly field's own
+    /// formless Angular way of sending "unchanged/absent."
+    /// </summary>
+    [Fact]
+    public async Task UpdateAsync_EmptyStringForDateField_SkipsRatherThanThrowing()
+    {
+        var admin = await _presenter.GetFormByUserNameAsync("Admin");
+        var id = admin!.Entity.EntityId;
+
+        var updated = await _presenter.UpdateAsync(id, new EntityDataModel(id, new Dictionary<string, string?>
+        {
+            ["Phone"] = "555-0100",
+            ["Email"] = "admin@global-webnet.com",
+            ["DisplayName"] = "Admin User",
+            ["DOB"] = string.Empty,
+        }));
+
+        Assert.NotNull(updated);
+        Assert.Equal("555-0100", updated!.Entity.Values["Phone"]);
+        Assert.Null(updated.Entity.Values["DOB"]);
+    }
 }
