@@ -1,6 +1,12 @@
 namespace Adventures.Entities;
 
-/// <summary>Implementation of <see cref="IEntityPresenter{TEntity}"/> - see that interface for the contract and rationale.</summary>
+/// <summary>
+/// Implementation of <see cref="IEntityPresenter{TEntity}"/> - see that interface for the contract and rationale.
+/// One generic presenter serves every entity type, a deliberate deviation from MVPVM's "presenters are not reused"
+/// (docs/Claude-architecture-principles.md A7): the screens are generated from schemas, so there is no per-screen
+/// behaviour to write. An entity with real behaviour derives from this (see <see cref="UserPresenter"/>) instead of
+/// branching here. Reviewed and accepted 2026-10-11 (finding F-10).
+/// </summary>
 public class EntityPresenter<TEntity>(
     IEntityBll<TEntity> bll,
     EntitySchema schema,
