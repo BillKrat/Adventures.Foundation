@@ -34,7 +34,7 @@ public sealed class EntityControllerBaseTests : IAsyncLifetime
             EntityConstants.Schema.EntityTypeIri,
             Graph,
             schema => new SchemaEntity(schema));
-        var presenter = new EntityPresenter<SchemaEntity>(repository, schemaEntitySchema, schema => new SchemaEntity(schema));
+        var presenter = new EntityPresenter<SchemaEntity>(new EntityBll<SchemaEntity>(repository), schemaEntitySchema, schema => new SchemaEntity(schema));
 
         _controller = new TestEntityController(presenter);
     }
@@ -117,11 +117,39 @@ public sealed class EntityControllerBaseTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GuardedAsync_CatchesInvalidOperationException_ReturnsConflict()
+    public async Task GuardedAsync_BusinessRuleException_ReturnsConflictWithItsMessage()
     {
-        var result = await _controller.DeleteGuarded(() => throw new InvalidOperationException("You cannot delete your own account."));
+        var result = await _controller.DeleteGuarded(() => throw new Adventures.Common.Exceptions.BusinessRuleException("You cannot delete your own account."));
 
         var conflict = Assert.IsType<ConflictObjectResult>(result);
         Assert.Equal("You cannot delete your own account.", conflict.Value);
+    }
+
+    [Fact]
+    public async Task GuardedAsync_InputValidationException_ReturnsBadRequestWithFieldErrors()
+    {
+        var result = await _controller.DeleteGuarded(() => throw new Adventures.Common.Exceptions.InputValidationException("DOB", "DOB is not a valid date."));
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var problem = Assert.IsType<ValidationProblemDetails>(badRequest.Value);
+        Assert.Equal(400, problem.Status);
+        Assert.Equal("DOB is not a valid date.", Assert.Single(problem.Errors["DOB"]));
+    }
+
+    [Fact]
+    public async Task GuardedAsync_SystemException_IsNotCaught_SoItsDetailsNeverReachTheClient()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _controller.DeleteGuarded(() => throw new InvalidOperationException("Schema https://internal/iri was not found.")));
+    }
+
+    [Fact]
+    public async Task Create_WithInvalidInput_ReturnsBadRequestNotAnException()
+    {
+        var data = new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["NoSuchField"] = "x" });
+
+        var result = await _controller.Create(data, CancellationToken.None);
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
     }
 }

@@ -69,7 +69,7 @@ public sealed class UserBllTests : IAsyncLifetime
         var admin = await _bll.FindByUserNameAsync("Admin");
         var adminId = admin!.EntityId!.Value;
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _bll.DeleteAsync(adminId, adminId));
+        await Assert.ThrowsAsync<Adventures.Common.Exceptions.BusinessRuleException>(() => _bll.DeleteAsync(adminId, adminId));
     }
 
     [Fact]
@@ -104,5 +104,13 @@ public sealed class UserBllTests : IAsyncLifetime
     {
         var allQuads = await _store.QueryAsync();
         return SchemaDal.Load(allQuads, EntityConstants.Schema.UserIri);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WithoutActingUser_IsRefused()
+    {
+        var admin = await _bll.FindByUserNameAsync("Admin");
+
+        await Assert.ThrowsAsync<Adventures.Common.Exceptions.BusinessRuleException>(() => _bll.DeleteAsync(admin!.EntityId!.Value));
     }
 }

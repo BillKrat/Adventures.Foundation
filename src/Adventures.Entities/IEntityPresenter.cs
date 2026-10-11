@@ -5,7 +5,7 @@ namespace Adventures.Entities;
 /// <summary>
 /// Resolved by a controller (scoped, interface-driven, auto-registered the same way
 /// <c>MockBll</c>/<c>MockDal</c> are in Adventures.Common.Tests/MvpVmTests.cs). Orchestrates an
-/// <see cref="IEntityRepository{TEntity}"/> plus the entity's <see cref="EntitySchema"/> into the
+/// <see cref="IEntityBll{TEntity}"/> plus the entity's <see cref="EntitySchema"/> into the
 /// "standard object" (<see cref="EntityFormModel"/>) a UI form control renders from - generic over
 /// any <see cref="DynamicEntity"/> type, with no business rules of its own (that is a Bll's job,
 /// the same split <see cref="IEntityRepository{TEntity}"/> already draws against

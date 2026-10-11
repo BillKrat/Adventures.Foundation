@@ -13,6 +13,6 @@ public interface IUserPresenter : IEntityPresenter<User>
 {
     Task<EntityFormModel?> GetFormByUserNameAsync(string userName, CancellationToken cancellationToken = default);
 
-    /// <summary>Throws <see cref="InvalidOperationException"/> if <paramref name="id"/> equals <paramref name="currentUserId"/> - see <see cref="IUserBll.DeleteAsync"/>.</summary>
+    /// <summary>Throws <see cref="Adventures.Common.Exceptions.BusinessRuleException"/> if <paramref name="id"/> equals <paramref name="currentUserId"/> - see <see cref="IUserBll.DeleteAsync"/>.</summary>
     Task<bool> DeleteAsync(string id, string currentUserId, CancellationToken cancellationToken = default);
 }

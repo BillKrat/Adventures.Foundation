@@ -26,7 +26,7 @@ public sealed class UserPresenterTests : IAsyncLifetime
             store, schema, EntityConstants.User.BaseIri, EntityConstants.User.TypeIri, Graph, s => new User(s));
         var userBll = new UserBll(repository);
 
-        _presenter = new UserPresenter(repository, userBll, schema);
+        _presenter = new UserPresenter(userBll, schema);
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
@@ -52,7 +52,7 @@ public sealed class UserPresenterTests : IAsyncLifetime
         var form = await _presenter.GetFormByUserNameAsync("Admin");
         var id = form!.Entity.EntityId;
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _presenter.DeleteAsync(id, id));
+        await Assert.ThrowsAsync<Adventures.Common.Exceptions.BusinessRuleException>(() => _presenter.DeleteAsync(id, id));
     }
 
     [Fact]
@@ -95,5 +95,35 @@ public sealed class UserPresenterTests : IAsyncLifetime
         Assert.NotNull(updated);
         Assert.Equal("555-0100", updated!.Entity.Values["Phone"]);
         Assert.Null(updated.Entity.Values["DOB"]);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithMalformedDate_ThrowsInputValidationExceptionNotFormatException()
+    {
+        var data = new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["UserName"] = "Temp", ["DOB"] = "not-a-date" });
+
+        var ex = await Assert.ThrowsAsync<Adventures.Common.Exceptions.InputValidationException>(() => _presenter.CreateAsync(data));
+
+        Assert.Contains("DOB", ex.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithUnknownField_ThrowsInputValidationExceptionAndStoresNothing()
+    {
+        var data = new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["UserName"] = "Temp2", ["IsAdmin"] = "true" });
+
+        await Assert.ThrowsAsync<Adventures.Common.Exceptions.InputValidationException>(() => _presenter.CreateAsync(data));
+
+        Assert.Null(await _presenter.GetFormByUserNameAsync("Temp2"));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithMalformedDate_ThrowsInputValidationException()
+    {
+        var admin = await _presenter.GetFormByUserNameAsync("Admin");
+        var data = new EntityDataModel(admin!.Entity.EntityId, new Dictionary<string, string?> { ["DOB"] = "31/31/2020" });
+
+        await Assert.ThrowsAsync<Adventures.Common.Exceptions.InputValidationException>(
+            () => _presenter.UpdateAsync(admin.Entity.EntityId, data));
     }
 }

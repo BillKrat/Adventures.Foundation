@@ -35,7 +35,7 @@ public sealed class EntityPresenterTests : IAsyncLifetime
             Graph,
             schema => new SchemaEntity(schema));
 
-        _presenter = new EntityPresenter<SchemaEntity>(repository, schemaEntitySchema, schema => new SchemaEntity(schema));
+        _presenter = new EntityPresenter<SchemaEntity>(new EntityBll<SchemaEntity>(repository), schemaEntitySchema, schema => new SchemaEntity(schema));
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
