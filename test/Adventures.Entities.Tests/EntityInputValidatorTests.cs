@@ -43,7 +43,7 @@ public sealed class EntityInputValidatorTests
         var errors = EntityInputValidator.Validate(Schema, Data(("Name", "Ada"), (field, value)), isCreate: true);
 
         var message = Assert.Single(errors[field]);
-        Assert.Equal($"{field} is not a valid {Schema.Fields[field].Type}.", message);
+        Assert.StartsWith($"The {field} field is not in the right format. Expected ", message);
     }
 
     [Fact]

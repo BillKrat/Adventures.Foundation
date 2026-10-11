@@ -1,8 +1,8 @@
 namespace Adventures.Entities;
 
 /// <summary>Implementation of <see cref="IUserPresenter"/> - see that interface for the contract and rationale.</summary>
-public sealed class UserPresenter(IUserBll userBll, EntitySchema userSchema)
-    : EntityPresenter<User>(userBll, userSchema, schema => new User(schema)), IUserPresenter
+public sealed class UserPresenter(IUserBll userBll, EntitySchemaOf<User> userSchema)
+    : EntityPresenter<User>(userBll, userSchema.Schema, schema => new User(schema)), IUserPresenter
 {
     private readonly IUserBll _userBll = userBll ?? throw new ArgumentNullException(nameof(userBll));
 

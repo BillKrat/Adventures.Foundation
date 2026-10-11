@@ -27,7 +27,7 @@ public sealed class UserPresenterTests : IAsyncLifetime
             store, schema, EntityConstants.User.BaseIri, EntityConstants.User.TypeIri, Graph, s => new User(s));
         var userBll = new UserBll(repository);
 
-        _presenter = new UserPresenter(userBll, schema);
+        _presenter = new UserPresenter(userBll, new EntitySchemaOf<User>(schema));
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
@@ -119,6 +119,20 @@ public sealed class UserPresenterTests : IAsyncLifetime
 
         Assert.Null(updated!.Entity.Values["Phone"]);
         Assert.Null((await _presenter.GetFormAsync(id))!.Entity.Values["Phone"]);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_UsDateIsAccepted_ShownAsIso_AndSavingThatFormBackWritesNothing()
+    {
+        var created = await CreateTempUserAsync();
+        var id = created.Entity.EntityId;
+
+        var updated = await _presenter.UpdateAsync(id, new EntityDataModel(id, new Dictionary<string, string?> { ["DOB"] = "11/19/1961" }));
+
+        Assert.Equal("1961-11-19", updated!.Entity.Values["DOB"]);
+        var countBefore = await _store.CountAsync();
+        await _presenter.UpdateAsync(id, updated.Entity);
+        Assert.Equal(countBefore, await _store.CountAsync());
     }
 
     [Fact]

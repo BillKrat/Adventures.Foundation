@@ -46,6 +46,23 @@ public sealed class SchemaTypeConverter
     }
 
     /// <summary>
+    /// The one text form a value takes when it is sent to a client, whatever the server's locale: dates as
+    /// <c>yyyy-MM-dd</c>, date-times as ISO 8601, booleans as <c>true</c>/<c>false</c>, numbers with the invariant culture.
+    /// A client reads it back with <see cref="ConvertTo(string, Type)"/>, so a form can always save what it was shown.
+    /// Null stays null.
+    /// </summary>
+    public static string? Format(object? value) => value switch
+    {
+        null => null,
+        DateOnly date => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        DateTimeOffset dateTimeOffset => dateTimeOffset.ToString("O", CultureInfo.InvariantCulture),
+        DateTime dateTime => dateTime.ToString("O", CultureInfo.InvariantCulture),
+        bool flag => flag ? "true" : "false",
+        IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+        _ => value.ToString(),
+    };
+
+    /// <summary>
     /// Resolves a schema type-name to its CLR <see cref="Type"/>. Throws
     /// <see cref="NotSupportedException"/> for an unknown name - a schema referencing a type
     /// this converter does not know is a contract violation, not something to guess past.
@@ -70,7 +87,7 @@ public sealed class SchemaTypeConverter
         _ when targetType == typeof(DateTime) => DateTime.Parse(raw, CultureInfo.InvariantCulture),
         _ when targetType == typeof(DateOnly) => DateOnly.ParseExact(
             raw,
-            ["MM-dd-yyyy", "yyyy-MM-dd"],
+            ["yyyy-MM-dd", "MM-dd-yyyy", "M/d/yyyy", "MM/dd/yyyy"],
             CultureInfo.InvariantCulture,
             DateTimeStyles.None),
         _ when targetType.IsEnum => Enum.Parse(targetType, raw, ignoreCase: true),

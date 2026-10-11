@@ -10,6 +10,25 @@ public sealed record EntitySchemaModel(string SchemaIri, IReadOnlyList<EntityFie
 public sealed record EntityDataModel(string EntityId, IReadOnlyDictionary<string, string?> Values);
 
 /// <summary>
+/// A list of entities for a grid: the columns (the schema) and one <see cref="EntityDataModel"/> per row. Paging, sorting
+/// and per-row permissions join this record in the grid-contract stage; the shape here is its first, minimal form.
+/// </summary>
+public sealed record EntityGridModel(EntitySchemaModel Schema, IReadOnlyList<EntityDataModel> Rows)
+{
+    public static EntityGridModel From(EntitySchema schema, IEnumerable<DynamicEntity> entities)
+    {
+        ArgumentNullException.ThrowIfNull(schema);
+        ArgumentNullException.ThrowIfNull(entities);
+
+        var rows = entities.Select(entity => EntityFormModel.From(schema, entity).Entity).ToArray();
+        var fields = schema.Fields.Values
+            .Select(field => new EntityFieldSchema(field.Name, field.Type, field.IsRequired))
+            .ToArray();
+        return new EntityGridModel(new EntitySchemaModel(schema.SchemaIri, fields), rows);
+    }
+}
+
+/// <summary>
 /// The "standard object" a UI form control renders from: a schema-driven entity screen's shape and
 /// current data, bundled together but kept separate. Deliberately not <see cref="EntitySchema"/> or
 /// <see cref="DynamicEntity"/> themselves - those are DAL/domain-shaped (a <see cref="DynamicEntity"/>
@@ -31,7 +50,7 @@ public sealed record EntityFormModel(EntitySchemaModel Schema, EntityDataModel E
 
         var values = schema.Fields.Values.ToDictionary(
             field => field.Name,
-            field => entity.GetValue(field.Name)?.ToString(),
+            field => SchemaTypeConverter.Format(entity.GetValue(field.Name)),
             StringComparer.OrdinalIgnoreCase);
 
         var entityId = entity.EntityId?.Value ?? throw new InvalidOperationException("Entity has no id.");

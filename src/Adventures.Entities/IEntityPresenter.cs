@@ -20,6 +20,9 @@ public interface IEntityPresenter<TEntity> : IPresenter
 
     Task<IReadOnlyList<EntityDataModel>> ListAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>The same entities as <see cref="ListAsync"/> with their schema, ready for a grid to render.</summary>
+    Task<EntityGridModel> GetGridAsync(CancellationToken cancellationToken = default);
+
     Task<EntityFormModel> CreateAsync(EntityDataModel data, CancellationToken cancellationToken = default);
 
     Task<EntityFormModel?> UpdateAsync(string id, EntityDataModel data, CancellationToken cancellationToken = default);

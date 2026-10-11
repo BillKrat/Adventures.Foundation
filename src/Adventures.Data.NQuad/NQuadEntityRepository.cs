@@ -380,6 +380,10 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
     private static string FormatValue(object value) => value switch
     {
         DateOnly date => date.ToString("MM-dd-yyyy", CultureInfo.InvariantCulture),
+        // Round-trip ("O") form: the default invariant format drops fractional seconds, which loses ordering between
+        // two events in the same second (the exception log sorts on this).
+        DateTimeOffset moment => moment.ToString("O", CultureInfo.InvariantCulture),
+        DateTime moment => moment.ToString("O", CultureInfo.InvariantCulture),
         IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
         string text => text,
         _ => value.ToString() ?? throw new ArgumentException("A value must have a string representation."),

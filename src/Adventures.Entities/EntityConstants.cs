@@ -54,6 +54,20 @@ public static class EntityConstants
     }
 
     /// <summary>
+    /// The exception log: one entity per unhandled server exception, written by the host's global handler and
+    /// reviewed (then purged, i.e. tombstoned) by an administrator. Its schema ships in
+    /// <c>Sql/seed/seed-002-exception-log.nq</c>, applied once under the seed name <see cref="SeedName"/>.
+    /// </summary>
+    public static class ExceptionLog
+    {
+        public const string SchemaIri = "https://global-webnet.com/schema/ExceptionLog";
+        public const string BaseIri = "https://global-webnet.com/id/exception/";
+        public const string TypeIri = "https://global-webnet.com/ontology/exception#ExceptionLog";
+        public const string DefaultGraph = "https://global-webnet.com/graph/system";
+        public const string SeedName = "002-exception-log";
+    }
+
+    /// <summary>
     /// Mechanical "is this still current" bookkeeping for <see cref="IEntityRepository{TEntity}"/>: a tombstoned
     /// entity or a superseded field-value quad is never physically removed, so history is always reconstructable.
     /// Deliberately separate from <see cref="AuditRecord"/> - this is cheap, mechanical, and not meant to be read by

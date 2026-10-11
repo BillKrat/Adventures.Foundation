@@ -41,7 +41,7 @@ public static class EntityInputValidator
 
             if (!TryParse(value, field.Type))
             {
-                errors[name] = [$"{name} is not a valid {field.Type}."];
+                errors[name] = [$"The {name} field is not in the right format. Expected {Describe(field.Type)}."];
             }
         }
 
@@ -70,6 +70,18 @@ public static class EntityInputValidator
             throw new InputValidationException(errors);
         }
     }
+
+    /// <summary>What a person should type for a schema type, for the error message.</summary>
+    private static string Describe(string typeName) => typeName.ToLowerInvariant() switch
+    {
+        "date" => "a date such as 1961-11-19",
+        "datetime" or "datetimeoffset" => "a date and time such as 1961-11-19T14:30:00Z",
+        "int" or "integer" or "long" => "a whole number",
+        "double" or "decimal" => "a number such as 12.5",
+        "bool" or "boolean" => "true or false",
+        "guid" => "an identifier such as 123e4567-e89b-12d3-a456-426614174000",
+        _ => $"a valid {typeName}",
+    };
 
     private static bool TryParse(string raw, string typeName)
     {

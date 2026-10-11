@@ -31,6 +31,9 @@ public class EntityPresenter<TEntity>(
         return entities.Select(entity => EntityFormModel.From(Schema, entity).Entity).ToArray();
     }
 
+    public virtual async Task<EntityGridModel> GetGridAsync(CancellationToken cancellationToken = default) =>
+        EntityGridModel.From(Schema, await Bll.ListAsync(cancellationToken).ConfigureAwait(false));
+
     public async Task<EntityFormModel> CreateAsync(EntityDataModel data, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(data);

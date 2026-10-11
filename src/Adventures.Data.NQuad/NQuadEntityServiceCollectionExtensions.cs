@@ -32,6 +32,9 @@ public static class NQuadEntityServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(schema);
         ArgumentNullException.ThrowIfNull(entityFactory);
 
+        // The typed schema holder is what presenters and Blls take; a bare EntitySchema could only ever mean one schema.
+        services.AddSingleton(new EntitySchemaOf<TEntity>(schema));
+
         return services.AddScoped<IEntityRepository<TEntity>>(provider =>
         {
             var actor = changedBy?.Invoke(provider);
