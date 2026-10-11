@@ -29,9 +29,9 @@ Owner: Claude. Reusable .NET class libraries for the `Adventures.*` family, extr
 - **Libraries (`src/`):** `Adventures.Security` (JWT, OAuth2 client credentials, scope policies, password hashing), `Adventures.Data` (tenant-scoped Postgres entity store, JSONB hybrid + N-Quads), `Adventures.Identity` (real login on top of the two), `Adventures.Entities` (storage-agnostic dynamic entity model; every field value is a `FieldValue(id, value)`; `IEntityRepository<TEntity>` is the CRUDL contract - delete tombstones, update supersedes, nothing physically removed), `Adventures.Data.NQuad` (N-Quad parsing/storage plus `NQuadUserAdapter` and `NQuadEntityRepository<TEntity>`, the N-Quad-backed `IEntityRepository`). Matching xUnit projects in `test/`.
 - **Build and test:** `dotnet build Adventures.Foundation.slnx`, `dotnet test`. `Adventures.Data.NQuad.Tests` also has live-Postgres tests that need the `ConnectionStrings:Postgres` user-secret; the rest run offline.
 - **Publish:** pushing a `v*` tag runs `publish.yml` to nuget.org via Trusted Publishing (no stored API key). `build.yml` builds on push and PR to `main`.
-- **Consumer:** `ai-research-blog` references these projects by relative path from its `.slnx`, not as NuGet packages. Keep the two branches (`nguid-slice`) in step.
+- **Consumer:** `ai-research-blog` references these projects by relative path from its `.slnx`, not as NuGet packages. Keep the two repos on matching branches.
 - **Hard rule:** user passwords and machine secrets deliberately use different hashers (`PasswordHasher` vs `ClientSecretHasher`). Do not unify them.
-- **Status (2026-09-25):** branch `nguid-slice`, working tree has uncommitted edits to `NpgsqlNQuadStore.cs` and `NQuadStoreToolTests.cs` from an earlier session. Ask the human before touching them. The seed triad (`seed.nq` here, plus `mock-data.txt` and `validated.csv` in `poc`) must stay in sync.
+- **Status (2026-10-11):** `main` holds the presenter/account work (merged 2026-10-02); active work is on `claude-architecture-alignment` (see the Claude section). `ai-research-blog` uses the same branch name; keep the two in step. The seed triad (`seed.nq` here, plus `mock-data.txt` and `validated.csv` in `poc`) must stay in sync.
 
 ## Claude
 
