@@ -20,6 +20,9 @@ public sealed partial class NpgsqlNQuadStore : INQuadStore, INQuadStoreInitializ
 {
     public const string DefaultTableName = "n_quads";
 
+    /// <summary>Leading characters of "object" covered by the (predicate, object) index; see <see cref="QueryAsync"/>.</summary>
+    private const int ObjectIndexLength = 255;
+
     [GeneratedRegex("^[a-z_][a-z0-9_]{0,62}$")]
     private static partial Regex TableNameRegex();
 
@@ -56,6 +59,8 @@ public sealed partial class NpgsqlNQuadStore : INQuadStore, INQuadStoreInitializ
             CREATE INDEX IF NOT EXISTS ix_{_table}_subject ON {_table} (subject);
             CREATE INDEX IF NOT EXISTS ix_{_table}_predicate ON {_table} (predicate);
             CREATE INDEX IF NOT EXISTS ix_{_table}_graph ON {_table} (graph);
+            CREATE INDEX IF NOT EXISTS ix_{_table}_subject_predicate ON {_table} (subject, predicate);
+            CREATE INDEX IF NOT EXISTS ix_{_table}_predicate_object ON {_table} (predicate, left(object, {ObjectIndexLength}));
             """;
         await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
@@ -108,18 +113,49 @@ public sealed partial class NpgsqlNQuadStore : INQuadStore, INQuadStoreInitializ
     /// <summary>Returns every row, optionally filtered by any combination of terms.</summary>
     public async Task<IReadOnlyList<NQuad>> QueryAsync(string? subject = null, string? predicate = null, string? @object = null, string? graph = null, CancellationToken cancellationToken = default)
     {
+        // Only the terms actually supplied become conditions. The "(@X IS NULL OR col = @X)" form would stop PostgreSQL
+        // choosing an index once it settles on a generic plan. The object term also carries a left(object, N) equality
+        // so the (predicate, left(object, N)) expression index applies: object can be an arbitrarily long literal (a
+        // post body), which cannot go in a b-tree whole.
+        var conditions = new List<string>();
+        if (subject is not null) conditions.Add("subject = @Subject");
+        if (predicate is not null) conditions.Add("predicate = @Predicate");
+        if (@object is not null) conditions.Add($"left(object, {ObjectIndexLength}) = left(@Object, {ObjectIndexLength}) AND object = @Object");
+        if (graph is not null) conditions.Add("graph = @Graph");
+
+        var where = conditions.Count == 0 ? string.Empty : "WHERE " + string.Join(" AND ", conditions);
         var sql = $"""
             SELECT id AS "Id", subject AS "Subject", predicate AS "Predicate", object AS "Object", graph AS "Graph"
             FROM {_table}
-            WHERE (@Subject IS NULL OR subject = @Subject)
-              AND (@Predicate IS NULL OR predicate = @Predicate)
-              AND (@Object IS NULL OR object = @Object)
-              AND (@Graph IS NULL OR graph = @Graph);
+            {where};
             """;
 
         await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { Subject = subject, Predicate = predicate, Object = @object, Graph = graph }, cancellationToken: cancellationToken);
+        var results = await connection.QueryAsync<NQuad>(command);
+        return results.AsList();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<NQuad>> QueryBySubjectsAsync(IReadOnlyCollection<string> subjects, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(subjects);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (subjects.Count == 0)
+        {
+            return [];
+        }
+
+        var sql = $"""
+            SELECT id AS "Id", subject AS "Subject", predicate AS "Predicate", object AS "Object", graph AS "Graph"
+            FROM {_table}
+            WHERE subject = ANY(@Subjects);
+            """;
+
+        await using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        var command = new CommandDefinition(sql, new { Subjects = subjects.ToArray() }, cancellationToken: cancellationToken);
         var results = await connection.QueryAsync<NQuad>(command);
         return results.AsList();
     }

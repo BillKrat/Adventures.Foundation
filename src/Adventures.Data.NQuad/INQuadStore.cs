@@ -24,6 +24,13 @@ public interface INQuadStore
     /// <summary>Returns every quad, optionally filtered by any combination of terms (null means any).</summary>
     Task<IReadOnlyList<NQuad>> QueryAsync(string? subject = null, string? predicate = null, string? @object = null, string? graph = null, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Returns every quad whose subject is any of <paramref name="subjects"/>, in one round trip. This is the bulk read the
+    /// entity layer needs (list N entities, resolve their superseded markers) without one query per entity. An empty
+    /// set returns an empty list.
+    /// </summary>
+    Task<IReadOnlyList<NQuad>> QueryBySubjectsAsync(IReadOnlyCollection<string> subjects, CancellationToken cancellationToken = default);
+
     /// <summary>Returns the total number of quads.</summary>
     Task<long> CountAsync(CancellationToken cancellationToken = default);
 

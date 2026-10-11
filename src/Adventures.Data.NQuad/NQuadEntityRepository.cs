@@ -145,7 +145,8 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
             return null;
         }
 
-        return await MaterializeAsync(entityId, subject, quads, cancellationToken).ConfigureAwait(false);
+        var supersededIds = await LoadSupersededIdsAsync(quads, cancellationToken).ConfigureAwait(false);
+        return Materialize(entityId, subject, quads, supersededIds);
     }
 
     public async Task<IReadOnlyList<TEntity>> ListAsync(bool includeDeleted = false, CancellationToken cancellationToken = default)
@@ -156,14 +157,29 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
             .Select(q => q.Subject[_baseIri.Length..])
             .Distinct(StringComparer.Ordinal);
 
+        // Constant number of store round trips however many entities there are: the type quads (above), every quad of
+        // those subjects, then the superseded markers for exactly those quads. One GetAsync per entity (the obvious
+        // loop) is N+1 and, against a remote database, the difference between milliseconds and seconds.
+        var subjects = entityIds.Select(ToSubject).ToArray();
+        var allQuads = await _store.QueryBySubjectsAsync(subjects, cancellationToken).ConfigureAwait(false);
+        var supersededIds = await LoadSupersededIdsAsync(allQuads, cancellationToken).ConfigureAwait(false);
+        var bySubject = allQuads.GroupBy(q => q.Subject, StringComparer.Ordinal).ToDictionary(g => g.Key, g => (IReadOnlyList<NQuad>)g.ToList(), StringComparer.Ordinal);
+
         var results = new List<TEntity>();
         foreach (var entityId in entityIds)
         {
-            var entity = await GetAsync(entityId, includeDeleted, cancellationToken).ConfigureAwait(false);
-            if (entity is not null)
+            var subject = ToSubject(entityId);
+            if (!bySubject.TryGetValue(subject, out var quads))
             {
-                results.Add(entity);
+                continue;
             }
+
+            if (!includeDeleted && quads.Any(q => q.Predicate == EntityConstants.Lifecycle.DeletedAtPredicate))
+            {
+                continue;
+            }
+
+            results.Add(Materialize(entityId, subject, quads, supersededIds));
         }
 
         return results;
@@ -261,14 +277,19 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
         return true;
     }
 
-    private async Task<TEntity> MaterializeAsync(string entityId, string subject, IReadOnlyList<NQuad> subjectQuads, CancellationToken cancellationToken)
+    /// <summary>The ids (as strings) of those quads that a SupersededAt marker retires - read for exactly these quads, never the whole store.</summary>
+    private async Task<HashSet<string>> LoadSupersededIdsAsync(IReadOnlyCollection<NQuad> quads, CancellationToken cancellationToken)
+    {
+        var markers = await _store.QueryBySubjectsAsync(quads.Select(q => q.Id.ToString()).ToArray(), cancellationToken).ConfigureAwait(false);
+        return markers
+            .Where(m => m.Predicate == EntityConstants.Lifecycle.SupersededAtPredicate)
+            .Select(m => m.Subject)
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    private TEntity Materialize(string entityId, string subject, IReadOnlyList<NQuad> subjectQuads, HashSet<string> supersededIds)
     {
         // The current value(s) for (subject, predicate) are whichever of these quads have not been superseded.
-        // Queried broadly (every SupersededAt marker in the store) rather than per-candidate - simple and correct
-        // for now; if the marker volume ever matters, narrowing this is a store-level optimization, not a
-        // behavior change.
-        var supersededMarkers = await _store.QueryAsync(predicate: EntityConstants.Lifecycle.SupersededAtPredicate, cancellationToken: cancellationToken).ConfigureAwait(false);
-        var supersededIds = supersededMarkers.Select(m => m.Subject).ToHashSet(StringComparer.Ordinal);
 
         var entity = _entityFactory(_schema);
         entity.Set(IdPropertyName, subject, entityId);

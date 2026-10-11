@@ -43,6 +43,44 @@ public abstract class NQuadStoreContractTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task QueryBySubjects_returns_the_quads_of_every_listed_subject_and_no_others()
+    {
+        if (Store is null) return;
+        var a = Quad("https://acme.example/post/1", DcTitle, "One");
+        var b = Quad("https://acme.example/post/2", DcTitle, "Two");
+        var c = Quad("https://acme.example/post/3", DcTitle, "Three");
+        var a2 = Quad(a.Subject, DcCreator, "Ada");
+        await Store.InsertManyAsync([a, b, c, a2]);
+
+        var found = await Store.QueryBySubjectsAsync([a.Subject, c.Subject, "https://acme.example/post/none"]);
+
+        Assert.Equal(new[] { a.Id, a2.Id, c.Id }.Order(), found.Select(q => q.Id).Order());
+    }
+
+    [Fact]
+    public async Task QueryBySubjects_with_no_subjects_returns_nothing()
+    {
+        if (Store is null) return;
+        await Store.InsertAsync(Quad("https://acme.example/post/1", DcTitle, "One"));
+
+        Assert.Empty(await Store.QueryBySubjectsAsync([]));
+    }
+
+    [Fact]
+    public async Task Query_by_predicate_and_a_very_long_object_finds_exactly_that_quad()
+    {
+        if (Store is null) return;
+        var body = new string('x', 5000);
+        var first = Quad("https://acme.example/post/1", DcTitle, body);
+        var second = Quad("https://acme.example/post/2", DcTitle, body + "y");
+        await Store.InsertManyAsync([first, second]);
+
+        var found = await Store.QueryAsync(predicate: DcTitle, @object: body);
+
+        Assert.Equal([first], found);
+    }
+
+    [Fact]
     public async Task Insert_rejects_a_duplicate_id()
     {
         if (Store is null) return;

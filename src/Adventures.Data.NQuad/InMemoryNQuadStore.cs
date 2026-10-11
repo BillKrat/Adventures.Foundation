@@ -66,6 +66,18 @@ public sealed class InMemoryNQuadStore : INQuadStore, INQuadStoreInitializer
         }
     }
 
+    public Task<IReadOnlyList<NQuad>> QueryBySubjectsAsync(IReadOnlyCollection<string> subjects, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(subjects);
+        cancellationToken.ThrowIfCancellationRequested();
+        var wanted = subjects as ISet<string> ?? subjects.ToHashSet(StringComparer.Ordinal);
+        lock (_gate)
+        {
+            IReadOnlyList<NQuad> result = _rows.Where(q => wanted.Contains(q.Subject)).ToList();
+            return Task.FromResult(result);
+        }
+    }
+
     public Task<long> CountAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
