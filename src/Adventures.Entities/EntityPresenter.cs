@@ -65,13 +65,18 @@ public class EntityPresenter<TEntity>(
     /// Applies every value in <paramref name="data"/> except "Id" - the entity id is derived from
     /// the store subject, never a settable field, same convention <c>NQuadEntityRepository</c>
     /// itself follows. When <paramref name="entityId"/> is supplied (Create), sets it first. The input was already
-    /// checked by <see cref="EntityInputValidator"/>; a null or empty-string value is simply
-    /// skipped rather than clearing the field. Empty string needs the same treatment as null: a
-    /// browser form round-tripping every field has no way to distinguish "never set" from
-    /// "cleared" for an input it renders empty, and sends "" either way - without this, a
-    /// non-string field (DateOnly, Guid, ...) that happens to be unset throws trying to parse "".
+    /// checked by <see cref="EntityInputValidator"/>. Rules, chosen to fit a browser form that is pre-filled from the
+    /// server and sends every field back:
+    /// <list type="bullet">
+    /// <item>null: not supplied, field untouched.</item>
+    /// <item>"" (empty): if the field currently holds a value, the user cleared it, so it is cleared (and a required field
+    /// then fails the Bll's required check); if it holds nothing, there is nothing to do. Either way "" is never parsed,
+    /// so an unset non-string field (DateOnly, Guid, ...) cannot throw.</item>
+    /// <item>a value equal to the current one: skipped, so saving an unchanged form writes nothing (no new quad, no audit
+    /// row per field per save).</item>
+    /// </list>
     /// </summary>
-    private static TEntity ApplyValues(TEntity entity, EntityDataModel data, string? entityId)
+    private TEntity ApplyValues(TEntity entity, EntityDataModel data, string? entityId)
     {
         if (entityId is not null)
         {
@@ -80,7 +85,22 @@ public class EntityPresenter<TEntity>(
 
         foreach (var (name, value) in data.Values)
         {
-            if (name.Equals(DynamicEntity.EntityIdPropertyName, StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(value))
+            if (name.Equals(DynamicEntity.EntityIdPropertyName, StringComparison.OrdinalIgnoreCase) || value is null)
+            {
+                continue;
+            }
+
+            if (value.Length == 0)
+            {
+                if (entity.GetValue(name) is not null)
+                {
+                    entity.Clear(name);
+                }
+
+                continue;
+            }
+
+            if (IsUnchanged(entity, name, value))
             {
                 continue;
             }
@@ -89,5 +109,17 @@ public class EntityPresenter<TEntity>(
         }
 
         return entity;
+    }
+
+    private bool IsUnchanged(TEntity entity, string name, string raw)
+    {
+        var current = entity.GetValues(name);
+        if (current.Count != 1 || !Schema.Fields.TryGetValue(name, out var field))
+        {
+            return false;
+        }
+
+        var incoming = SchemaTypeConverter.ConvertTo(raw, new SchemaTypeConverter().ResolveType(field.Type));
+        return Equals(current[0], incoming);
     }
 }

@@ -82,6 +82,22 @@ public abstract class DynamicEntity : DynamicObject, IDynamicEntity
         return this;
     }
 
+    /// <summary>
+    /// Removes every value of <paramref name="propertyName"/>. A repository persists that as superseding the field's prior
+    /// value(s) with nothing in their place (nothing is physically deleted).
+    /// </summary>
+    public DynamicEntity Clear(string propertyName)
+    {
+        if (!_schema.Fields.ContainsKey(propertyName))
+        {
+            throw new NotSupportedException($"Property '{propertyName}' is not defined by the entity schema.");
+        }
+
+        _values.Remove(propertyName);
+        UpdateDirtyState(propertyName);
+        return this;
+    }
+
     /// <summary>Appends an additional (id, value) pair for <paramref name="propertyName"/>.</summary>
     public DynamicEntity Add(string propertyName, string id, object value)
     {

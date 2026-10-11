@@ -13,10 +13,11 @@ public sealed class UserPresenterTests : IAsyncLifetime
     private const string Graph = "https://global-webnet.com/graph/test";
 
     private IUserPresenter _presenter = null!;
+    private InMemoryNQuadStore _store = null!;
 
     public async Task InitializeAsync()
     {
-        var store = new InMemoryNQuadStore();
+        var store = _store = new InMemoryNQuadStore();
         var seedPath = Path.Combine(AppContext.BaseDirectory, "Sql", "seed", "seed.nq");
         await store.SeedFromFileAsync(seedPath);
         var allQuads = await store.QueryAsync();
@@ -95,6 +96,83 @@ public sealed class UserPresenterTests : IAsyncLifetime
         Assert.NotNull(updated);
         Assert.Equal("555-0100", updated!.Entity.Values["Phone"]);
         Assert.Null(updated.Entity.Values["DOB"]);
+    }
+
+    private async Task<EntityFormModel> CreateTempUserAsync(params (string Name, string Value)[] extra)
+    {
+        var values = new Dictionary<string, string?> { ["UserName"] = "Temp-" + Guid.NewGuid().ToString("N")[..8] };
+        foreach (var (name, value) in extra)
+        {
+            values[name] = value;
+        }
+
+        return await _presenter.CreateAsync(new EntityDataModel(string.Empty, values));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_EmptyValueForAFieldThatHasOne_ClearsIt()
+    {
+        var created = await CreateTempUserAsync(("Phone", "555-0100"));
+        var id = created.Entity.EntityId;
+
+        var updated = await _presenter.UpdateAsync(id, new EntityDataModel(id, new Dictionary<string, string?> { ["Phone"] = string.Empty }));
+
+        Assert.Null(updated!.Entity.Values["Phone"]);
+        Assert.Null((await _presenter.GetFormAsync(id))!.Entity.Values["Phone"]);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_NullValue_LeavesTheFieldAlone()
+    {
+        var created = await CreateTempUserAsync(("Phone", "555-0100"));
+        var id = created.Entity.EntityId;
+
+        await _presenter.UpdateAsync(id, new EntityDataModel(id, new Dictionary<string, string?> { ["Phone"] = null }));
+
+        Assert.Equal("555-0100", (await _presenter.GetFormAsync(id))!.Entity.Values["Phone"]);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_EmptyValueForAFieldThatHasNone_IsANoOpNotAParseError()
+    {
+        var created = await CreateTempUserAsync();
+        var id = created.Entity.EntityId;
+
+        var updated = await _presenter.UpdateAsync(id, new EntityDataModel(id, new Dictionary<string, string?> { ["DOB"] = string.Empty }));
+
+        Assert.Null(updated!.Entity.Values["DOB"]);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_SavingTheFormUnchanged_WritesNothing()
+    {
+        var created = await CreateTempUserAsync(("Phone", "555-0100"));
+        var id = created.Entity.EntityId;
+        var form = (await _presenter.GetFormAsync(id))!;
+        var countBefore = await _store.CountAsync();
+
+        await _presenter.UpdateAsync(id, form.Entity);
+
+        Assert.Equal(countBefore, await _store.CountAsync());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ChangingOneField_OnlyThatFieldIsRewritten()
+    {
+        var created = await CreateTempUserAsync(("Phone", "555-0100"), ("First", "Ada"));
+        var id = created.Entity.EntityId;
+        var form = (await _presenter.GetFormAsync(id))!;
+        var values = form.Entity.Values.ToDictionary(v => v.Key, v => v.Value);
+        values["Phone"] = "555-0199";
+        var countBefore = await _store.CountAsync();
+
+        await _presenter.UpdateAsync(id, new EntityDataModel(id, values));
+
+        // one superseded marker + one new value quad + the audit rows for that one field - far fewer than a full rewrite
+        var added = await _store.CountAsync() - countBefore;
+        Assert.InRange(added, 2, 12);
+        Assert.Equal("555-0199", (await _presenter.GetFormAsync(id))!.Entity.Values["Phone"]);
+        Assert.Equal("Ada", (await _presenter.GetFormAsync(id))!.Entity.Values["First"]);
     }
 
     [Fact]
