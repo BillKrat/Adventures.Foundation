@@ -8,4 +8,7 @@ public static class WellKnownClaims
 
     /// <summary>Tenant-wide administrator: full user management (seed account "Admin").</summary>
     public const string TenantAdminRole = "TenantAdmin";
+
+    /// <summary>Name of the policy <c>AddRoleAuthorization(TenantAdminRole)</c> registers - a constant so it can be used in an <c>[Authorize]</c> attribute.</summary>
+    public const string TenantAdminPolicy = "Role:" + TenantAdminRole;
 }

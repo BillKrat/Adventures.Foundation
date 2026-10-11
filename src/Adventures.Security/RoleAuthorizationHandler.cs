@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Adventures.Security;
@@ -13,7 +14,9 @@ public sealed class RoleAuthorizationHandler : AuthorizationHandler<RoleRequirem
         AuthorizationHandlerContext context,
         RoleRequirement requirement)
     {
-        var roles = context.User.FindAll(WellKnownClaims.Roles)
+        // ASP.NET Core's JWT bearer handler remaps an incoming "roles" claim to ClaimTypes.Role by default, so a
+        // token issued with WellKnownClaims.Roles reaches this handler as ClaimTypes.Role; accept both spellings.
+        var roles = context.User.FindAll(claim => claim.Type is WellKnownClaims.Roles or ClaimTypes.Role)
             .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
         if (roles.Contains(requirement.RequiredRole, StringComparer.Ordinal))

@@ -21,6 +21,16 @@ public class RoleAuthorizationHandlerTests
     }
 
     [Fact]
+    public async Task Succeeds_WhenJwtBearerRemappedTheRolesClaimToClaimTypesRole()
+    {
+        var context = CreateContext(new RoleRequirement("TenantAdmin"), new Claim(ClaimTypes.Role, "TenantAdmin"));
+
+        await new RoleAuthorizationHandler().HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
+    }
+
+    [Fact]
     public async Task Fails_WhenRolesClaimLacksRequiredRole()
     {
         var context = CreateContext(new RoleRequirement("TenantAdmin"), new Claim("roles", "User"));
@@ -48,6 +58,12 @@ public class RoleAuthorizationHandlerTests
         await new RoleAuthorizationHandler().HandleAsync(context);
 
         Assert.False(context.HasSucceeded);
+    }
+
+    [Fact]
+    public void TenantAdminPolicyConstant_MatchesTheNamingConvention()
+    {
+        Assert.Equal(JwtServiceCollectionExtensions.RolePolicyName(WellKnownClaims.TenantAdminRole), WellKnownClaims.TenantAdminPolicy);
     }
 
     [Fact]
