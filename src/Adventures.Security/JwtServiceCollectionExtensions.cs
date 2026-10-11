@@ -53,6 +53,26 @@ public static class JwtServiceCollectionExtensions
     /// <summary>The naming convention for a scope-based authorization policy, e.g. "Scope:mcp.postgres.query".</summary>
     public static string ScopePolicyName(string scope) => $"Scope:{scope}";
 
+    /// <summary>The naming convention for a role-based authorization policy, e.g. "Role:TenantAdmin".</summary>
+    public static string RolePolicyName(string role) => $"Role:{role}";
+
+    /// <summary>
+    /// Registers the <see cref="RoleAuthorizationHandler"/> and adds a policy (named via <see cref="RolePolicyName"/>)
+    /// for each role, so endpoints can use <c>[Authorize(Policy = JwtServiceCollectionExtensions.RolePolicyName("TenantAdmin"))]</c>.
+    /// </summary>
+    public static IServiceCollection AddRoleAuthorization(this IServiceCollection services, params string[] roles)
+    {
+        services.AddSingleton<IAuthorizationHandler, RoleAuthorizationHandler>();
+
+        foreach (var role in roles)
+        {
+            services.AddAuthorization(options =>
+                options.AddPolicy(RolePolicyName(role), policy => policy.Requirements.Add(new RoleRequirement(role))));
+        }
+
+        return services;
+    }
+
     /// <summary>
     /// Registers the <see cref="ScopeAuthorizationHandler"/> and adds an authorization policy (named via
     /// <see cref="ScopePolicyName"/>) for each of the given scopes, so endpoints can be protected with

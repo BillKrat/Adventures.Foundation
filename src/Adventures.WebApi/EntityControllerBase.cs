@@ -29,17 +29,19 @@ public abstract class EntityControllerBase<TEntity> : ApiControllerBase
         IEntityPresenter<TEntity> presenter, CancellationToken cancellationToken) =>
         Ok(await presenter.ListAsync(cancellationToken).ConfigureAwait(false));
 
-    protected async Task<ActionResult<EntityFormModel>> CreateAsync(
-        IEntityPresenter<TEntity> presenter, EntityDataModel data, CancellationToken cancellationToken)
-    {
-        var created = await presenter.CreateAsync(data, cancellationToken).ConfigureAwait(false);
-        return StatusCode(StatusCodes.Status201Created, created);
-    }
+    protected Task<ActionResult<EntityFormModel>> CreateAsync(
+        IEntityPresenter<TEntity> presenter, EntityDataModel data, CancellationToken cancellationToken) =>
+        GuardedAsync<EntityFormModel>(async () =>
+        {
+            var created = await presenter.CreateAsync(data, cancellationToken).ConfigureAwait(false);
+            return StatusCode(StatusCodes.Status201Created, created);
+        });
 
-    protected async Task<ActionResult<EntityFormModel>> UpdateAsync(
-        IEntityPresenter<TEntity> presenter, string id, EntityDataModel data, CancellationToken cancellationToken)
-    {
-        var updated = await presenter.UpdateAsync(id, data, cancellationToken).ConfigureAwait(false);
-        return updated is null ? NotFound() : Ok(updated);
-    }
+    protected Task<ActionResult<EntityFormModel>> UpdateAsync(
+        IEntityPresenter<TEntity> presenter, string id, EntityDataModel data, CancellationToken cancellationToken) =>
+        GuardedAsync<EntityFormModel>(async () =>
+        {
+            var updated = await presenter.UpdateAsync(id, data, cancellationToken).ConfigureAwait(false);
+            return updated is null ? NotFound() : Ok(updated);
+        });
 }
