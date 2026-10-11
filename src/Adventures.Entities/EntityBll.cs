@@ -34,6 +34,9 @@ public class EntityBll<TEntity>(IEntityRepository<TEntity> repository) : IEntity
     public virtual Task<bool> DeleteAsync(string entityId, CancellationToken cancellationToken = default) =>
         Repository.DeleteAsync(entityId, cancellationToken);
 
+    public virtual Task<int> DeleteManyAsync(IReadOnlyCollection<string> entityIds, CancellationToken cancellationToken = default) =>
+        Repository.DeleteManyAsync(entityIds, cancellationToken);
+
     /// <summary>Throws <see cref="InputValidationException"/> listing every required field that has no value.</summary>
     protected virtual void Validate(TEntity entity)
     {

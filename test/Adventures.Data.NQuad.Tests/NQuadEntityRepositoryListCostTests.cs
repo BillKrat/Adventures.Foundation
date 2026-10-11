@@ -80,6 +80,60 @@ public sealed class NQuadEntityRepositoryListCostTests
         Assert.Equal(3, (await repository.ListAsync(includeDeleted: true)).Count);
     }
 
+    [Theory]
+    [InlineData(2)]
+    [InlineData(40)]
+    public async Task DeleteManyAsync_UsesAConstantNumberOfStoreCalls(int entityCount)
+    {
+        var (repository, store) = await SeedAsync(entityCount);
+        var ids = Enumerable.Range(0, entityCount).Select(i => $"w{i}").ToArray();
+        var before = store.Calls;
+
+        var deleted = await repository.DeleteManyAsync(ids);
+
+        Assert.Equal(entityCount, deleted);
+        Assert.Equal(3, store.Calls - before);
+        Assert.Empty(await repository.ListAsync());
+    }
+
+    [Fact]
+    public async Task DeleteManyAsync_SkipsMissingAndAlreadyDeleted_AndCountsOnlyWhatItDeleted()
+    {
+        var (repository, _) = await SeedAsync(3);
+        await repository.DeleteAsync("w0");
+
+        var deleted = await repository.DeleteManyAsync(["w0", "w1", "w1", "nope"]);
+
+        Assert.Equal(1, deleted);
+        Assert.Equal(["w2"], (await repository.ListAsync()).Select(w => (string)w.GetValue("Id")!));
+    }
+
+    [Fact]
+    public async Task DeleteManyAsync_WritesTheSameAuditRowsAsDeletingOneByOne()
+    {
+        var (batch, batchStore) = await SeedAsync(2);
+        var (single, singleStore) = await SeedAsync(2);
+
+        await batch.DeleteManyAsync(["w0", "w1"]);
+        await single.DeleteAsync("w0");
+        await single.DeleteAsync("w1");
+
+        var batchAudits = (await batchStore.QueryAsync(predicate: EntityConstants.AuditRecord.ActionPredicate, @object: "Delete")).Count;
+        var singleAudits = (await singleStore.QueryAsync(predicate: EntityConstants.AuditRecord.ActionPredicate, @object: "Delete")).Count;
+        Assert.Equal(singleAudits, batchAudits);
+        Assert.True(batchAudits > 0);
+    }
+
+    [Fact]
+    public async Task DeleteManyAsync_WithNoIds_DoesNothing()
+    {
+        var (repository, store) = await SeedAsync(2);
+        var before = store.Calls;
+
+        Assert.Equal(0, await repository.DeleteManyAsync([]));
+        Assert.Equal(before, store.Calls);
+    }
+
     [Fact]
     public async Task GetAsync_UsesTwoStoreCalls_NotAScanOfEveryMarker()
     {

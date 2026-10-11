@@ -81,6 +81,23 @@ public abstract class NQuadStoreContractTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task InsertMany_stores_a_large_batch_including_default_graph_and_long_and_unicode_values()
+    {
+        if (Store is null) return;
+        var quads = Enumerable.Range(0, 600)
+            .Select(i => Quad($"https://acme.example/post/{i}", DcTitle, i % 50 == 0 ? new string('x', 4000) : $"Título {i} ☃", graph: i % 3 == 0 ? null : "https://acme.example/blog"))
+            .ToList();
+
+        var inserted = await Store.InsertManyAsync(quads);
+
+        Assert.Equal(600, inserted);
+        Assert.Equal(600, await Store.CountAsync());
+        var sample = Assert.Single(await Store.QueryAsync(subject: quads[3].Subject));
+        Assert.Equal(quads[3], sample);
+        Assert.Null((await Store.QueryAsync(subject: quads[0].Subject)).Single().Graph);
+    }
+
+    [Fact]
     public async Task Insert_rejects_a_duplicate_id()
     {
         if (Store is null) return;

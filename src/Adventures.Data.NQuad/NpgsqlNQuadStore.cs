@@ -96,18 +96,27 @@ public sealed partial class NpgsqlNQuadStore : INQuadStore, INQuadStoreInitializ
             return 0;
         }
 
+        // One statement, one round trip, however many quads: the columns go up as arrays and unnest() turns them back into
+        // rows. (Handing Dapper a list runs the INSERT once per element - a round trip each, which against a remote
+        // database made saving or purging a handful of entities take tens of seconds.) A single statement is atomic,
+        // so a duplicate id still adds nothing.
         var sql = $"""
             INSERT INTO {_table} (id, subject, predicate, object, graph)
-            VALUES (@Id, @Subject, @Predicate, @Object, @Graph);
+            SELECT * FROM unnest(@Ids, @Subjects, @Predicates, @Objects, @Graphs);
             """;
+
+        var parameters = new
+        {
+            Ids = quads.Select(q => q.Id).ToArray(),
+            Subjects = quads.Select(q => q.Subject).ToArray(),
+            Predicates = quads.Select(q => q.Predicate).ToArray(),
+            Objects = quads.Select(q => q.Object).ToArray(),
+            Graphs = quads.Select(q => q.Graph).ToArray(),
+        };
 
         await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
-        var command = new CommandDefinition(sql, quads, transaction, cancellationToken: cancellationToken);
-        var inserted = await connection.ExecuteAsync(command);
-        await transaction.CommitAsync(cancellationToken);
-        return inserted;
+        return await connection.ExecuteAsync(new CommandDefinition(sql, parameters, cancellationToken: cancellationToken));
     }
 
     /// <summary>Returns every row, optionally filtered by any combination of terms.</summary>

@@ -24,4 +24,7 @@ public interface IEntityBll<TEntity> : IBll
     Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(string entityId, CancellationToken cancellationToken = default);
+
+    /// <summary>Deletes (tombstones) every listed entity in one batch; returns how many were deleted.</summary>
+    Task<int> DeleteManyAsync(IReadOnlyCollection<string> entityIds, CancellationToken cancellationToken = default);
 }

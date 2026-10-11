@@ -155,8 +155,15 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
         var entityIds = typeQuads
             .Where(q => q.Subject.StartsWith(_baseIri, StringComparison.Ordinal))
             .Select(q => q.Subject[_baseIri.Length..])
-            .Distinct(StringComparer.Ordinal);
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
 
+        return await LoadAsync(entityIds, includeDeleted, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Reads the given entities in a constant number of store calls (see the comment in the body).</summary>
+    private async Task<IReadOnlyList<TEntity>> LoadAsync(IReadOnlyCollection<string> entityIds, bool includeDeleted, CancellationToken cancellationToken)
+    {
         // Constant number of store round trips however many entities there are: the type quads (above), every quad of
         // those subjects, then the superseded markers for exactly those quads. One GetAsync per entity (the obvious
         // loop) is N+1 and, against a remote database, the difference between milliseconds and seconds.
@@ -249,14 +256,51 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
             return false;
         }
 
-        var subject = ToSubject(entityId);
-        var changedAt = _clock();
-        var quads = new List<NQuad>
-        {
-            NewQuad(subject, EntityConstants.Lifecycle.DeletedAtPredicate, changedAt.ToString("O", CultureInfo.InvariantCulture)),
-        };
-
+        var quads = new List<NQuad>();
         var auditQuads = new List<NQuad>();
+        AddTombstone(entity, entityId, _clock(), quads, auditQuads);
+
+        await _store.InsertManyAsync(quads, cancellationToken).ConfigureAwait(false);
+        await InsertIfAnyAsync(auditQuads, cancellationToken).ConfigureAwait(false);
+
+        return true;
+    }
+
+    public async Task<int> DeleteManyAsync(IReadOnlyCollection<string> entityIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entityIds);
+        var ids = entityIds.Distinct(StringComparer.Ordinal).ToArray();
+        foreach (var id in ids)
+        {
+            ValidateEntityId(id);
+        }
+
+        if (ids.Length == 0)
+        {
+            return 0;
+        }
+
+        // Read all of them in a constant number of calls, then write every tombstone and audit row in one batch
+        // (all-or-nothing): deleting N entities one by one is N times the round trips, and against a remote
+        // database purging a hundred entries would take about a minute.
+        var entities = await LoadAsync(ids, includeDeleted: false, cancellationToken).ConfigureAwait(false);
+        var quads = new List<NQuad>();
+        var auditQuads = new List<NQuad>();
+        var changedAt = _clock();
+        foreach (var entity in entities)
+        {
+            AddTombstone(entity, RequireEntityId(entity), changedAt, quads, auditQuads);
+        }
+
+        quads.AddRange(auditQuads);
+        await InsertIfAnyAsync(quads, cancellationToken).ConfigureAwait(false);
+        return entities.Count;
+    }
+
+    private void AddTombstone(TEntity entity, string entityId, DateTimeOffset changedAt, List<NQuad> quads, List<NQuad> auditQuads)
+    {
+        quads.Add(NewQuad(ToSubject(entityId), EntityConstants.Lifecycle.DeletedAtPredicate, changedAt.ToString("O", CultureInfo.InvariantCulture)));
+
         foreach (var field in _schema.Fields.Values)
         {
             if (field.Name.Equals(IdPropertyName, StringComparison.OrdinalIgnoreCase))
@@ -270,11 +314,6 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
                 auditQuads.AddRange(BuildAuditQuads(field, entityId, "Delete", changedAt, fromValue: FormatValue(current.Value), toValue: null));
             }
         }
-
-        await _store.InsertManyAsync(quads, cancellationToken).ConfigureAwait(false);
-        await InsertIfAnyAsync(auditQuads, cancellationToken).ConfigureAwait(false);
-
-        return true;
     }
 
     /// <summary>The ids (as strings) of those quads that a SupersededAt marker retires - read for exactly these quads, never the whole store.</summary>

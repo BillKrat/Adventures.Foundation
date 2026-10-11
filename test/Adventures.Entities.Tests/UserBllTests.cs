@@ -107,6 +107,15 @@ public sealed class UserBllTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task DeleteManyAsync_IsRefusedBecauseTheOwnAccountRuleCannotBeChecked()
+    {
+        var admin = await _bll.FindByUserNameAsync("Admin");
+
+        await Assert.ThrowsAsync<Adventures.Common.Exceptions.BusinessRuleException>(() => _bll.DeleteManyAsync([admin!.EntityId!.Value]));
+        Assert.NotNull(await _bll.FindByUserNameAsync("Admin"));
+    }
+
+    [Fact]
     public async Task DeleteAsync_WithoutActingUser_IsRefused()
     {
         var admin = await _bll.FindByUserNameAsync("Admin");

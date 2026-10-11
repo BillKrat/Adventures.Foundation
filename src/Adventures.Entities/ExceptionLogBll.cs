@@ -53,16 +53,12 @@ public sealed class ExceptionLogBll(
 
     public async Task<int> PurgeAsync(CancellationToken cancellationToken = default)
     {
-        var purged = 0;
-        foreach (var entry in await ListAsync(cancellationToken).ConfigureAwait(false))
-        {
-            if (entry.EntityId is { } id && await DeleteAsync(id.Value, cancellationToken).ConfigureAwait(false))
-            {
-                purged++;
-            }
-        }
+        var ids = (await ListAsync(cancellationToken).ConfigureAwait(false))
+            .Select(entry => entry.EntityId?.Value)
+            .OfType<string>()
+            .ToArray();
 
-        return purged;
+        return await DeleteManyAsync(ids, cancellationToken).ConfigureAwait(false);
     }
 
     private static string NewId() => Guid.NewGuid().ToString();

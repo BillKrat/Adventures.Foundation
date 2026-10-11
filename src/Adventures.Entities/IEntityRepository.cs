@@ -36,4 +36,11 @@ public interface IEntityRepository<TEntity>
     /// already deleted.
     /// </summary>
     Task<bool> DeleteAsync(string entityId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tombstones every listed entity that exists and is not already deleted, in a constant number of store calls (one write
+    /// batch, all-or-nothing). Returns how many were deleted. Use this, not a loop of <see cref="DeleteAsync"/>, for more than a
+    /// few: each single delete costs several round trips.
+    /// </summary>
+    Task<int> DeleteManyAsync(IReadOnlyCollection<string> entityIds, CancellationToken cancellationToken = default);
 }

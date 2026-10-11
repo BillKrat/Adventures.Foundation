@@ -28,6 +28,9 @@ public sealed class UserBll(IEntityRepository<User> users) : EntityBll<User>(use
         return Repository.DeleteAsync(userId, cancellationToken);
     }
 
+    public override Task<int> DeleteManyAsync(IReadOnlyCollection<string> entityIds, CancellationToken cancellationToken = default) =>
+        throw new BusinessRuleException("Deleting users requires the id of the user performing the deletion.");
+
     /// <summary>A user is only ever deleted by someone else; without an acting user the rule cannot be checked.</summary>
     public override Task<bool> DeleteAsync(string entityId, CancellationToken cancellationToken = default) =>
         throw new BusinessRuleException("Deleting a user requires the id of the user performing the deletion.");
