@@ -141,6 +141,59 @@ public sealed class ExceptionSignatureTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Throttled_recording_keeps_one_entry_per_signature_per_window()
+    {
+        var first = await _log.RecordThrottledAsync(Throw("probe down 1"), "probe", null, "c-1", TimeSpan.FromHours(1));
+        var repeat = await _log.RecordThrottledAsync(Throw("probe down 2"), "probe", null, "c-2", TimeSpan.FromHours(1));
+        var other = await _log.RecordThrottledAsync(Throw("a different failure"), "probe", null, "c-3", TimeSpan.FromHours(1));
+
+        Assert.NotNull(first);
+        Assert.Null(repeat);
+        Assert.NotNull(other);
+        Assert.Equal(2, await _log.CountActiveAsync());
+    }
+
+    [Fact]
+    public async Task Throttled_recording_with_a_zero_window_records_every_time()
+    {
+        var one = await _log.RecordThrottledAsync(Throw("no window"), null, null, null, TimeSpan.Zero);
+        var two = await _log.RecordThrottledAsync(Throw("no window"), null, null, null, TimeSpan.Zero);
+
+        Assert.NotNull(one);
+        Assert.NotNull(two);
+    }
+
+    [Fact]
+    public async Task A_client_reported_error_is_recorded_with_the_clients_stack()
+    {
+        var id = await _log.RecordAsync(new ClientReportedException("TypeError: x is undefined", "at foo (app.js:1:2)"), "client: /profile", "Admin", "c-9");
+
+        var entry = await _log.GetAsync(id!);
+        Assert.Equal("Adventures.Entities.ClientReportedException", entry!.GetValue("ExceptionType"));
+        Assert.Contains("at foo (app.js:1:2)", (string)entry.GetValue("StackTrace")!);
+    }
+
+    [Fact]
+    public async Task Diagnostics_finds_the_exceptions_and_kinds_of_one_request()
+    {
+        var reader = new DiagnosticsReader(_log, _signatures);
+        await _log.RecordAsync(Throw("diag one"), "GET /a", "Admin", "req-A");
+        await _log.RecordAsync(Throw("diag two"), "GET /b", "Admin", "req-B");
+        await _log.RecordAsync(Throw("diag two"), "GET /c", "Admin", "req-C");
+
+        var report = await reader.FindByCorrelationIdAsync("req-B");
+
+        var found = Assert.Single(report.Exceptions);
+        Assert.Equal("diag two", found.Message);
+        Assert.Equal("GET /b", found.Request);
+        var kind = Assert.Single(report.Signatures);
+        Assert.Equal(2, kind.OccurrenceCount);
+        Assert.Empty((await reader.FindByCorrelationIdAsync("nobody")).Exceptions);
+        Assert.Equal(3, (await reader.ListRecentAsync()).Count);
+        Assert.Equal(2, (await reader.ListSignaturesAsync()).Count);
+    }
+
+    [Fact]
     public async Task Without_a_correlation_id_the_entry_is_still_recorded()
     {
         var id = await _log.RecordAsync(Throw("boom"), null, null);

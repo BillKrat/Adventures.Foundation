@@ -16,6 +16,14 @@ public interface IExceptionLogBll : IEntityBll<ExceptionLogEntry>
     /// </summary>
     Task<string?> RecordAsync(Exception exception, string? request, string? userName, string? correlationId = null, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// <see cref="RecordAsync"/> for failures that can repeat without end (a dependency probe, the browser reporting the
+    /// same error again): records at most one entry per signature per <paramref name="window"/> in this process, so the
+    /// administrator sees the problem without a flood. Returns null when suppressed (the caller still logs the warning).
+    /// </summary>
+    Task<string?> RecordThrottledAsync(
+        Exception exception, string? request, string? userName, string? correlationId, TimeSpan window, CancellationToken cancellationToken = default);
+
     /// <summary>Number of entries not yet purged.</summary>
     Task<int> CountActiveAsync(CancellationToken cancellationToken = default);
 

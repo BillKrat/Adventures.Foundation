@@ -68,6 +68,35 @@ public sealed class ExceptionLogBll(
         }
     }
 
+    /// <summary>When each signature was last recorded through <see cref="RecordThrottledAsync"/>, per process.</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTimeOffset> LastThrottled = new();
+
+    public Task<string?> RecordThrottledAsync(
+        Exception exception, string? request, string? userName, string? correlationId, TimeSpan window, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        var hash = ExceptionSignature.From(exception).Hash;
+        var now = DateTimeOffset.UtcNow;
+        var allowed = false;
+        LastThrottled.AddOrUpdate(
+            hash,
+            _ =>
+            {
+                allowed = true;
+                return now;
+            },
+            (_, last) =>
+            {
+                allowed = now - last >= window;
+                return allowed ? now : last;
+            });
+
+        return allowed
+            ? RecordAsync(exception, request, userName, correlationId, cancellationToken)
+            : Task.FromResult<string?>(null);
+    }
+
     public async Task<int> CountActiveAsync(CancellationToken cancellationToken = default) =>
         (await ListAsync(cancellationToken).ConfigureAwait(false)).Count;
 
