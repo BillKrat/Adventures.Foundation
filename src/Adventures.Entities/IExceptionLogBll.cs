@@ -10,9 +10,11 @@ public interface IExceptionLogBll : IEntityBll<ExceptionLogEntry>
     /// <summary>
     /// Records <paramref name="exception"/> (type, message, full stack trace including inner exceptions) with the request
     /// and user it happened for. Returns the new entry's id (a reference to show the user), or null if it could not be
-    /// stored - in which case the failure itself is only written to the application log.
+    /// stored - in which case the failure itself is only written to the application log. When the schema has the fields
+    /// (seed 003) the entry also carries the request's <paramref name="correlationId"/> and the id of the exception's
+    /// signature (the same failure seen again shares one signature).
     /// </summary>
-    Task<string?> RecordAsync(Exception exception, string? request, string? userName, CancellationToken cancellationToken = default);
+    Task<string?> RecordAsync(Exception exception, string? request, string? userName, string? correlationId = null, CancellationToken cancellationToken = default);
 
     /// <summary>Number of entries not yet purged.</summary>
     Task<int> CountActiveAsync(CancellationToken cancellationToken = default);

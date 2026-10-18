@@ -7,7 +7,8 @@ namespace Adventures.Entities;
 public sealed class ExceptionLogBll(
     IEntityRepository<ExceptionLogEntry> repository,
     EntitySchemaOf<ExceptionLogEntry> schema,
-    ILogger<ExceptionLogBll>? logger = null)
+    ILogger<ExceptionLogBll>? logger = null,
+    IExceptionSignatureBll? signatures = null)
     : EntityBll<ExceptionLogEntry>(repository), IExceptionLogBll
 {
     /// <summary>A stack trace can be very long; keep each stored text bounded so one runaway exception cannot bloat the store.</summary>
@@ -15,7 +16,8 @@ public sealed class ExceptionLogBll(
 
     private readonly ILogger _logger = (ILogger?)logger ?? NullLogger.Instance;
 
-    public async Task<string?> RecordAsync(Exception exception, string? request, string? userName, CancellationToken cancellationToken = default)
+    public async Task<string?> RecordAsync(
+        Exception exception, string? request, string? userName, string? correlationId = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(exception);
 
@@ -36,6 +38,24 @@ public sealed class ExceptionLogBll(
             if (!string.IsNullOrWhiteSpace(userName))
             {
                 entry.Set("UserName", NewId(), Truncate(userName));
+            }
+
+            if (!string.IsNullOrWhiteSpace(correlationId) && schema.Schema.Fields.ContainsKey("CorrelationId"))
+            {
+                entry.Set("CorrelationId", NewId(), Truncate(correlationId));
+            }
+
+            if (signatures is not null && schema.Schema.Fields.ContainsKey("SignatureId"))
+            {
+                // Grouping is a bonus: if it fails the occurrence is still recorded, without a signature.
+                try
+                {
+                    entry.Set("SignatureId", NewId(), await signatures.RegisterOccurrenceAsync(exception, cancellationToken).ConfigureAwait(false));
+                }
+                catch (Exception signatureFailure)
+                {
+                    _logger.LogWarning(signatureFailure, "Could not register the signature of {ExceptionType}", exception.GetType().Name);
+                }
             }
 
             await CreateAsync(entry, cancellationToken).ConfigureAwait(false);
