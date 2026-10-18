@@ -100,6 +100,22 @@ public sealed class ExceptionSignatureTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Summaries_list_each_kind_with_its_count_most_recent_first()
+    {
+        await _signatures.RegisterOccurrenceAsync(Throw("older kind"));
+        await Task.Delay(15);
+        await _signatures.RegisterOccurrenceAsync(Throw("newer kind"));
+        await Task.Delay(15);
+        await _signatures.RegisterOccurrenceAsync(Throw("newer kind"));
+
+        var summaries = await _signatures.ListSummariesAsync();
+
+        Assert.Equal(["newer kind", "older kind"], summaries.Select(s => s.MessagePattern));
+        Assert.Equal([2, 1], summaries.Select(s => s.OccurrenceCount));
+        Assert.All(summaries, s => Assert.Equal("System.InvalidOperationException", s.ExceptionType));
+    }
+
+    [Fact]
     public async Task A_new_kind_of_failure_gets_its_own_signature()
     {
         var one = await _signatures.RegisterOccurrenceAsync(Throw("alpha"));

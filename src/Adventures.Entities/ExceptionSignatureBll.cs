@@ -43,5 +43,19 @@ public sealed class ExceptionSignatureBll(
         return id;
     }
 
+    public async Task<IReadOnlyList<ExceptionSignatureSummary>> ListSummariesAsync(CancellationToken cancellationToken = default) =>
+        (await ListAsync(cancellationToken).ConfigureAwait(false))
+            .Select(entry => new ExceptionSignatureSummary(
+                entry.EntityId!.Value,
+                entry.GetValue("ExceptionType") as string ?? string.Empty,
+                entry.GetValue("MessagePattern") as string ?? string.Empty,
+                entry.GetValue("TopFrame") as string ?? string.Empty,
+                entry.GetValue("FirstSeen") as DateTimeOffset?,
+                entry.GetValue("LastSeen") as DateTimeOffset?,
+                entry.GetValue("OccurrenceCount") is int count ? count : 0,
+                entry.GetValue("Status") as string ?? NewStatus))
+            .OrderByDescending(summary => summary.LastSeen)
+            .ToList();
+
     private static string NewId() => Guid.NewGuid().ToString();
 }

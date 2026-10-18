@@ -11,4 +11,18 @@ public interface IExceptionSignatureBll : IEntityBll<ExceptionSignatureEntry>
     /// count, and returns the signature's entity id. Throws if the store is unavailable; the caller decides what that means.
     /// </summary>
     Task<string> RegisterOccurrenceAsync(Exception exception, CancellationToken cancellationToken = default);
+
+    /// <summary>Every known signature, most recently seen first.</summary>
+    Task<IReadOnlyList<ExceptionSignatureSummary>> ListSummariesAsync(CancellationToken cancellationToken = default);
 }
+
+/// <summary>One kind of failure as an administrator sees it: what it is, how often, and when.</summary>
+public sealed record ExceptionSignatureSummary(
+    string Id,
+    string ExceptionType,
+    string MessagePattern,
+    string TopFrame,
+    DateTimeOffset? FirstSeen,
+    DateTimeOffset? LastSeen,
+    int OccurrenceCount,
+    string Status);
