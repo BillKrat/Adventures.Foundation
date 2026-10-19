@@ -11,8 +11,8 @@ public sealed class ExceptionLogBll(
     IExceptionSignatureBll? signatures = null)
     : EntityBll<ExceptionLogEntry>(repository), IExceptionLogBll
 {
-    /// <summary>A stack trace can be very long; keep each stored text bounded so one runaway exception cannot bloat the store.</summary>
-    private const int MaxTextLength = 16_000;
+    /// <summary>Exceptions are rare and their whole payload is what triage needs, so the cap is far above any real stack trace (250,000 characters); it only stops a runaway from bloating the store, and a cut says how much was removed.</summary>
+    private const int MaxTextLength = 250_000;
 
     private readonly ILogger _logger = (ILogger?)logger ?? NullLogger.Instance;
 
@@ -113,5 +113,5 @@ public sealed class ExceptionLogBll(
     private static string NewId() => Guid.NewGuid().ToString();
 
     private static string Truncate(string text) =>
-        text.Length <= MaxTextLength ? text : text[..MaxTextLength] + " ...[truncated]";
+        text.Length <= MaxTextLength ? text : text[..MaxTextLength] + $" ...[truncated {text.Length - MaxTextLength} chars]";
 }

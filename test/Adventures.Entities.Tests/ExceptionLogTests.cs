@@ -71,11 +71,11 @@ public sealed class ExceptionLogTests : IAsyncLifetime
     [Fact]
     public async Task RecordAsync_TruncatesAVeryLongMessage()
     {
-        var id = await _bll.RecordAsync(Thrown(new string('x', 50_000)), null, null);
+        var id = await _bll.RecordAsync(Thrown(new string('x', 300_000)), null, null);
 
         var message = (string)(await _bll.GetAsync(id!))!.GetValue("Message")!;
-        Assert.True(message.Length < 17_000);
-        Assert.EndsWith("[truncated]", message);
+        Assert.True(message.Length < 251_000);
+        Assert.EndsWith("[truncated 50000 chars]", message);
     }
 
     [Fact]
