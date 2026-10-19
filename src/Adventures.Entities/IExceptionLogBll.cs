@@ -24,6 +24,9 @@ public interface IExceptionLogBll : IEntityBll<ExceptionLogEntry>
     Task<string?> RecordThrottledAsync(
         Exception exception, string? request, string? userName, string? correlationId, TimeSpan window, CancellationToken cancellationToken = default);
 
+    /// <summary>Every entry ever recorded, purged ones included (a purge is a soft delete, so the history stays readable).</summary>
+    Task<IReadOnlyList<ExceptionLogEntry>> ListIncludingPurgedAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Number of entries not yet purged.</summary>
     Task<int> CountActiveAsync(CancellationToken cancellationToken = default);
 

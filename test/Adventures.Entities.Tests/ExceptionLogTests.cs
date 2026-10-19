@@ -136,6 +136,26 @@ public sealed class ExceptionLogTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetHistoryGridAsync_ShowsPurgedEntriesToo_MarkedByState()
+    {
+        var purgedId = await _bll.RecordAsync(Thrown("old"), null, null);
+        await _presenter.PurgeAsync();
+        await Task.Delay(15);
+        var activeId = await _bll.RecordAsync(Thrown("new"), null, null);
+
+        var history = await _presenter.GetHistoryGridAsync();
+
+        Assert.Equal([activeId, purgedId], history.Rows.Select(row => row.EntityId));
+        Assert.Equal("Active", history.Rows[0].Values["State"]);
+        Assert.Equal("Purged", history.Rows[1].Values["State"]);
+        Assert.Contains(history.Schema.Fields, field => field.Name == "State");
+        Assert.Equal(2, await _presenter.CountTotalAsync());
+        Assert.Equal(1, await _presenter.CountActiveAsync());
+        // the ordinary grid still hides purged entries
+        Assert.Single((await _presenter.GetGridAsync()).Rows);
+    }
+
+    [Fact]
     public async Task GetGridAsync_AfterPurge_IsEmpty()
     {
         await _bll.RecordAsync(Thrown("one"), null, null);

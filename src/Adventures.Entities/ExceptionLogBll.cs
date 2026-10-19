@@ -97,6 +97,9 @@ public sealed class ExceptionLogBll(
             : Task.FromResult<string?>(null);
     }
 
+    public Task<IReadOnlyList<ExceptionLogEntry>> ListIncludingPurgedAsync(CancellationToken cancellationToken = default) =>
+        Repository.ListAsync(includeDeleted: true, cancellationToken);
+
     public async Task<int> CountActiveAsync(CancellationToken cancellationToken = default) =>
         (await ListAsync(cancellationToken).ConfigureAwait(false)).Count;
 
