@@ -1,6 +1,6 @@
 using Adventures.Common.Interfaces;
 
-namespace Adventures.Entities;
+namespace Adventures.Common.Diagnostics;
 
 /// <summary>One recorded exception, as a person or an MCP tool reads it.</summary>
 public sealed record ExceptionOccurrence(
@@ -12,6 +12,17 @@ public sealed record ExceptionOccurrence(
     string? UserName,
     string? CorrelationId,
     string? SignatureId);
+
+/// <summary>One kind of failure (an exception type, its message pattern and top frame) with how often and when it was seen.</summary>
+public sealed record ExceptionSignatureSummary(
+    string Id,
+    string ExceptionType,
+    string MessagePattern,
+    string TopFrame,
+    DateTimeOffset? FirstSeen,
+    DateTimeOffset? LastSeen,
+    int OccurrenceCount,
+    string Status);
 
 /// <summary>Everything the store knows about one request: the exceptions it raised and the kinds of failure they belong to.</summary>
 public sealed record CorrelationReport(

@@ -1,3 +1,5 @@
+using Adventures.Common.Diagnostics;
+
 namespace Adventures.Entities;
 
 /// <summary>
@@ -15,14 +17,3 @@ public interface IExceptionSignatureBll : IEntityBll<ExceptionSignatureEntry>
     /// <summary>Every known signature, most recently seen first.</summary>
     Task<IReadOnlyList<ExceptionSignatureSummary>> ListSummariesAsync(CancellationToken cancellationToken = default);
 }
-
-/// <summary>One kind of failure as an administrator sees it: what it is, how often, and when.</summary>
-public sealed record ExceptionSignatureSummary(
-    string Id,
-    string ExceptionType,
-    string MessagePattern,
-    string TopFrame,
-    DateTimeOffset? FirstSeen,
-    DateTimeOffset? LastSeen,
-    int OccurrenceCount,
-    string Status);

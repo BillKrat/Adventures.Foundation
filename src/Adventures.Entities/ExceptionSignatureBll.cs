@@ -1,3 +1,5 @@
+using Adventures.Common.Diagnostics;
+
 namespace Adventures.Entities;
 
 /// <summary>Implementation of <see cref="IExceptionSignatureBll"/> - see that interface for the contract.</summary>

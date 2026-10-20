@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Http;
+using Adventures.Common.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Adventures.WebApi;
@@ -14,22 +15,17 @@ namespace Adventures.WebApi;
 /// </summary>
 public sealed class CorrelationIdMiddleware(RequestDelegate next, ILogger<CorrelationIdMiddleware> logger)
 {
-    public const string HeaderName = "X-Correlation-Id";
+    public const string HeaderName = CorrelationIds.HeaderName;
     public const string ItemsKey = "Adventures.CorrelationId";
-    public const string LogPropertyName = "CorrelationId";
-    public const string ActivityTagName = "correlation.id";
-
-    private const int MaxLength = 64;
+    public const string LogPropertyName = CorrelationIds.LogPropertyName;
+    public const string ActivityTagName = CorrelationIds.ActivityTagName;
 
     /// <summary>The correlation id of the request, or null when the middleware did not run.</summary>
     public static string? Get(HttpContext context) =>
         context.Items.TryGetValue(ItemsKey, out var value) ? value as string : null;
 
-    /// <summary>Only letters, digits, '-' and '_' up to 64 characters: the id lands in logs and headers, so nothing else is trusted.</summary>
-    public static bool IsWellFormed(string? candidate) =>
-        !string.IsNullOrEmpty(candidate)
-        && candidate.Length <= MaxLength
-        && candidate.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_');
+    /// <inheritdoc cref="CorrelationIds.IsWellFormed"/>
+    public static bool IsWellFormed(string? candidate) => CorrelationIds.IsWellFormed(candidate);
 
     public async Task InvokeAsync(HttpContext context)
     {

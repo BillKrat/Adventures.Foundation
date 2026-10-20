@@ -1,3 +1,5 @@
+using Adventures.Common.Diagnostics;
+
 namespace Adventures.Entities;
 
 /// <summary>Implementation of <see cref="IDiagnosticsReader"/> over the exception log and the exception signatures.</summary>
