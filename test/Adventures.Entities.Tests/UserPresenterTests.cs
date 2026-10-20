@@ -259,4 +259,52 @@ public sealed class UserPresenterTests : IAsyncLifetime
         await Assert.ThrowsAsync<Adventures.Common.Exceptions.InputValidationException>(
             () => _presenter.UpdateAsync(admin.Entity.EntityId, data));
     }
+
+    private async Task AddUsersAsync(params string[] names)
+    {
+        foreach (var name in names)
+        {
+            await _presenter.CreateAsync(new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["UserName"] = name }));
+        }
+    }
+
+    [Fact]
+    public async Task GetGridAsync_SortsPagesAndReportsWhereThePageSits()
+    {
+        await AddUsersAsync("Echo", "Delta", "Charlie", "Bravo", "Alpha");
+
+        var first = await _presenter.GetGridAsync(new EntityGridQuery(Page: 1, PageSize: 3, Sort: "UserName"));
+        var last = await _presenter.GetGridAsync(new EntityGridQuery(Page: 3, PageSize: 3, Sort: "username"));
+
+        Assert.Equal(["Admin", "Alpha", "Bravo"], first.Rows.Select(r => r.Values["UserName"]));
+        Assert.Equal(new GridPaging(1, 3, 7, "UserName", false), first.Paging);
+        Assert.Equal(3, first.Paging!.TotalPages);
+        Assert.Equal(["Echo"], last.Rows.Select(r => r.Values["UserName"]));
+        Assert.True(first.CanCreate);
+        Assert.Equal(EntityPermissions.Full, first.RowPermissions);
+    }
+
+    [Fact]
+    public async Task GetGridAsync_DescendingNormalisesTheQueryAndIgnoresAnUnknownSortField()
+    {
+        await AddUsersAsync("Alpha", "Bravo");
+
+        var descending = await _presenter.GetGridAsync(new EntityGridQuery(Page: 1, PageSize: 2, Sort: "UserName", Descending: true));
+        var clamped = await _presenter.GetGridAsync(new EntityGridQuery(Page: 99, PageSize: 100_000, Sort: "NoSuchField"));
+
+        Assert.Equal(["Claude", "Bravo"], descending.Rows.Select(r => r.Values["UserName"]));
+        Assert.Equal(EntityGridQuery.MaxPageSize, clamped.Paging!.PageSize);
+        Assert.Equal(1, clamped.Paging.Page);
+        Assert.Null(clamped.Paging.Sort);
+    }
+
+    [Fact]
+    public async Task GetGridAsync_HidesTheIdColumnByDefault_ButKeepsItInTheSchemaAndRows()
+    {
+        var grid = await _presenter.GetGridAsync(new EntityGridQuery());
+
+        Assert.False(grid.Schema.Fields.Single(f => f.Name == "Id").IsListVisible);
+        Assert.True(grid.Schema.Fields.Single(f => f.Name == "UserName").IsListVisible);
+        Assert.All(grid.Rows, r => Assert.False(string.IsNullOrEmpty(r.Values["Id"])));
+    }
 }

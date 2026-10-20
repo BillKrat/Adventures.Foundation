@@ -23,6 +23,9 @@ public interface IEntityPresenter<TEntity> : IPresenter
     /// <summary>The same entities as <see cref="ListAsync"/> with their schema, ready for a grid to render.</summary>
     Task<EntityGridModel> GetGridAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>One sorted, paged slice of the list (see <see cref="EntityGridQuery"/>), with the paging state and what the caller may do. The host adds the links.</summary>
+    Task<EntityGridModel> GetGridAsync(EntityGridQuery query, CancellationToken cancellationToken = default);
+
     Task<EntityFormModel> CreateAsync(EntityDataModel data, CancellationToken cancellationToken = default);
 
     Task<EntityFormModel?> UpdateAsync(string id, EntityDataModel data, CancellationToken cancellationToken = default);

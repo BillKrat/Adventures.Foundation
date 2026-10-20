@@ -22,7 +22,7 @@ public sealed record EntityFieldSchema(
     bool IsListVisible = true)
 {
     /// <summary>Builds the field the client sees from a schema field; <paramref name="position"/> is its place in the schema when no order is declared.</summary>
-    public static EntityFieldSchema From(EntitySchemaField field, int position, bool forceReadOnly = false)
+    public static EntityFieldSchema From(EntitySchemaField field, int position, bool forceReadOnly = false, bool hideFromList = false)
     {
         ArgumentNullException.ThrowIfNull(field);
         return new EntityFieldSchema(
@@ -32,7 +32,7 @@ public sealed record EntityFieldSchema(
             string.IsNullOrWhiteSpace(field.Label) ? Humanize(field.Name) : field.Label,
             forceReadOnly || field.IsReadOnly || field.Name.Equals(DynamicEntity.EntityIdPropertyName, StringComparison.OrdinalIgnoreCase),
             field.Order ?? position,
-            field.IsListVisible);
+            field.IsListVisible && !hideFromList);
     }
 
     /// <summary>"DisplayName" becomes "Display name"; "DOB" stays "DOB".</summary>
@@ -65,11 +65,11 @@ public sealed record EntitySchemaModel(string SchemaIri, IReadOnlyList<EntityFie
     /// The client-facing schema: every field with its label, read-only flag and order, sorted by order.
     /// <paramref name="readOnlyFields"/> adds the names a presenter makes read-only on top of what the schema declares.
     /// </summary>
-    public static EntitySchemaModel From(EntitySchema schema, IReadOnlySet<string>? readOnlyFields = null)
+    public static EntitySchemaModel From(EntitySchema schema, IReadOnlySet<string>? readOnlyFields = null, IReadOnlySet<string>? hiddenColumns = null)
     {
         ArgumentNullException.ThrowIfNull(schema);
         var fields = schema.Fields.Values
-            .Select((field, position) => EntityFieldSchema.From(field, position, readOnlyFields?.Contains(field.Name) == true))
+            .Select((field, position) => EntityFieldSchema.From(field, position, readOnlyFields?.Contains(field.Name) == true, hiddenColumns?.Contains(field.Name) == true))
             .OrderBy(field => field.Order)
             .ToArray();
         return new EntitySchemaModel(schema.SchemaIri, fields);
@@ -88,22 +88,6 @@ public sealed record EntityPermissions(bool CanUpdate, bool CanDelete)
     public static EntityPermissions Full { get; } = new(true, true);
 
     public static EntityPermissions ReadOnly { get; } = new(false, false);
-}
-
-/// <summary>
-/// A list of entities for a grid: the columns (the schema) and one <see cref="EntityDataModel"/> per row. Paging, sorting
-/// and per-row permissions join this record in the grid-contract stage; the shape here is its first, minimal form.
-/// </summary>
-public sealed record EntityGridModel(EntitySchemaModel Schema, IReadOnlyList<EntityDataModel> Rows)
-{
-    public static EntityGridModel From(EntitySchema schema, IEnumerable<DynamicEntity> entities, IReadOnlySet<string>? readOnlyFields = null)
-    {
-        ArgumentNullException.ThrowIfNull(schema);
-        ArgumentNullException.ThrowIfNull(entities);
-
-        var rows = entities.Select(entity => EntityFormModel.From(schema, entity).Entity).ToArray();
-        return new EntityGridModel(EntitySchemaModel.From(schema, readOnlyFields), rows);
-    }
 }
 
 /// <summary>

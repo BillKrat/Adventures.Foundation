@@ -6,12 +6,14 @@ public sealed class ExceptionLogPresenter(IExceptionLogBll bll, EntitySchemaOf<E
 {
     private readonly IExceptionLogBll _bll = bll ?? throw new ArgumentNullException(nameof(bll));
 
+    protected override IReadOnlySet<string> ListHiddenFields { get; } = new HashSet<string>(["Id", "StackTrace"], StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Newest first: the administrator wants what just happened at the top.</summary>
     public override async Task<EntityGridModel> GetGridAsync(CancellationToken cancellationToken = default)
     {
         var entries = await _bll.ListAsync(cancellationToken).ConfigureAwait(false);
         var newestFirst = entries.OrderByDescending(entry => entry.GetValue("OccurredAt") is DateTimeOffset at ? at : DateTimeOffset.MinValue);
-        return EntityGridModel.From(Schema, newestFirst);
+        return EntityGridModel.From(Schema, newestFirst, ReadOnlyFields, ListHiddenFields);
     }
 
     public const string StateField = "State";
@@ -25,7 +27,7 @@ public sealed class ExceptionLogPresenter(IExceptionLogBll bll, EntitySchemaOf<E
             .ToHashSet(StringComparer.Ordinal);
 
         var newestFirst = all.OrderByDescending(entry => entry.GetValue("OccurredAt") is DateTimeOffset at ? at : DateTimeOffset.MinValue);
-        var grid = EntityGridModel.From(Schema, newestFirst);
+        var grid = EntityGridModel.From(Schema, newestFirst, ReadOnlyFields, ListHiddenFields);
 
         var rows = grid.Rows
             .Select(row => new EntityDataModel(

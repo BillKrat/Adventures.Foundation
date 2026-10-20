@@ -25,6 +25,37 @@ public abstract class EntityControllerBase<TEntity> : ApiControllerBase
         return form is null ? NotFound() : Ok(form);
     }
 
+    /// <summary>
+    /// One sorted, paged grid of the entities, with the links the client follows (self, create, next, previous) built from
+    /// this request path, so the client holds no URL templates. The query comes from <c>?page&amp;pageSize&amp;sort&amp;descending</c>.
+    /// </summary>
+    protected async Task<ActionResult<EntityGridModel>> GridAsync(
+        IEntityPresenter<TEntity> presenter, EntityGridQuery query, CancellationToken cancellationToken)
+    {
+        var grid = await presenter.GetGridAsync(query, cancellationToken).ConfigureAwait(false);
+        return Ok(grid.WithLinks(BuildGridLinks(grid, Request.Path.Value ?? string.Empty)));
+    }
+
+    /// <summary>Builds the grid links for <paramref name="path"/> (for example <c>/api/users</c>); relative to the site root, query string included.</summary>
+    public static EntityGridLinks BuildGridLinks(EntityGridModel grid, string path)
+    {
+        var paging = grid.Paging;
+        if (paging is null)
+        {
+            return new EntityGridLinks(path, grid.CanCreate ? path : null);
+        }
+
+        string Page(int number) =>
+            $"{path}?page={number}&pageSize={paging.PageSize}"
+            + (paging.Sort is null ? string.Empty : $"&sort={Uri.EscapeDataString(paging.Sort)}&descending={paging.Descending.ToString().ToLowerInvariant()}");
+
+        return new EntityGridLinks(
+            Page(paging.Page),
+            grid.CanCreate ? path : null,
+            paging.Page < paging.TotalPages ? Page(paging.Page + 1) : null,
+            paging.Page > 1 ? Page(paging.Page - 1) : null);
+    }
+
     protected async Task<ActionResult<IReadOnlyList<EntityDataModel>>> ListAsync(
         IEntityPresenter<TEntity> presenter, CancellationToken cancellationToken) =>
         Ok(await presenter.ListAsync(cancellationToken).ConfigureAwait(false));

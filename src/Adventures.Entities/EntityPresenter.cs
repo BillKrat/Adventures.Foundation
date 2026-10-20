@@ -25,6 +25,15 @@ public class EntityPresenter<TEntity>(
     /// <summary>What the caller may do with this entity (for rendering buttons; the Bll and the controller still enforce). Full by default.</summary>
     protected virtual EntityPermissions PermissionsFor(TEntity entity) => EntityPermissions.Full;
 
+    /// <summary>Fields a grid does not show as a column by default (the client gear can still add them). The entity id is never a useful column.</summary>
+    protected virtual IReadOnlySet<string> ListHiddenFields { get; } = new HashSet<string>([DynamicEntity.EntityIdPropertyName], StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Whether the caller may add a new entity from the grid (rendering only; the controller and Bll enforce).</summary>
+    protected virtual bool CanCreate => true;
+
+    /// <summary>What the caller may do with a row, for the grid buttons (rendering only).</summary>
+    protected virtual EntityPermissions RowPermissions => EntityPermissions.Full;
+
     public async Task<EntityFormModel?> GetFormAsync(string id, CancellationToken cancellationToken = default)
     {
         var entity = await Bll.GetAsync(id, cancellationToken).ConfigureAwait(false);
@@ -37,8 +46,17 @@ public class EntityPresenter<TEntity>(
         return entities.Select(entity => EntityFormModel.From(Schema, entity).Entity).ToArray();
     }
 
+    public virtual async Task<EntityGridModel> GetGridAsync(EntityGridQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var all = await Bll.ListAsync(cancellationToken).ConfigureAwait(false);
+        var (page, paging) = EntityGridPager.Apply(Schema, all, query);
+        var grid = EntityGridModel.From(Schema, page, ReadOnlyFields, ListHiddenFields);
+        return grid with { Paging = paging, CanCreate = CanCreate, RowPermissions = RowPermissions };
+    }
+
     public virtual async Task<EntityGridModel> GetGridAsync(CancellationToken cancellationToken = default) =>
-        EntityGridModel.From(Schema, await Bll.ListAsync(cancellationToken).ConfigureAwait(false), ReadOnlyFields);
+        EntityGridModel.From(Schema, await Bll.ListAsync(cancellationToken).ConfigureAwait(false), ReadOnlyFields, ListHiddenFields);
 
     public async Task<EntityFormModel> CreateAsync(EntityDataModel data, CancellationToken cancellationToken = default)
     {
