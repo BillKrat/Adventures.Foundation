@@ -161,6 +161,23 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
         return await LoadAsync(entityIds, includeDeleted, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<int> CountAsync(bool includeDeleted = false, CancellationToken cancellationToken = default)
+    {
+        var typeQuads = await _store.QueryAsync(predicate: RdfTypePredicate, @object: _typeIri, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var subjects = typeQuads
+            .Select(q => q.Subject)
+            .Where(subject => subject.StartsWith(_baseIri, StringComparison.Ordinal))
+            .ToHashSet(StringComparer.Ordinal);
+        if (includeDeleted || subjects.Count == 0)
+        {
+            return subjects.Count;
+        }
+
+        var tombstones = await _store.QueryAsync(predicate: EntityConstants.Lifecycle.DeletedAtPredicate, cancellationToken: cancellationToken).ConfigureAwait(false);
+        subjects.ExceptWith(tombstones.Select(q => q.Subject));
+        return subjects.Count;
+    }
+
     /// <summary>Reads the given entities in a constant number of store calls (see the comment in the body).</summary>
     private async Task<IReadOnlyList<TEntity>> LoadAsync(IReadOnlyCollection<string> entityIds, bool includeDeleted, CancellationToken cancellationToken)
     {

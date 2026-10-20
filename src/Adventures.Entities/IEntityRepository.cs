@@ -25,6 +25,12 @@ public interface IEntityRepository<TEntity>
     Task<IReadOnlyList<TEntity>> ListAsync(bool includeDeleted = false, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Counts the entities of this type without reading them: two store calls however many exist and however large their
+    /// values (an exception log with long stack traces is counted without loading one). Same tombstone rule as <see cref="ListAsync"/>.
+    /// </summary>
+    Task<int> CountAsync(bool includeDeleted = false, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Writes every dirty field on <paramref name="entity"/> (see <see cref="DynamicEntity.DirtyFieldIds"/>): each
     /// prior quad for a changed field is marked superseded (never removed) and a new quad is inserted with the new
     /// value. Throws if the entity does not exist or is currently deleted.

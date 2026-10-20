@@ -37,6 +37,8 @@ public sealed class UnhandledExceptionHandlerTests
 
         public Task<int> CountActiveAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
 
+        public Task<int> CountIncludingPurgedAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
+
         public Task<int> PurgeAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
 
         public Task<ExceptionLogEntry> CreateAsync(ExceptionLogEntry entity, CancellationToken cancellationToken = default) => throw new NotSupportedException();

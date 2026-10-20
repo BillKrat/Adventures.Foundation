@@ -96,6 +96,25 @@ public sealed class NQuadEntityRepositoryListCostTests
         Assert.Empty(await repository.ListAsync());
     }
 
+    [Theory]
+    [InlineData(3)]
+    [InlineData(60)]
+    public async Task CountAsync_AgreesWithListAsync_WithoutLoadingEntities(int entityCount)
+    {
+        var (repository, store) = await SeedAsync(entityCount);
+        await repository.DeleteAsync("w1");
+        var before = store.Calls;
+
+        var active = await repository.CountAsync();
+        var all = await repository.CountAsync(includeDeleted: true);
+
+        Assert.Equal(3, store.Calls - before); // active: type quads + tombstones; with deleted: type quads only
+        Assert.Equal(entityCount - 1, active);
+        Assert.Equal(entityCount, all);
+        Assert.Equal((await repository.ListAsync()).Count, active);
+        Assert.Equal((await repository.ListAsync(includeDeleted: true)).Count, all);
+    }
+
     [Fact]
     public async Task DeleteManyAsync_SkipsMissingAndAlreadyDeleted_AndCountsOnlyWhatItDeleted()
     {

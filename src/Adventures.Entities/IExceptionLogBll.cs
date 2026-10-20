@@ -30,6 +30,9 @@ public interface IExceptionLogBll : IEntityBll<ExceptionLogEntry>
     /// <summary>Number of entries not yet purged.</summary>
     Task<int> CountActiveAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>How many entries exist, purged ones included - counted, not loaded.</summary>
+    Task<int> CountIncludingPurgedAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Tombstones every active entry. Returns how many were purged.</summary>
     Task<int> PurgeAsync(CancellationToken cancellationToken = default);
 }

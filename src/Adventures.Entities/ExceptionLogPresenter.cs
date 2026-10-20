@@ -39,8 +39,7 @@ public sealed class ExceptionLogPresenter(IExceptionLogBll bll, EntitySchemaOf<E
         return new EntityGridModel(new EntitySchemaModel(grid.Schema.SchemaIri, fields), rows);
     }
 
-    public async Task<int> CountTotalAsync(CancellationToken cancellationToken = default) =>
-        (await _bll.ListIncludingPurgedAsync(cancellationToken).ConfigureAwait(false)).Count;
+    public Task<int> CountTotalAsync(CancellationToken cancellationToken = default) => _bll.CountIncludingPurgedAsync(cancellationToken);
 
     public Task<int> CountActiveAsync(CancellationToken cancellationToken = default) => _bll.CountActiveAsync(cancellationToken);
 
