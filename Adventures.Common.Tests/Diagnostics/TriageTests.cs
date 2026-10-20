@@ -33,6 +33,19 @@ public sealed class TriageTests
             [new ExceptionOccurrence("e1", Now.AddMinutes(-90), type, message, request, "Admin", "req-1", "s1")],
             [new ExceptionSignatureSummary("s1", type, message, "Top.Frame", Now.AddHours(-3), lastSeen ?? Now.AddMinutes(-90), 4, "New")]);
 
+    [Theory]
+    [InlineData("startup at 2026-10-20 10:00:00Z", "startup failure")]
+    [InlineData("background service: Worker", "background or process-level")]
+    public async Task APersistedFailure_GetsARuleForStartupAndForBackgroundWork(string request, string expected)
+    {
+        var report = ReportFor("Adventures.Entities.PersistedFailureException", "System.InvalidOperationException: no key", request);
+
+        var result = await Triage.RunAsync(report, [], new FakeProbes(true, true), Now, CancellationToken.None);
+
+        Assert.Contains(expected, result.Summary);
+        Assert.DoesNotContain(result.Findings, f => f.Title == "Rule");
+    }
+
     [Fact]
     public async Task McpProbeException_WhenMcpAnswersNow_IsRecovered()
     {

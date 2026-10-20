@@ -126,6 +126,21 @@ public static class Triage
             return live.Ok ? ("Recovered", "A past database failure; the live check passes now.") : ("Ongoing", "The database is still failing.");
         }
 
+        if (occurrence.ExceptionType.EndsWith("PersistedFailureException", StringComparison.Ordinal))
+        {
+            var startup = request.StartsWith("startup", StringComparison.OrdinalIgnoreCase);
+            findings.Add(new TriageFinding(
+                "Likely cause",
+                startup
+                    ? "The app failed while starting and was restarted; this entry was written to the failure journal then and reported after the next healthy start. The app is running now, so the cause was missing or wrong at that moment (a secret, a setting, the database)."
+                    : "A background failure or a dying process, written to the failure journal when it happened and reported after the next start.",
+                "info"));
+            next.Add(startup
+                ? "Read the message and stack for what failed to start; check the host's environment secrets and the database status around the time shown in the request text."
+                : "Read the stack for the failing worker; if the process died, look at what changed (deploy, memory, a dependency).");
+            return ("Needs attention", startup ? "A startup failure from before the last restart." : "A background or process-level failure.");
+        }
+
         if (occurrence.ExceptionType.EndsWith("ClientReportedException", StringComparison.Ordinal))
         {
             findings.Add(new TriageFinding("Likely cause", $"An error in the browser ({request}); the message and stack are the browser's own. If it began after a deploy, the new UI code is the suspect.", "info"));
