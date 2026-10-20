@@ -26,7 +26,8 @@ public sealed record EntityGridLinks(
     string? Create = null,
     string? Next = null,
     string? Previous = null,
-    IReadOnlyDictionary<string, string>? Rows = null);
+    IReadOnlyDictionary<string, string>? Rows = null,
+    IReadOnlyDictionary<string, string>? Lookups = null);
 
 /// <summary>
 /// A list of entities for a grid: the columns (the schema, each field with its label, type and whether it is a default

@@ -38,18 +38,18 @@ public class EntityPresenter<TEntity>(
     public async Task<EntityFormModel?> GetFormAsync(string id, CancellationToken cancellationToken = default)
     {
         var entity = await Bll.GetAsync(id, cancellationToken).ConfigureAwait(false);
-        return entity is null ? null : await WithRelationsAsync(EntityFormModel.From(Schema, entity, PermissionsFor(entity), ReadOnlyFields), cancellationToken).ConfigureAwait(false);
+        return entity is null ? null : await WithRelationsAsync(EntityFormModel.From(Schema, entity, PermissionsFor(entity), ReadOnlyFields), PermissionsFor(entity).CanUpdate, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Adds the child collections the schema declares (when this presenter has a provider and the schema declares any).</summary>
-    protected async Task<EntityFormModel> WithRelationsAsync(EntityFormModel form, CancellationToken cancellationToken)
+    protected async Task<EntityFormModel> WithRelationsAsync(EntityFormModel form, bool editable, CancellationToken cancellationToken)
     {
         if (relations is null || Schema.Relations.Count == 0)
         {
             return form;
         }
 
-        var models = await relations.GetRelationsAsync(Schema, form.Entity.EntityId, cancellationToken).ConfigureAwait(false);
+        var models = await relations.GetRelationsAsync(Schema, form.Entity.EntityId, editable, cancellationToken).ConfigureAwait(false);
         return form with { Relations = models };
     }
 

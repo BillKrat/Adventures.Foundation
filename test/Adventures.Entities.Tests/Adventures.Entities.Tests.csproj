@@ -24,6 +24,7 @@
     <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-002-exception-log.nq" Link="Sql\seed\seed-002-exception-log.nq" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-003-exception-signature.nq" Link="Sql\seed\seed-003-exception-signature.nq" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-004-identity.nq" Link="Sql\seed\seed-004-identity.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-005-identity-required.nq" Link="Sql\seed\seed-005-identity-required.nq" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

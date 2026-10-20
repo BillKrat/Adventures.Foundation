@@ -13,7 +13,7 @@ public sealed class UserPresenter(IUserBll userBll, EntitySchemaOf<User> userSch
     {
         var user = await _userBll.FindByUserNameAsync(userName, cancellationToken).ConfigureAwait(false);
         // The caller is looking at their own profile: they may edit it, but the delete-own-account guard means they may never delete it.
-        return user is null ? null : await WithRelationsAsync(EntityFormModel.From(Schema, user, new EntityPermissions(CanUpdate: true, CanDelete: false), ReadOnlyFields), cancellationToken).ConfigureAwait(false);
+        return user is null ? null : await WithRelationsAsync(EntityFormModel.From(Schema, user, new EntityPermissions(CanUpdate: true, CanDelete: false), ReadOnlyFields), editable: false, cancellationToken).ConfigureAwait(false);
     }
 
     public Task<bool> DeleteAsync(string id, string currentUserId, CancellationToken cancellationToken = default) =>

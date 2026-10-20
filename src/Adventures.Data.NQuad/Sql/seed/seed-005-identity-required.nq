@@ -1,0 +1,4 @@
+<https://schema.global-webnet.com/identity/TenantRoleAssignment/Tenant> <https://global-webnet.com/ontology/schema#required> "true" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://schema.global-webnet.com/identity/TenantRoleAssignment/Role> <https://global-webnet.com/ontology/schema#required> "true" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://schema.global-webnet.com/identity/OrganizationRoleAssignment/Organization> <https://global-webnet.com/ontology/schema#required> "true" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://schema.global-webnet.com/identity/OrganizationRoleAssignment/Role> <https://global-webnet.com/ontology/schema#required> "true" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .

@@ -18,7 +18,7 @@ public sealed class NQuadRelationProvider(INQuadStore store, IEnumerable<EntityT
         types.GroupBy(t => t.Schema.SchemaIri, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
     public async Task<IReadOnlyList<EntityRelationModel>> GetRelationsAsync(
-        EntitySchema parentSchema, string parentEntityId, CancellationToken cancellationToken = default)
+        EntitySchema parentSchema, string parentEntityId, bool editable = false, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(parentSchema);
         var result = new List<EntityRelationModel>();
@@ -54,11 +54,29 @@ public sealed class NQuadRelationProvider(INQuadStore store, IEnumerable<EntityT
             var grid = EntityGridModel.From(
                 child.Schema, entities, readOnlyFields: null,
                 hiddenColumns: new HashSet<string>([DynamicEntity.EntityIdPropertyName], StringComparer.OrdinalIgnoreCase));
-            grid = grid with { Rows = await AddDisplayAsync(child.Schema, grid.Rows, cancellationToken).ConfigureAwait(false) };
+            grid = grid with
+            {
+                Rows = await AddDisplayAsync(child.Schema, grid.Rows, cancellationToken).ConfigureAwait(false),
+                CanCreate = editable,
+                RowPermissions = new EntityPermissions(CanUpdate: false, CanDelete: editable),
+            };
             result.Add(new EntityRelationModel(relation.Name, relation.Label, grid));
         }
 
         return result;
+    }
+
+    public async Task<IReadOnlyList<RelationOption>> GetOptionsAsync(string schemaIri, CancellationToken cancellationToken = default)
+    {
+        if (!_bySchema.ContainsKey(schemaIri))
+        {
+            return [];
+        }
+
+        return (await LoadNamesAsync(schemaIri, depth: 2, cancellationToken).ConfigureAwait(false))
+            .Select(pair => new RelationOption(pair.Key, pair.Value))
+            .OrderBy(option => option.Text, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     /// <summary>For each pointer field of <paramref name="schema"/>, the text of the entity it points at (its Name, else its first text field).</summary>

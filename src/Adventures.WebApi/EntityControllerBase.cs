@@ -36,6 +36,50 @@ public abstract class EntityControllerBase<TEntity> : ApiControllerBase
         return Ok(grid.WithLinks(BuildGridLinks(grid, Request.Path.Value ?? string.Empty)));
     }
 
+    /// <summary>
+    /// Gives each relation grid of a form the links to follow: the URL to add a child (<c>create</c>), the URL to remove each
+    /// child (<c>rows</c>), and for each pointer field the URL of its lookup. <paramref name="formPath"/> is the entity URL
+    /// (for example <c>/api/users/{id}</c>); relation endpoints hang under it as <c>/relations/{name}</c>.
+    /// </summary>
+    public static EntityFormModel WithRelationLinks(EntityFormModel form, string formPath, string lookupPath = "/api/lookups")
+    {
+        if (form.Relations is not { Count: > 0 } relations)
+        {
+            return form;
+        }
+
+        var linked = relations.Select(relation =>
+        {
+            var basePath = $"{formPath.TrimEnd('/')}/relations/{Uri.EscapeDataString(relation.Name)}";
+            var lookups = relation.Grid.Schema.Fields
+                .Where(field => field.RefSchema is not null)
+                .ToDictionary(field => field.Name, field => $"{lookupPath}?schema={Uri.EscapeDataString(field.RefSchema!)}", StringComparer.OrdinalIgnoreCase);
+            var rows = relation.Grid.Rows.ToDictionary(row => row.EntityId, row => $"{basePath}/{Uri.EscapeDataString(row.EntityId)}", StringComparer.Ordinal);
+            var links = new EntityGridLinks(basePath, relation.Grid.CanCreate ? basePath : null, Rows: rows, Lookups: lookups);
+            return relation with { Grid = relation.Grid.WithLinks(links) };
+        }).ToList();
+        return form with { Relations = linked };
+    }
+
+    /// <summary>Adds a child to one of the parent relations (201 with the child), through the relation writer and the child own rules.</summary>
+    protected Task<IActionResult> AddRelationChildAsync(
+        IEntityRelationWriter writer, EntitySchema parentSchema, string parentId, string relationName, EntityDataModel data, CancellationToken cancellationToken) =>
+        parentSchema.Relations.Any(r => r.Name.Equals(relationName, StringComparison.OrdinalIgnoreCase))
+            ? GuardedAsync(async () =>
+            {
+                var created = await writer.AddAsync(parentSchema, parentId, relationName, data, cancellationToken).ConfigureAwait(false);
+                return created is null ? (IActionResult)NotFound() : StatusCode(StatusCodes.Status201Created, created);
+            })
+            : Task.FromResult<IActionResult>(NotFound());
+
+    /// <summary>Removes a child from one of the parent relations (204, or 404 when it is not a child).</summary>
+    protected Task<IActionResult> RemoveRelationChildAsync(
+        IEntityRelationWriter writer, EntitySchema parentSchema, string parentId, string relationName, string childId, CancellationToken cancellationToken) =>
+        parentSchema.Relations.Any(r => r.Name.Equals(relationName, StringComparison.OrdinalIgnoreCase))
+            ? GuardedAsync(async () =>
+                await writer.RemoveAsync(parentSchema, parentId, relationName, childId, cancellationToken).ConfigureAwait(false) ? (IActionResult)NoContent() : NotFound())
+            : Task.FromResult<IActionResult>(NotFound());
+
     /// <summary>Builds the grid links for <paramref name="path"/> (for example <c>/api/users</c>); relative to the site root, query string included.</summary>
     public static EntityGridLinks BuildGridLinks(EntityGridModel grid, string path)
     {
