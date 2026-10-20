@@ -80,6 +80,34 @@ public abstract class EntityControllerBase<TEntity> : ApiControllerBase
                 await writer.RemoveAsync(parentSchema, parentId, relationName, childId, cancellationToken).ConfigureAwait(false) ? (IActionResult)NoContent() : NotFound())
             : Task.FromResult<IActionResult>(NotFound());
 
+    /// <summary>
+    /// Gives a form the lookup URL of each of its pointer fields (the choices for a select), so the client holds no URL
+    /// templates. When a field points at the schema of the form itself (a page parent), the entity being edited is excluded
+    /// from its own choices.
+    /// </summary>
+    public static EntityFormModel WithFieldLookups(EntityFormModel form, string? selfId = null, string lookupPath = "/api/lookups")
+    {
+        var lookups = form.Schema.Fields
+            .Where(field => field.RefSchema is not null)
+            .ToDictionary(
+                field => field.Name,
+                field => $"{lookupPath}?schema={Uri.EscapeDataString(field.RefSchema!)}"
+                    + (!string.IsNullOrEmpty(selfId) && field.RefSchema == form.Schema.SchemaIri ? $"&exclude={Uri.EscapeDataString(selfId)}" : string.Empty),
+                StringComparer.OrdinalIgnoreCase);
+        return lookups.Count == 0 ? form : form with { Lookups = lookups };
+    }
+
+    /// <summary>The empty form for creating one (404 when this entity type is not created from the form), with its lookup links.</summary>
+    protected async Task<ActionResult<EntityFormModel>> NewFormAsync(IEntityPresenter<TEntity> presenter, CancellationToken cancellationToken)
+    {
+        var form = await presenter.GetNewFormAsync(cancellationToken).ConfigureAwait(false);
+        return form is null ? NotFound() : Ok(WithFieldLookups(form));
+    }
+
+    /// <summary>Deletes one entity (tombstones it): 204, 404 when it does not exist, 409 for a business rule.</summary>
+    protected Task<IActionResult> DeleteEntityAsync(IEntityPresenter<TEntity> presenter, string id, CancellationToken cancellationToken) =>
+        GuardedAsync(async () => await presenter.DeleteAsync(id, cancellationToken).ConfigureAwait(false) ? (IActionResult)NoContent() : NotFound());
+
     /// <summary>Builds the grid links for <paramref name="path"/> (for example <c>/api/users</c>); relative to the site root, query string included.</summary>
     public static EntityGridLinks BuildGridLinks(EntityGridModel grid, string path)
     {

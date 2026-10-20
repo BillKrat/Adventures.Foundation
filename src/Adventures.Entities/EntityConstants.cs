@@ -27,6 +27,9 @@ public static class EntityConstants
         public const string FieldListVisiblePredicate = BaseIri + "listVisible";
         public const string FieldRequiredPredicate = BaseIri + "required";
 
+        /// <summary>Optional: the value a new entity form starts with (as text).</summary>
+        public const string FieldDefaultPredicate = BaseIri + "default";
+
         // A child collection a schema declares (see EntityRelationDefinition): the schema points at a relation node, which names the
         // collection, the child schema, the linking predicate and the direction (forward or reverse).
         public const string RelationPredicate = BaseIri + "relation";
@@ -146,6 +149,35 @@ public static class EntityConstants
         public const string OrganizationRoleSchemaIri = SchemaBase + "OrganizationRoleAssignment";
         public const string OrganizationRoleBaseIri = IdBase + "organization-role/";
         public const string OrganizationRoleTypeIri = OntologyBase + "OrganizationRoleAssignment";
+    }
+
+    /// <summary>
+    /// The content model (pages, posts, categories, tags), new entities under the schema host convention; shipped by
+    /// <c>Sql/seed/seed-006-content.nq</c> and modelled on what the BlogEngine admin edits (see the review in ai-research-blog docs).
+    /// </summary>
+    public static class Content
+    {
+        public const string SeedName = "006-content";
+        public const string DefaultGraph = "https://global-webnet.com/graph/content";
+        public const string SchemaBase = "https://schema.global-webnet.com/content/";
+        public const string IdBase = "https://global-webnet.com/id/";
+        public const string OntologyBase = "https://global-webnet.com/ontology/content#";
+
+        public const string PageSchemaIri = SchemaBase + "Page";
+        public const string PageBaseIri = IdBase + "page/";
+        public const string PageTypeIri = OntologyBase + "Page";
+
+        public const string PostSchemaIri = SchemaBase + "Post";
+        public const string PostBaseIri = IdBase + "post/";
+        public const string PostTypeIri = OntologyBase + "Post";
+
+        public const string CategorySchemaIri = SchemaBase + "Category";
+        public const string CategoryBaseIri = IdBase + "category/";
+        public const string CategoryTypeIri = OntologyBase + "Category";
+
+        public const string TagSchemaIri = SchemaBase + "Tag";
+        public const string TagBaseIri = IdBase + "tag/";
+        public const string TagTypeIri = OntologyBase + "Tag";
     }
 
     /// <summary>

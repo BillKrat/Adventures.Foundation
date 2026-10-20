@@ -18,6 +18,9 @@ public interface IEntityPresenter<TEntity> : IPresenter
 {
     Task<EntityFormModel?> GetFormAsync(string id, CancellationToken cancellationToken = default);
 
+    /// <summary>An empty form for creating one (schema defaults, no id), or null when this entity type cannot be created from the form.</summary>
+    Task<EntityFormModel?> GetNewFormAsync(CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<EntityDataModel>> ListAsync(CancellationToken cancellationToken = default);
 
     /// <summary>The same entities as <see cref="ListAsync"/> with their schema, ready for a grid to render.</summary>

@@ -43,7 +43,8 @@ public static class SchemaDal
                 Label: ReadOptional(fieldQuads, EntityConstants.Schema.FieldLabelPredicate),
                 IsReadOnly: ReadFlag(fieldQuads, EntityConstants.Schema.FieldReadOnlyPredicate, false),
                 Order: int.TryParse(ReadOptional(fieldQuads, EntityConstants.Schema.FieldOrderPredicate), out var order) ? order : null,
-                IsListVisible: ReadFlag(fieldQuads, EntityConstants.Schema.FieldListVisiblePredicate, true)));
+                IsListVisible: ReadFlag(fieldQuads, EntityConstants.Schema.FieldListVisiblePredicate, true),
+                DefaultValue: ReadOptional(fieldQuads, EntityConstants.Schema.FieldDefaultPredicate)));
         }
 
         var relations = new List<EntityRelationDefinition>();

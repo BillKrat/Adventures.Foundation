@@ -120,8 +120,23 @@ public sealed record EntityFormModel(
     EntityDataModel Entity,
     EntityPermissions? Permissions = null,
     int ContractVersion = EntityContract.Version,
-    IReadOnlyList<EntityRelationModel>? Relations = null)
+    IReadOnlyList<EntityRelationModel>? Relations = null,
+    IReadOnlyDictionary<string, string>? Lookups = null)
 {
+    /// <summary>An empty form for creating an entity: every field with its schema default (or nothing), no id yet.</summary>
+    public static EntityFormModel Blank(EntitySchema schema, EntityPermissions? permissions = null, IReadOnlySet<string>? readOnlyFields = null)
+    {
+        ArgumentNullException.ThrowIfNull(schema);
+        var values = schema.Fields.Values
+            .Where(field => !field.Name.Equals(DynamicEntity.EntityIdPropertyName, StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(field => field.Name, field => field.DefaultValue, StringComparer.OrdinalIgnoreCase);
+        return new EntityFormModel(
+            EntitySchemaModel.From(schema, readOnlyFields),
+            new EntityDataModel(string.Empty, values),
+            permissions ?? EntityPermissions.Full);
+    }
+
+
     public static EntityFormModel From(
         EntitySchema schema, DynamicEntity entity, EntityPermissions? permissions = null, IReadOnlySet<string>? readOnlyFields = null)
     {

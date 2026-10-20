@@ -66,7 +66,10 @@ public sealed class NQuadRelationProvider(INQuadStore store, IEnumerable<EntityT
         return result;
     }
 
-    public async Task<IReadOnlyList<RelationOption>> GetOptionsAsync(string schemaIri, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<EntityDataModel>> ResolveDisplayAsync(EntitySchema schema, IReadOnlyList<EntityDataModel> rows, CancellationToken cancellationToken = default) =>
+        AddDisplayAsync(schema, rows, cancellationToken);
+
+    public async Task<IReadOnlyList<RelationOption>> GetOptionsAsync(string schemaIri, string? excludeId = null, CancellationToken cancellationToken = default)
     {
         if (!_bySchema.ContainsKey(schemaIri))
         {
@@ -74,6 +77,7 @@ public sealed class NQuadRelationProvider(INQuadStore store, IEnumerable<EntityT
         }
 
         return (await LoadNamesAsync(schemaIri, depth: 2, cancellationToken).ConfigureAwait(false))
+            .Where(pair => excludeId is null || !string.Equals(pair.Key, excludeId, StringComparison.Ordinal))
             .Select(pair => new RelationOption(pair.Key, pair.Value))
             .OrderBy(option => option.Text, StringComparer.OrdinalIgnoreCase)
             .ToList();

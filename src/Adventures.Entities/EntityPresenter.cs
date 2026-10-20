@@ -44,7 +44,14 @@ public class EntityPresenter<TEntity>(
     /// <summary>Adds the child collections the schema declares (when this presenter has a provider and the schema declares any).</summary>
     protected async Task<EntityFormModel> WithRelationsAsync(EntityFormModel form, bool editable, CancellationToken cancellationToken)
     {
-        if (relations is null || Schema.Relations.Count == 0)
+        if (relations is null)
+        {
+            return form;
+        }
+
+        var shown = (await relations.ResolveDisplayAsync(Schema, [form.Entity], cancellationToken).ConfigureAwait(false))[0];
+        form = form with { Entity = shown };
+        if (Schema.Relations.Count == 0)
         {
             return form;
         }
@@ -52,6 +59,9 @@ public class EntityPresenter<TEntity>(
         var models = await relations.GetRelationsAsync(Schema, form.Entity.EntityId, editable, cancellationToken).ConfigureAwait(false);
         return form with { Relations = models };
     }
+
+    public virtual Task<EntityFormModel?> GetNewFormAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(CanCreate ? EntityFormModel.Blank(Schema, EntityPermissions.Full, ReadOnlyFields) : null);
 
     public async Task<IReadOnlyList<EntityDataModel>> ListAsync(CancellationToken cancellationToken = default)
     {
@@ -65,6 +75,11 @@ public class EntityPresenter<TEntity>(
         var all = await Bll.ListAsync(cancellationToken).ConfigureAwait(false);
         var (page, paging) = EntityGridPager.Apply(Schema, all, query);
         var grid = EntityGridModel.From(Schema, page, ReadOnlyFields, ListHiddenFields);
+        if (relations is not null)
+        {
+            grid = grid with { Rows = await relations.ResolveDisplayAsync(Schema, grid.Rows, cancellationToken).ConfigureAwait(false) };
+        }
+
         return grid with { Paging = paging, CanCreate = CanCreate, RowPermissions = RowPermissions };
     }
 

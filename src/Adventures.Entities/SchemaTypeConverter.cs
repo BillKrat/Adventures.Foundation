@@ -34,6 +34,9 @@ public sealed class SchemaTypeConverter
             { "datetimeoffset", typeof(DateTimeOffset) },
             { "date", typeof(DateOnly) },
             { "guid", typeof(Guid) },
+            { "markdown", typeof(string) },
+            { "html", typeof(string) },
+            { "text", typeof(string) },
         };
 
         if (additionalTypes is not null)

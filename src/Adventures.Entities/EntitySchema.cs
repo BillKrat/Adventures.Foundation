@@ -11,7 +11,8 @@ public sealed record EntitySchemaField(
     string? Label = null,
     bool IsReadOnly = false,
     int? Order = null,
-    bool IsListVisible = true);
+    bool IsListVisible = true,
+    string? DefaultValue = null);
 
 /// <summary>
 /// Describes the fields of a dynamic entity type (e.g. "User"): their names, declared

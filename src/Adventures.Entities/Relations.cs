@@ -25,7 +25,10 @@ public interface IEntityRelationProvider
         EntitySchema parentSchema, string parentEntityId, bool editable = false, CancellationToken cancellationToken = default);
 
     /// <summary>Every entity of a schema as id and display text, for a lookup. Empty for a schema the host has not registered.</summary>
-    Task<IReadOnlyList<RelationOption>> GetOptionsAsync(string schemaIri, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<RelationOption>> GetOptionsAsync(string schemaIri, string? excludeId = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Adds display text beside the raw ids of the pointer fields in <paramref name="rows"/> (a page parent is shown by its title), for any grid or form.</summary>
+    Task<IReadOnlyList<EntityDataModel>> ResolveDisplayAsync(EntitySchema schema, IReadOnlyList<EntityDataModel> rows, CancellationToken cancellationToken = default);
 }
 
 /// <summary>What is about to change in a relation, handed to the <see cref="IRelationChangeGuard"/>s before it does.</summary>
