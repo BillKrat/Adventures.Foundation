@@ -14,16 +14,16 @@ public sealed class TriageTests
 
         public int DatabaseCalls { get; private set; }
 
-        public Task<(bool Ok, long DurationMs, string Detail)> ProbeMcpAsync(CancellationToken cancellationToken)
+        public Task<ProbeResult> ProbeMcpAsync(CancellationToken cancellationToken)
         {
             McpCalls++;
-            return Task.FromResult((mcpOk, 18L, mcpOk ? "ok" : "exception_HttpRequestException"));
+            return Task.FromResult<ProbeResult>((mcpOk, 18L, mcpOk ? "ok" : "exception_HttpRequestException"));
         }
 
-        public Task<(bool Ok, long DurationMs, string Detail)> ProbeDatabaseAsync(CancellationToken cancellationToken)
+        public Task<ProbeResult> ProbeDatabaseAsync(CancellationToken cancellationToken)
         {
             DatabaseCalls++;
-            return Task.FromResult((dbOk, 3L, dbOk ? "ok" : "timeout"));
+            return Task.FromResult<ProbeResult>((dbOk, 3L, dbOk ? "ok" : "timeout"));
         }
     }
 
@@ -74,9 +74,9 @@ public sealed class TriageTests
 
     private sealed class Http401Probes : IDependencyProbes
     {
-        public Task<(bool Ok, long DurationMs, string Detail)> ProbeMcpAsync(CancellationToken cancellationToken) => Task.FromResult((false, 20L, "http_401"));
+        public Task<ProbeResult> ProbeMcpAsync(CancellationToken cancellationToken) => Task.FromResult<ProbeResult>((false, 20L, "http_401"));
 
-        public Task<(bool Ok, long DurationMs, string Detail)> ProbeDatabaseAsync(CancellationToken cancellationToken) => Task.FromResult((true, 1L, "ok"));
+        public Task<ProbeResult> ProbeDatabaseAsync(CancellationToken cancellationToken) => Task.FromResult<ProbeResult>((true, 1L, "ok"));
     }
 
     [Fact]

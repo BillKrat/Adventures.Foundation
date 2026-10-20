@@ -18,14 +18,6 @@ public sealed record TriageResult(
     IReadOnlyList<string> NextSteps,
     string HandOffCommand);
 
-/// <summary>Live checks the triage may run to see whether a recorded failure is still happening.</summary>
-public interface IDependencyProbes
-{
-    Task<(bool Ok, long DurationMs, string Detail)> ProbeMcpAsync(CancellationToken cancellationToken);
-
-    Task<(bool Ok, long DurationMs, string Detail)> ProbeDatabaseAsync(CancellationToken cancellationToken);
-}
-
 /// <summary>
 /// Rule-based triage of one request, by CorrelationId. It is deliberately small: each kind of exception we meet earns a
 /// rule (what it usually means, a live check that tells "still happening" from "already recovered", what to do). An
