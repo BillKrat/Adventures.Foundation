@@ -107,9 +107,12 @@ public sealed class NQuadRelationProvider(INQuadStore store, IEnumerable<EntityT
             var display = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var (field, target) in refFields)
             {
-                if (row.Values.TryGetValue(field.Name, out var id) && id is not null && names[target!].TryGetValue(id, out var text))
+                if (row.Values.TryGetValue(field.Name, out var raw) && !string.IsNullOrEmpty(raw))
                 {
-                    display[field.Name] = text;
+                    // one id, or a comma-separated list for a refs: field; unknown ids show as themselves
+                    var shown = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(id => names[target!].TryGetValue(id, out var text) ? text : id);
+                    display[field.Name] = string.Join(", ", shown);
                 }
             }
 

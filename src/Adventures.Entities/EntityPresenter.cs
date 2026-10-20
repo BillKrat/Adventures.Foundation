@@ -23,6 +23,9 @@ public class EntityPresenter<TEntity>(
     /// <summary>Field names this presenter makes read-only on top of what the schema declares (for example a login name that must not change). The server refuses a change to them on update; the client only renders them as read-only.</summary>
     protected virtual IReadOnlySet<string> ReadOnlyFields { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Fields only the server sets, through its own actions (a post publish state): a client may not send a different value on create or update, so the generic form cannot do what an action is guarded for.</summary>
+    protected virtual IReadOnlySet<string> ServerManagedFields { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>What the caller may do with this entity (for rendering buttons; the Bll and the controller still enforce). Full by default.</summary>
     protected virtual EntityPermissions PermissionsFor(TEntity entity) => EntityPermissions.Full;
 
@@ -90,6 +93,8 @@ public class EntityPresenter<TEntity>(
     {
         ArgumentNullException.ThrowIfNull(data);
         EntityInputValidator.ThrowIfInvalid(Schema, data, isCreate: true);
+        RejectServerManaged(data, isCreate: true);
+        await ValidatePointersAsync(data, cancellationToken).ConfigureAwait(false);
 
         var newId = Guid.NewGuid().ToString();
         var entity = ApplyValues(EntityFactory(Schema), data, newId);
@@ -101,6 +106,8 @@ public class EntityPresenter<TEntity>(
     {
         ArgumentNullException.ThrowIfNull(data);
         EntityInputValidator.ThrowIfInvalid(Schema, data, isCreate: false);
+        RejectServerManaged(data, isCreate: false);
+        await ValidatePointersAsync(data, cancellationToken).ConfigureAwait(false);
 
         var existing = await Bll.GetAsync(id, cancellationToken).ConfigureAwait(false);
         if (existing is null)
@@ -133,6 +140,30 @@ public class EntityPresenter<TEntity>(
     /// </list>
     /// </summary>
     /// <summary>A read-only field (declared by the schema or by <see cref="ReadOnlyFields"/>) may be sent back unchanged but not changed: the flag is for rendering, this is the enforcement.</summary>
+    private void RejectServerManaged(EntityDataModel data, bool isCreate)
+    {
+        var errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in ServerManagedFields)
+        {
+            if (!data.Values.TryGetValue(name, out var value) || string.IsNullOrEmpty(value))
+            {
+                continue;
+            }
+
+            var field = Schema.Fields.GetValueOrDefault(name);
+            var isDefault = isCreate && field is not null && string.Equals(value, field.DefaultValue, StringComparison.OrdinalIgnoreCase);
+            if (!isDefault && isCreate)
+            {
+                errors[name] = [$"{EntityFieldSchema.Humanize(name)} is set by the server, not by this form."];
+            }
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new Adventures.Common.Exceptions.InputValidationException(errors);
+        }
+    }
+
     private void RejectReadOnlyChanges(TEntity existing, EntityDataModel data)
     {
         var errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
@@ -168,8 +199,14 @@ public class EntityPresenter<TEntity>(
 
         foreach (var (name, value) in data.Values)
         {
-            if (name.Equals(DynamicEntity.EntityIdPropertyName, StringComparison.OrdinalIgnoreCase) || value is null)
+            if (name.Equals(DynamicEntity.EntityIdPropertyName, StringComparison.OrdinalIgnoreCase) || value is null || ServerManagedFields.Contains(name))
             {
+                continue;
+            }
+
+            if (Schema.Fields.TryGetValue(name, out var manyField) && EntityFormModel.IsMulti(manyField.Type))
+            {
+                ApplyMany(entity, name, value);
                 continue;
             }
 
@@ -192,6 +229,54 @@ public class EntityPresenter<TEntity>(
         }
 
         return entity;
+    }
+
+    /// <summary>Sets a multi-valued pointer field from a comma-separated list of ids: nothing changes when the same set is sent back, otherwise the field is replaced.</summary>
+    private static void ApplyMany(TEntity entity, string name, string value)
+    {
+        var ids = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.Ordinal).ToList();
+        var current = entity.GetValues(name).Select(SchemaTypeConverter.Format).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        if (current.SetEquals(ids))
+        {
+            return;
+        }
+
+        entity.Clear(name);
+        foreach (var id in ids)
+        {
+            entity.Add(name, Guid.NewGuid().ToString(), id);
+        }
+    }
+
+    /// <summary>Every pointer value sent must name an entity that exists (a parent page, an author, categories); the field gets the error otherwise.</summary>
+    private async Task ValidatePointersAsync(EntityDataModel data, CancellationToken cancellationToken)
+    {
+        if (relations is null)
+        {
+            return;
+        }
+
+        var errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+        foreach (var field in Schema.Fields.Values)
+        {
+            var target = EntityFieldSchema.RefSchemaOf(field.Type);
+            if (target is null || !data.Values.TryGetValue(field.Name, out var raw) || string.IsNullOrWhiteSpace(raw))
+            {
+                continue;
+            }
+
+            var known = (await relations.GetOptionsAsync(target, null, cancellationToken).ConfigureAwait(false)).Select(o => o.Id).ToHashSet(StringComparer.Ordinal);
+            var missing = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Where(id => !known.Contains(id)).ToList();
+            if (missing.Count > 0 && known.Count > 0)
+            {
+                errors[field.Name] = [$"{EntityFieldSchema.Humanize(field.Name)} refers to something that does not exist."];
+            }
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new Adventures.Common.Exceptions.InputValidationException(errors);
+        }
     }
 
     private bool IsUnchanged(TEntity entity, string name, string raw)

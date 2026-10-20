@@ -26,6 +26,7 @@
     <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-004-identity.nq" Link="Sql\seed\seed-004-identity.nq" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-005-identity-required.nq" Link="Sql\seed\seed-005-identity-required.nq" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-006-content.nq" Link="Sql\seed\seed-006-content.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-007-post-taxonomy.nq" Link="Sql\seed\seed-007-post-taxonomy.nq" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

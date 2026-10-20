@@ -121,8 +121,12 @@ public sealed record EntityFormModel(
     EntityPermissions? Permissions = null,
     int ContractVersion = EntityContract.Version,
     IReadOnlyList<EntityRelationModel>? Relations = null,
-    IReadOnlyDictionary<string, string>? Lookups = null)
+    IReadOnlyDictionary<string, string>? Lookups = null,
+    IReadOnlyList<EntityAction>? Actions = null)
 {
+    /// <summary>A <c>refs:</c> field holds several entity ids; on the wire they travel as one comma-separated string (ids never contain commas).</summary>
+    public static bool IsMulti(string type) => type.StartsWith(EntityConstants.Schema.RefsTypePrefix, StringComparison.OrdinalIgnoreCase);
+
     /// <summary>An empty form for creating an entity: every field with its schema default (or nothing), no id yet.</summary>
     public static EntityFormModel Blank(EntitySchema schema, EntityPermissions? permissions = null, IReadOnlySet<string>? readOnlyFields = null)
     {
@@ -145,7 +149,9 @@ public sealed record EntityFormModel(
 
         var values = schema.Fields.Values.ToDictionary(
             field => field.Name,
-            field => SchemaTypeConverter.Format(entity.GetValue(field.Name)),
+            field => IsMulti(field.Type)
+                ? (entity.GetValues(field.Name) is { Count: > 0 } many ? string.Join(',', many.Select(SchemaTypeConverter.Format)) : null)
+                : SchemaTypeConverter.Format(entity.GetValue(field.Name)),
             StringComparer.OrdinalIgnoreCase);
 
         var entityId = entity.EntityId?.Value ?? throw new InvalidOperationException("Entity has no id.");
@@ -156,3 +162,10 @@ public sealed record EntityFormModel(
             permissions ?? EntityPermissions.Full);
     }
 }
+
+/// <summary>
+/// A named action the server offers on one entity beyond save and delete (publish, unpublish): its label, the URL to POST,
+/// and an optional confirmation text. The server decides which actions exist for this entity in its current state and
+/// enforces who may run them; the client only draws a button per action and follows the link.
+/// </summary>
+public sealed record EntityAction(string Name, string Label, string Link, string? Confirm = null);
