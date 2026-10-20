@@ -1,0 +1,205 @@
+using Adventures.Common.Exceptions;
+
+namespace Adventures.Entities;
+
+/// <summary>What an author (a person at the keyboard or an AI over MCP) supplies for a post: Markdown content, category and tag names (created when missing).</summary>
+public sealed record DraftPost(
+    string Title,
+    string? Content = null,
+    string? Description = null,
+    string? Slug = null,
+    IReadOnlyList<string>? Categories = null,
+    IReadOnlyList<string>? Tags = null,
+    bool? EnableComments = null);
+
+/// <summary>One post as the authoring surface reports it.</summary>
+public sealed record DraftSummary(
+    string Id, string Title, string Slug, bool IsPublished, string? DatePublished, IReadOnlyList<string> Categories, IReadOnlyList<string> Tags);
+
+/// <summary>A category or tag as the authoring surface reports it.</summary>
+public sealed record TaxonomyTerm(string Id, string Name);
+
+/// <summary>
+/// The drafts-only way to write content: create a post as a draft under a fixed author, revise it while it is still a draft, list
+/// the author own posts, and file them under categories and tags that are created by name when they do not exist. There is
+/// deliberately no way here to publish, to change a published post, or to touch another author post: those stay administrator
+/// actions in the admin. The host decides who may call it (a scope-protected controller, an MCP tool); this holds the rules.
+/// </summary>
+public interface IContentAuthoring
+{
+    Task<DraftSummary> CreateDraftAsync(string authorUserName, DraftPost draft, CancellationToken cancellationToken = default);
+
+    /// <summary>Revises a draft the author owns; null when no such post. Throws <see cref="BusinessRuleException"/> for a published post or someone else post.</summary>
+    Task<DraftSummary?> UpdateDraftAsync(string authorUserName, string postId, DraftPost draft, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<DraftSummary>> ListMineAsync(string authorUserName, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TaxonomyTerm>> ListCategoriesAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TaxonomyTerm>> ListTagsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>The existing category with this name (any case) or a new one.</summary>
+    Task<TaxonomyTerm> EnsureCategoryAsync(string name, CancellationToken cancellationToken = default);
+
+    Task<TaxonomyTerm> EnsureTagAsync(string name, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Implementation of <see cref="IContentAuthoring"/> over the ordinary presenters, so every rule of the admin editors (draft by default, slug, pointers must exist) applies here too.</summary>
+public sealed class ContentAuthoring(
+    IEntityPresenter<Post> posts,
+    IEntityPresenter<Category> categories,
+    IEntityPresenter<Tag> tags,
+    IUserPresenter users) : IContentAuthoring
+{
+    public async Task<DraftSummary> CreateDraftAsync(string authorUserName, DraftPost draft, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(draft);
+        var authorId = await AuthorIdAsync(authorUserName, cancellationToken).ConfigureAwait(false);
+        var values = await ValuesAsync(draft, cancellationToken).ConfigureAwait(false);
+        values["Author"] = authorId;
+        var created = await posts.CreateAsync(new EntityDataModel(string.Empty, values), cancellationToken).ConfigureAwait(false);
+        return Summarise(created.Entity, created.Schema);
+    }
+
+    public async Task<DraftSummary?> UpdateDraftAsync(string authorUserName, string postId, DraftPost draft, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(draft);
+        var authorId = await AuthorIdAsync(authorUserName, cancellationToken).ConfigureAwait(false);
+        var existing = await posts.GetFormAsync(postId, cancellationToken).ConfigureAwait(false);
+        if (existing is null)
+        {
+            return null;
+        }
+
+        if (!string.Equals(existing.Entity.Values.GetValueOrDefault("Author"), authorId, StringComparison.Ordinal))
+        {
+            throw new BusinessRuleException("This post was written by someone else; it cannot be changed here.");
+        }
+
+        if (string.Equals(existing.Entity.Values.GetValueOrDefault("IsPublished"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new BusinessRuleException("This post is published. Published posts are changed in the admin; write a new draft instead.");
+        }
+
+        var values = await ValuesAsync(draft, cancellationToken).ConfigureAwait(false);
+        var updated = await posts.UpdateAsync(postId, new EntityDataModel(postId, values), cancellationToken).ConfigureAwait(false);
+        return updated is null ? null : Summarise(updated.Entity, updated.Schema);
+    }
+
+    public async Task<IReadOnlyList<DraftSummary>> ListMineAsync(string authorUserName, CancellationToken cancellationToken = default)
+    {
+        var authorId = await AuthorIdAsync(authorUserName, cancellationToken).ConfigureAwait(false);
+        var all = await posts.GetGridAsync(new EntityGridQuery(PageSize: EntityGridQuery.MaxPageSize, Sort: "DatePublished", Descending: true), cancellationToken).ConfigureAwait(false);
+        return all.Rows
+            .Where(row => string.Equals(row.Values.GetValueOrDefault("Author"), authorId, StringComparison.Ordinal))
+            .Select(row => Summarise(row, all.Schema))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<TaxonomyTerm>> ListCategoriesAsync(CancellationToken cancellationToken = default) =>
+        await TermsAsync(categories, cancellationToken).ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<TaxonomyTerm>> ListTagsAsync(CancellationToken cancellationToken = default) =>
+        await TermsAsync(tags, cancellationToken).ConfigureAwait(false);
+
+    public Task<TaxonomyTerm> EnsureCategoryAsync(string name, CancellationToken cancellationToken = default) =>
+        EnsureAsync(categories, name, cancellationToken);
+
+    public Task<TaxonomyTerm> EnsureTagAsync(string name, CancellationToken cancellationToken = default) =>
+        EnsureAsync(tags, name, cancellationToken);
+
+    private async Task<string> AuthorIdAsync(string authorUserName, CancellationToken cancellationToken)
+    {
+        var form = await users.GetFormByUserNameAsync(authorUserName, cancellationToken).ConfigureAwait(false);
+        return form?.Entity.EntityId ?? throw new BusinessRuleException($"The author account '{authorUserName}' does not exist.");
+    }
+
+    private async Task<Dictionary<string, string?>> ValuesAsync(DraftPost draft, CancellationToken cancellationToken)
+    {
+        var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase) { ["Title"] = draft.Title };
+        if (draft.Content is not null)
+        {
+            values["Content"] = draft.Content;
+        }
+
+        if (draft.Description is not null)
+        {
+            values["Description"] = draft.Description;
+        }
+
+        if (draft.Slug is not null)
+        {
+            values["Slug"] = draft.Slug;
+        }
+
+        if (draft.EnableComments is { } comments)
+        {
+            values["EnableComments"] = comments ? "true" : "false";
+        }
+
+        if (draft.Categories is not null)
+        {
+            var ids = new List<string>();
+            foreach (var name in draft.Categories.Where(n => !string.IsNullOrWhiteSpace(n)))
+            {
+                ids.Add((await EnsureAsync(categories, name, cancellationToken).ConfigureAwait(false)).Id);
+            }
+
+            values["Categories"] = string.Join(',', ids.Distinct(StringComparer.Ordinal));
+        }
+
+        if (draft.Tags is not null)
+        {
+            var ids = new List<string>();
+            foreach (var name in draft.Tags.Where(n => !string.IsNullOrWhiteSpace(n)))
+            {
+                ids.Add((await EnsureAsync(tags, name, cancellationToken).ConfigureAwait(false)).Id);
+            }
+
+            values["Tags"] = string.Join(',', ids.Distinct(StringComparer.Ordinal));
+        }
+
+        return values;
+    }
+
+    private static async Task<IReadOnlyList<TaxonomyTerm>> TermsAsync<T>(IEntityPresenter<T> presenter, CancellationToken cancellationToken)
+        where T : DynamicEntity =>
+        (await presenter.ListAsync(cancellationToken).ConfigureAwait(false))
+            .Select(entity => new TaxonomyTerm(entity.EntityId, entity.Values.GetValueOrDefault("Name") ?? string.Empty))
+            .OrderBy(term => term.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static async Task<TaxonomyTerm> EnsureAsync<T>(IEntityPresenter<T> presenter, string name, CancellationToken cancellationToken)
+        where T : DynamicEntity
+    {
+        var trimmed = name.Trim();
+        var existing = (await TermsAsync(presenter, cancellationToken).ConfigureAwait(false))
+            .FirstOrDefault(term => string.Equals(term.Name, trimmed, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        var created = await presenter.CreateAsync(
+            new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["Name"] = trimmed }), cancellationToken).ConfigureAwait(false);
+        return new TaxonomyTerm(created.Entity.EntityId, trimmed);
+    }
+
+    private static DraftSummary Summarise(EntityDataModel row, EntitySchemaModel schema)
+    {
+        _ = schema;
+        return new DraftSummary(
+            row.EntityId,
+            row.Values.GetValueOrDefault("Title") ?? string.Empty,
+            row.Values.GetValueOrDefault("Slug") ?? string.Empty,
+            string.Equals(row.Values.GetValueOrDefault("IsPublished"), "true", StringComparison.OrdinalIgnoreCase),
+            row.Values.GetValueOrDefault("DatePublished"),
+            Names(row, "Categories"),
+            Names(row, "Tags"));
+    }
+
+    private static IReadOnlyList<string> Names(EntityDataModel row, string field) =>
+        row.Display?.GetValueOrDefault(field) is { Length: > 0 } text
+            ? text.Split(", ", StringSplitOptions.RemoveEmptyEntries)
+            : [];
+}

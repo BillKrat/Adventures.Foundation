@@ -99,7 +99,7 @@ public class EntityPresenter<TEntity>(
         var newId = Guid.NewGuid().ToString();
         var entity = ApplyValues(EntityFactory(Schema), data, newId);
         var created = await Bll.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
-        return EntityFormModel.From(Schema, created, PermissionsFor(created), ReadOnlyFields);
+        return await WithRelationsAsync(EntityFormModel.From(Schema, created, PermissionsFor(created), ReadOnlyFields), PermissionsFor(created).CanUpdate, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<EntityFormModel?> UpdateAsync(string id, EntityDataModel data, CancellationToken cancellationToken = default)
@@ -118,7 +118,7 @@ public class EntityPresenter<TEntity>(
         RejectReadOnlyChanges(existing, data);
         ApplyValues(existing, data, entityId: null);
         await Bll.UpdateAsync(existing, cancellationToken).ConfigureAwait(false);
-        return EntityFormModel.From(Schema, existing, PermissionsFor(existing), ReadOnlyFields);
+        return await WithRelationsAsync(EntityFormModel.From(Schema, existing, PermissionsFor(existing), ReadOnlyFields), PermissionsFor(existing).CanUpdate, cancellationToken).ConfigureAwait(false);
     }
 
     public Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default) =>
