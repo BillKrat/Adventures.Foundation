@@ -280,7 +280,7 @@ public sealed class UserPresenterTests : IAsyncLifetime
         Assert.Equal(new GridPaging(1, 3, 7, "UserName", false), first.Paging);
         Assert.Equal(3, first.Paging!.TotalPages);
         Assert.Equal(["Echo"], last.Rows.Select(r => r.Values["UserName"]));
-        Assert.True(first.CanCreate);
+        Assert.False(first.CanCreate); // creating a user needs a credential the form does not collect yet
         Assert.Equal(EntityPermissions.Full, first.RowPermissions);
     }
 

@@ -9,6 +9,9 @@ public sealed class UserPresenter(IUserBll userBll, EntitySchemaOf<User> userSch
     /// <summary>The login name is the identity the token and the profile lookup rely on, so it is shown but never changed through the form.</summary>
     protected override IReadOnlySet<string> ReadOnlyFields { get; } = new HashSet<string>(["UserName"], StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Creating a user needs a credential, which the form does not collect yet, so the grid offers no New for users.</summary>
+    protected override bool CanCreate => false;
+
     public async Task<EntityFormModel?> GetFormByUserNameAsync(string userName, CancellationToken cancellationToken = default)
     {
         var user = await _userBll.FindByUserNameAsync(userName, cancellationToken).ConfigureAwait(false);
