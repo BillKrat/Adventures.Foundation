@@ -21,7 +21,12 @@ public sealed record GridPaging(int Page, int PageSize, int TotalCount, string? 
 /// Server-supplied URLs for a grid (relative to the API root), so the client follows links and holds no URL templates.
 /// Filled by the host (it knows the routes), not by the presenter. A link that does not apply is null.
 /// </summary>
-public sealed record EntityGridLinks(string? Self, string? Create = null, string? Next = null, string? Previous = null);
+public sealed record EntityGridLinks(
+    string? Self,
+    string? Create = null,
+    string? Next = null,
+    string? Previous = null,
+    IReadOnlyDictionary<string, string>? Rows = null);
 
 /// <summary>
 /// A list of entities for a grid: the columns (the schema, each field with its label, type and whether it is a default

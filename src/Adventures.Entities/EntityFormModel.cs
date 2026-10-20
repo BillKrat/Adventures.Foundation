@@ -19,7 +19,8 @@ public sealed record EntityFieldSchema(
     string? Label = null,
     bool IsReadOnly = false,
     int Order = 0,
-    bool IsListVisible = true)
+    bool IsListVisible = true,
+    string? RefSchema = null)
 {
     /// <summary>Builds the field the client sees from a schema field; <paramref name="position"/> is its place in the schema when no order is declared.</summary>
     public static EntityFieldSchema From(EntitySchemaField field, int position, bool forceReadOnly = false, bool hideFromList = false)
@@ -32,8 +33,15 @@ public sealed record EntityFieldSchema(
             string.IsNullOrWhiteSpace(field.Label) ? Humanize(field.Name) : field.Label,
             forceReadOnly || field.IsReadOnly || field.Name.Equals(DynamicEntity.EntityIdPropertyName, StringComparison.OrdinalIgnoreCase),
             field.Order ?? position,
-            field.IsListVisible && !hideFromList);
+            field.IsListVisible && !hideFromList,
+            RefSchemaOf(field.Type));
     }
+
+    /// <summary>The schema a <c>ref:</c> or <c>refs:</c> field points at (so a client can offer a lookup), or null for an ordinary field.</summary>
+    public static string? RefSchemaOf(string type) =>
+        type.StartsWith(EntityConstants.Schema.RefTypePrefix, StringComparison.OrdinalIgnoreCase) ? type[EntityConstants.Schema.RefTypePrefix.Length..]
+        : type.StartsWith(EntityConstants.Schema.RefsTypePrefix, StringComparison.OrdinalIgnoreCase) ? type[EntityConstants.Schema.RefsTypePrefix.Length..]
+        : null;
 
     /// <summary>"DisplayName" becomes "Display name"; "DOB" stays "DOB".</summary>
     public static string Humanize(string name)
@@ -76,8 +84,15 @@ public sealed record EntitySchemaModel(string SchemaIri, IReadOnlyList<EntityFie
     }
 }
 
-/// <summary>One entity's current values by field name - the "Entity" half of an <see cref="EntityFormModel"/>.</summary>
-public sealed record EntityDataModel(string EntityId, IReadOnlyDictionary<string, string?> Values);
+/// <summary>
+/// One entity current values by field name - the "Entity" half of an <see cref="EntityFormModel"/>. <see cref="Display"/> holds
+/// the text to show for a pointer field (a <c>ref:</c> value is another entity id; the display is that entity name), so a grid
+/// never shows a raw id. Absent when the entity has no pointer fields.
+/// </summary>
+public sealed record EntityDataModel(
+    string EntityId,
+    IReadOnlyDictionary<string, string?> Values,
+    IReadOnlyDictionary<string, string>? Display = null);
 
 /// <summary>
 /// What the caller may do with one entity, for the renderer to decide which buttons to show. The server still enforces
@@ -104,7 +119,8 @@ public sealed record EntityFormModel(
     EntitySchemaModel Schema,
     EntityDataModel Entity,
     EntityPermissions? Permissions = null,
-    int ContractVersion = EntityContract.Version)
+    int ContractVersion = EntityContract.Version,
+    IReadOnlyList<EntityRelationModel>? Relations = null)
 {
     public static EntityFormModel From(
         EntitySchema schema, DynamicEntity entity, EntityPermissions? permissions = null, IReadOnlySet<string>? readOnlyFields = null)

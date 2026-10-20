@@ -10,7 +10,8 @@ namespace Adventures.Entities;
 public class EntityPresenter<TEntity>(
     IEntityBll<TEntity> bll,
     EntitySchema schema,
-    Func<EntitySchema, TEntity> entityFactory) : IEntityPresenter<TEntity>
+    Func<EntitySchema, TEntity> entityFactory,
+    IEntityRelationProvider? relations = null) : IEntityPresenter<TEntity>
     where TEntity : DynamicEntity
 {
     protected IEntityBll<TEntity> Bll { get; } = bll ?? throw new ArgumentNullException(nameof(bll));
@@ -37,7 +38,19 @@ public class EntityPresenter<TEntity>(
     public async Task<EntityFormModel?> GetFormAsync(string id, CancellationToken cancellationToken = default)
     {
         var entity = await Bll.GetAsync(id, cancellationToken).ConfigureAwait(false);
-        return entity is null ? null : EntityFormModel.From(Schema, entity, PermissionsFor(entity), ReadOnlyFields);
+        return entity is null ? null : await WithRelationsAsync(EntityFormModel.From(Schema, entity, PermissionsFor(entity), ReadOnlyFields), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Adds the child collections the schema declares (when this presenter has a provider and the schema declares any).</summary>
+    protected async Task<EntityFormModel> WithRelationsAsync(EntityFormModel form, CancellationToken cancellationToken)
+    {
+        if (relations is null || Schema.Relations.Count == 0)
+        {
+            return form;
+        }
+
+        var models = await relations.GetRelationsAsync(Schema, form.Entity.EntityId, cancellationToken).ConfigureAwait(false);
+        return form with { Relations = models };
     }
 
     public async Task<IReadOnlyList<EntityDataModel>> ListAsync(CancellationToken cancellationToken = default)

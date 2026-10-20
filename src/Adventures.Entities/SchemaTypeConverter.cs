@@ -68,6 +68,10 @@ public sealed class SchemaTypeConverter
     /// this converter does not know is a contract violation, not something to guess past.
     /// </summary>
     public Type ResolveType(string typeName) =>
+        typeName.StartsWith(EntityConstants.Schema.RefTypePrefix, StringComparison.OrdinalIgnoreCase)
+        || typeName.StartsWith(EntityConstants.Schema.RefsTypePrefix, StringComparison.OrdinalIgnoreCase)
+            ? typeof(string) // a pointer to another entity is held as that entity id
+            :
         _typeMap.TryGetValue(typeName, out var type)
             ? type
             : throw new NotSupportedException($"No CLR type is registered for schema type name '{typeName}'.");

@@ -46,7 +46,23 @@ public static class SchemaDal
                 IsListVisible: ReadFlag(fieldQuads, EntityConstants.Schema.FieldListVisiblePredicate, true)));
         }
 
-        return EntitySchema.Create(schemaIri, fields);
+        var relations = new List<EntityRelationDefinition>();
+        foreach (var relationIri in schemaQuads
+                     .Where(q => q.Predicate == EntityConstants.Schema.RelationPredicate)
+                     .Select(q => q.Object)
+                     .Distinct(StringComparer.Ordinal))
+        {
+            var relationQuads = all.Where(q => q.Subject == relationIri).ToArray();
+            var name = ReadRequired(relationQuads, EntityConstants.Schema.RelationNamePredicate, relationIri);
+            relations.Add(new EntityRelationDefinition(
+                name,
+                ReadOptional(relationQuads, EntityConstants.Schema.RelationLabelPredicate) ?? EntityFieldSchema.Humanize(name),
+                ReadRequired(relationQuads, EntityConstants.Schema.RelationChildPredicate, relationIri),
+                ReadRequired(relationQuads, EntityConstants.Schema.RelationViaPredicate, relationIri),
+                string.Equals(ReadOptional(relationQuads, EntityConstants.Schema.RelationDirectionPredicate), "reverse", StringComparison.OrdinalIgnoreCase)));
+        }
+
+        return EntitySchema.Create(schemaIri, fields, relations, ReadOptional(schemaQuads, EntityConstants.Schema.DisplayFieldPredicate));
     }
 
     private static string ReadRequired(IEnumerable<NQuad> quads, string predicate, string fieldIri)

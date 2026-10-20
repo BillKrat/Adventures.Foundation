@@ -39,10 +39,11 @@ public abstract class EntityControllerBase<TEntity> : ApiControllerBase
     /// <summary>Builds the grid links for <paramref name="path"/> (for example <c>/api/users</c>); relative to the site root, query string included.</summary>
     public static EntityGridLinks BuildGridLinks(EntityGridModel grid, string path)
     {
+        var rowLinks = grid.Rows.ToDictionary(row => row.EntityId, row => $"{path.TrimEnd('/')}/{Uri.EscapeDataString(row.EntityId)}", StringComparer.Ordinal);
         var paging = grid.Paging;
         if (paging is null)
         {
-            return new EntityGridLinks(path, grid.CanCreate ? path : null);
+            return new EntityGridLinks(path, grid.CanCreate ? path : null, Rows: rowLinks);
         }
 
         string Page(int number) =>
@@ -53,7 +54,8 @@ public abstract class EntityControllerBase<TEntity> : ApiControllerBase
             Page(paging.Page),
             grid.CanCreate ? path : null,
             paging.Page < paging.TotalPages ? Page(paging.Page + 1) : null,
-            paging.Page > 1 ? Page(paging.Page - 1) : null);
+            paging.Page > 1 ? Page(paging.Page - 1) : null,
+            rowLinks);
     }
 
     protected async Task<ActionResult<IReadOnlyList<EntityDataModel>>> ListAsync(

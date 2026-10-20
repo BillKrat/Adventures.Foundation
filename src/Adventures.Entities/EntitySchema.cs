@@ -22,10 +22,12 @@ public sealed record EntitySchemaField(
 /// </summary>
 public sealed class EntitySchema
 {
-    private EntitySchema(string schemaIri, IReadOnlyDictionary<string, EntitySchemaField> fields)
+    private EntitySchema(string schemaIri, IReadOnlyDictionary<string, EntitySchemaField> fields, IReadOnlyList<EntityRelationDefinition> relations, string? displayField)
     {
         SchemaIri = schemaIri;
         Fields = fields;
+        Relations = relations;
+        DisplayField = displayField;
         FieldsByPredicate = fields.Values.ToDictionary(
             field => field.Predicate,
             field => field,
@@ -38,13 +40,19 @@ public sealed class EntitySchema
 
     public IReadOnlyDictionary<string, EntitySchemaField> FieldsByPredicate { get; }
 
+    /// <summary>The child collections this schema declares (empty for most entities).</summary>
+    public IReadOnlyList<EntityRelationDefinition> Relations { get; }
+
+    /// <summary>The field that names an entity of this schema, when the schema declares one.</summary>
+    public string? DisplayField { get; }
+
     /// <summary>
     /// Builds an <see cref="EntitySchema"/> from an already-parsed field list, enforcing the
     /// invariants every consumer (<see cref="DynamicEntity"/>, <c>NQuadEntityRepository{TEntity}</c>)
     /// relies on: at least one field, no two fields sharing a name, no two fields mapped to the same
     /// predicate. How the fields were discovered (N-Quads, SQL, ...) is not this type's concern.
     /// </summary>
-    public static EntitySchema Create(string schemaIri, IEnumerable<EntitySchemaField> fields)
+    public static EntitySchema Create(string schemaIri, IEnumerable<EntitySchemaField> fields, IEnumerable<EntityRelationDefinition>? relations = null, string? displayField = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(schemaIri);
         ArgumentNullException.ThrowIfNull(fields);
@@ -68,6 +76,6 @@ public sealed class EntitySchema
             throw new InvalidOperationException($"Schema '{schemaIri}' maps more than one field to the same predicate.");
         }
 
-        return new EntitySchema(schemaIri, byName);
+        return new EntitySchema(schemaIri, byName, relations?.ToArray() ?? [], displayField);
     }
 }

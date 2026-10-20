@@ -34,6 +34,7 @@ public static class NQuadEntityServiceCollectionExtensions
 
         // The typed schema holder is what presenters and Blls take; a bare EntitySchema could only ever mean one schema.
         services.AddSingleton(new EntitySchemaOf<TEntity>(schema));
+        services.AddSingleton(new EntityTypeRegistration(schema, baseIri, typeIri, graph));
 
         return services.AddScoped<IEntityRepository<TEntity>>(provider =>
         {

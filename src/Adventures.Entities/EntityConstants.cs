@@ -27,6 +27,22 @@ public static class EntityConstants
         public const string FieldListVisiblePredicate = BaseIri + "listVisible";
         public const string FieldRequiredPredicate = BaseIri + "required";
 
+        // A child collection a schema declares (see EntityRelationDefinition): the schema points at a relation node, which names the
+        // collection, the child schema, the linking predicate and the direction (forward or reverse).
+        public const string RelationPredicate = BaseIri + "relation";
+        public const string RelationNamePredicate = BaseIri + "relationName";
+        public const string RelationLabelPredicate = BaseIri + "relationLabel";
+        public const string RelationChildPredicate = BaseIri + "relationChild";
+        public const string RelationViaPredicate = BaseIri + "relationVia";
+        public const string RelationDirectionPredicate = BaseIri + "relationDirection";
+
+        /// <summary>Optional: the field that names an entity of this schema when another entity points at it (default: Name, DisplayName, UserName, then the first text field).</summary>
+        public const string DisplayFieldPredicate = BaseIri + "displayField";
+
+        /// <summary>The field type prefixes for a pointer to another entity: <c>ref:&lt;SchemaIri&gt;</c> (one) and <c>refs:&lt;SchemaIri&gt;</c> (many). The value is the other entity id.</summary>
+        public const string RefTypePrefix = "ref:";
+        public const string RefsTypePrefix = "refs:";
+
         /// <summary>
         /// The placeholder predicate every schema's own "Id" field declares (see e.g. seed.nq's
         /// <c>schema/User/Id</c>). Never actually written to the store - <c>NQuadEntityRepository</c>
@@ -88,6 +104,45 @@ public static class EntityConstants
         public const string BaseIri = "https://global-webnet.com/id/exception-signature/";
         public const string TypeIri = "https://global-webnet.com/ontology/exception#ExceptionSignature";
         public const string DefaultGraph = "https://global-webnet.com/graph/system";
+    }
+
+    /// <summary>
+    /// The tenant and role model already present in the baseline seed (roles, tenants, organizations and the role assignments
+    /// that point from a user), described as schemas by <c>Sql/seed/seed-004-identity.nq</c> under the schema host convention.
+    /// The data is untouched; the schemas map onto its existing predicates, so the assignments stay where they are
+    /// (the user points at each assignment).
+    /// </summary>
+    public static class Identity
+    {
+        public const string SeedName = "004-identity";
+        public const string DefaultGraph = "https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df";
+        public const string SchemaBase = "https://schema.global-webnet.com/identity/";
+        public const string IdBase = "https://global-webnet.com/id/";
+        public const string OntologyBase = "https://global-webnet.com/ontology/tenant#";
+
+        public const string RoleSchemaIri = SchemaBase + "Role";
+        public const string RoleBaseIri = IdBase + "role/";
+        public const string RoleTypeIri = OntologyBase + "Role";
+
+        public const string TenantSchemaIri = SchemaBase + "Tenant";
+        public const string TenantBaseIri = IdBase + "tenant/";
+        public const string TenantTypeIri = OntologyBase + "Tenant";
+
+        public const string BlogSchemaIri = SchemaBase + "Blog";
+        public const string BlogBaseIri = IdBase + "blog/";
+        public const string BlogTypeIri = OntologyBase + "Blog";
+
+        public const string OrganizationSchemaIri = SchemaBase + "Organization";
+        public const string OrganizationBaseIri = IdBase + "organization/";
+        public const string OrganizationTypeIri = OntologyBase + "Organization";
+
+        public const string TenantRoleSchemaIri = SchemaBase + "TenantRoleAssignment";
+        public const string TenantRoleBaseIri = IdBase + "tenant-role/";
+        public const string TenantRoleTypeIri = OntologyBase + "TenantRoleAssignment";
+
+        public const string OrganizationRoleSchemaIri = SchemaBase + "OrganizationRoleAssignment";
+        public const string OrganizationRoleBaseIri = IdBase + "organization-role/";
+        public const string OrganizationRoleTypeIri = OntologyBase + "OrganizationRoleAssignment";
     }
 
     /// <summary>
