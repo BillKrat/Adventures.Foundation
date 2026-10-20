@@ -36,7 +36,14 @@ public static class SchemaDal
             var fieldType = ReadRequired(fieldQuads, EntityConstants.Schema.FieldTypePredicate, fieldIri);
             var fieldRdf = ReadRequired(fieldQuads, EntityConstants.Schema.FieldRdfPredicate, fieldIri);
             var valuePrefix = ReadOptional(fieldQuads, EntityConstants.Schema.FieldValuePrefixPredicate);
-            fields.Add(new EntitySchemaField(schemaIri, fieldIri, fieldName, fieldType, fieldRdf, ValuePrefix: valuePrefix));
+            fields.Add(new EntitySchemaField(
+                schemaIri, fieldIri, fieldName, fieldType, fieldRdf,
+                IsRequired: ReadFlag(fieldQuads, EntityConstants.Schema.FieldRequiredPredicate, false),
+                ValuePrefix: valuePrefix,
+                Label: ReadOptional(fieldQuads, EntityConstants.Schema.FieldLabelPredicate),
+                IsReadOnly: ReadFlag(fieldQuads, EntityConstants.Schema.FieldReadOnlyPredicate, false),
+                Order: int.TryParse(ReadOptional(fieldQuads, EntityConstants.Schema.FieldOrderPredicate), out var order) ? order : null,
+                IsListVisible: ReadFlag(fieldQuads, EntityConstants.Schema.FieldListVisiblePredicate, true)));
         }
 
         return EntitySchema.Create(schemaIri, fields);
@@ -49,6 +56,9 @@ public static class SchemaDal
             ? value
             : throw new InvalidOperationException($"Schema field '{fieldIri}' is missing '{predicate}'.");
     }
+
+    private static bool ReadFlag(IEnumerable<NQuad> quads, string predicate, bool fallback) =>
+        bool.TryParse(ReadOptional(quads, predicate), out var flag) ? flag : fallback;
 
     private static string? ReadOptional(IEnumerable<NQuad> quads, string predicate) =>
         quads.Where(q => q.Predicate == predicate).Select(q => q.Object).SingleOrDefault();

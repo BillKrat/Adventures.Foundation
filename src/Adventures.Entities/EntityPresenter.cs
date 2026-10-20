@@ -19,10 +19,16 @@ public class EntityPresenter<TEntity>(
 
     protected Func<EntitySchema, TEntity> EntityFactory { get; } = entityFactory ?? throw new ArgumentNullException(nameof(entityFactory));
 
+    /// <summary>Field names this presenter makes read-only on top of what the schema declares (for example a login name that must not change). The server refuses a change to them on update; the client only renders them as read-only.</summary>
+    protected virtual IReadOnlySet<string> ReadOnlyFields { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>What the caller may do with this entity (for rendering buttons; the Bll and the controller still enforce). Full by default.</summary>
+    protected virtual EntityPermissions PermissionsFor(TEntity entity) => EntityPermissions.Full;
+
     public async Task<EntityFormModel?> GetFormAsync(string id, CancellationToken cancellationToken = default)
     {
         var entity = await Bll.GetAsync(id, cancellationToken).ConfigureAwait(false);
-        return entity is null ? null : EntityFormModel.From(Schema, entity);
+        return entity is null ? null : EntityFormModel.From(Schema, entity, PermissionsFor(entity), ReadOnlyFields);
     }
 
     public async Task<IReadOnlyList<EntityDataModel>> ListAsync(CancellationToken cancellationToken = default)
@@ -32,7 +38,7 @@ public class EntityPresenter<TEntity>(
     }
 
     public virtual async Task<EntityGridModel> GetGridAsync(CancellationToken cancellationToken = default) =>
-        EntityGridModel.From(Schema, await Bll.ListAsync(cancellationToken).ConfigureAwait(false));
+        EntityGridModel.From(Schema, await Bll.ListAsync(cancellationToken).ConfigureAwait(false), ReadOnlyFields);
 
     public async Task<EntityFormModel> CreateAsync(EntityDataModel data, CancellationToken cancellationToken = default)
     {
@@ -42,7 +48,7 @@ public class EntityPresenter<TEntity>(
         var newId = Guid.NewGuid().ToString();
         var entity = ApplyValues(EntityFactory(Schema), data, newId);
         var created = await Bll.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
-        return EntityFormModel.From(Schema, created);
+        return EntityFormModel.From(Schema, created, PermissionsFor(created), ReadOnlyFields);
     }
 
     public async Task<EntityFormModel?> UpdateAsync(string id, EntityDataModel data, CancellationToken cancellationToken = default)
@@ -56,9 +62,10 @@ public class EntityPresenter<TEntity>(
             return null;
         }
 
+        RejectReadOnlyChanges(existing, data);
         ApplyValues(existing, data, entityId: null);
         await Bll.UpdateAsync(existing, cancellationToken).ConfigureAwait(false);
-        return EntityFormModel.From(Schema, existing);
+        return EntityFormModel.From(Schema, existing, PermissionsFor(existing), ReadOnlyFields);
     }
 
     public Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default) =>
@@ -79,6 +86,33 @@ public class EntityPresenter<TEntity>(
     /// row per field per save).</item>
     /// </list>
     /// </summary>
+    /// <summary>A read-only field (declared by the schema or by <see cref="ReadOnlyFields"/>) may be sent back unchanged but not changed: the flag is for rendering, this is the enforcement.</summary>
+    private void RejectReadOnlyChanges(TEntity existing, EntityDataModel data)
+    {
+        var errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+        foreach (var field in Schema.Fields.Values)
+        {
+            var readOnly = field.IsReadOnly || ReadOnlyFields.Contains(field.Name)
+                || field.Name.Equals(DynamicEntity.EntityIdPropertyName, StringComparison.OrdinalIgnoreCase);
+            if (!readOnly || !data.Values.TryGetValue(field.Name, out var value) || value is null
+                || field.Name.Equals(DynamicEntity.EntityIdPropertyName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var unchanged = value.Length == 0 ? existing.GetValue(field.Name) is null : IsUnchanged(existing, field.Name, value);
+            if (!unchanged)
+            {
+                errors[field.Name] = [$"{EntityFieldSchema.Humanize(field.Name)} cannot be changed."];
+            }
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new Adventures.Common.Exceptions.InputValidationException(errors);
+        }
+    }
+
     private TEntity ApplyValues(TEntity entity, EntityDataModel data, string? entityId)
     {
         if (entityId is not null)

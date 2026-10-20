@@ -35,7 +35,7 @@ public sealed class ExceptionLogPresenter(IExceptionLogBll bll, EntitySchemaOf<E
                     [StateField] = activeIds.Contains(row.EntityId) ? "Active" : "Purged",
                 }))
             .ToArray();
-        var fields = grid.Schema.Fields.Append(new EntityFieldSchema(StateField, "String", false)).ToArray();
+        var fields = grid.Schema.Fields.Append(new EntityFieldSchema(StateField, "String", false, Order: grid.Schema.Fields.Count)).ToArray();
         return new EntityGridModel(new EntitySchemaModel(grid.Schema.SchemaIri, fields), rows);
     }
 

@@ -42,6 +42,47 @@ public sealed class UserPresenterTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task OwnProfile_CanBeUpdatedButNotDeleted_AndTheLoginNameIsReadOnly()
+    {
+        var form = await _presenter.GetFormByUserNameAsync("Admin");
+
+        Assert.Equal(new EntityPermissions(CanUpdate: true, CanDelete: false), form!.Permissions);
+        Assert.Equal(EntityContract.Version, form.ContractVersion);
+        Assert.True(form.Schema.Fields.Single(f => f.Name == "UserName").IsReadOnly);
+        Assert.True(form.Schema.Fields.Single(f => f.Name == "Id").IsReadOnly);
+        Assert.False(form.Schema.Fields.Single(f => f.Name == "First").IsReadOnly);
+        Assert.Equal("Display name", form.Schema.Fields.Single(f => f.Name == "DisplayName").Label);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_RefusesAChangeToAReadOnlyField_ButAcceptsItSentBackUnchanged()
+    {
+        var form = await _presenter.GetFormByUserNameAsync("Admin");
+        var id = form!.Entity.EntityId;
+        var values = form.Entity.Values.ToDictionary(p => p.Key, p => p.Value);
+
+        // the whole form posted back as the browser does: nothing changed, so it is accepted
+        Assert.NotNull(await _presenter.UpdateAsync(id, new EntityDataModel(id, values)));
+
+        values["UserName"] = "SomeoneElse";
+        var refused = await Assert.ThrowsAsync<Adventures.Common.Exceptions.InputValidationException>(
+            () => _presenter.UpdateAsync(id, new EntityDataModel(id, values)));
+        Assert.Equal("User name cannot be changed.", refused.Errors["UserName"].Single());
+        Assert.Equal("Admin", (await _presenter.GetFormByUserNameAsync("Admin"))!.Entity.Values["UserName"]);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_StillChangesAnEditableField()
+    {
+        var form = await _presenter.GetFormByUserNameAsync("Admin");
+        var id = form!.Entity.EntityId;
+
+        var updated = await _presenter.UpdateAsync(id, new EntityDataModel(id, new Dictionary<string, string?> { ["First"] = "Changed" }));
+
+        Assert.Equal("Changed", updated!.Entity.Values["First"]);
+    }
+
+    [Fact]
     public async Task GetFormByUserNameAsync_NoMatch_ReturnsNull()
     {
         Assert.Null(await _presenter.GetFormByUserNameAsync("NoSuchUser"));

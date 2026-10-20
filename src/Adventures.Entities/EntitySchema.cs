@@ -7,7 +7,11 @@ public sealed record EntitySchemaField(
     string Type,
     string Predicate,
     bool IsRequired = false,
-    string? ValuePrefix = null);
+    string? ValuePrefix = null,
+    string? Label = null,
+    bool IsReadOnly = false,
+    int? Order = null,
+    bool IsListVisible = true);
 
 /// <summary>
 /// Describes the fields of a dynamic entity type (e.g. "User"): their names, declared

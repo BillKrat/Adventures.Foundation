@@ -19,6 +19,14 @@ public static class EntityConstants
         public const string FieldRdfPredicate = BaseIri + "predicate";
         public const string FieldValuePrefixPredicate = BaseIri + "valuePrefix";
 
+        // Optional presentation metadata of a field (all default when absent): the text to show, whether the field may be
+        // changed, where it sits among the others, whether a grid shows it as a column, and whether a value is required on create.
+        public const string FieldLabelPredicate = BaseIri + "label";
+        public const string FieldReadOnlyPredicate = BaseIri + "readOnly";
+        public const string FieldOrderPredicate = BaseIri + "order";
+        public const string FieldListVisiblePredicate = BaseIri + "listVisible";
+        public const string FieldRequiredPredicate = BaseIri + "required";
+
         /// <summary>
         /// The placeholder predicate every schema's own "Id" field declares (see e.g. seed.nq's
         /// <c>schema/User/Id</c>). Never actually written to the store - <c>NQuadEntityRepository</c>
