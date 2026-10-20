@@ -116,6 +116,34 @@ public sealed class ExceptionSignatureTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task An_administrator_can_acknowledge_and_fix_a_kind_but_not_set_Regressed()
+    {
+        var id = await _signatures.RegisterOccurrenceAsync(Throw("status test"));
+
+        Assert.True(await _signatures.SetStatusAsync(id, "Acknowledged"));
+        Assert.Equal("Acknowledged", (await _signatures.GetAsync(id))!.GetValue("Status"));
+        Assert.True(await _signatures.SetStatusAsync(id, "Fixed"));
+        Assert.False(await _signatures.SetStatusAsync("no-such-id", "Fixed"));
+        Assert.Throws<Adventures.Common.Exceptions.InputValidationException>(() => _signatures.SetStatusAsync(id, "Regressed").GetAwaiter().GetResult());
+        Assert.Throws<Adventures.Common.Exceptions.InputValidationException>(() => _signatures.SetStatusAsync(id, "whatever").GetAwaiter().GetResult());
+    }
+
+    [Fact]
+    public async Task A_fixed_kind_that_happens_again_becomes_Regressed_and_an_acknowledged_one_stays()
+    {
+        var fixedId = await _signatures.RegisterOccurrenceAsync(Throw("fixed one"));
+        var ackId = await _signatures.RegisterOccurrenceAsync(Throw("acked one"));
+        await _signatures.SetStatusAsync(fixedId, "Fixed");
+        await _signatures.SetStatusAsync(ackId, "Acknowledged");
+
+        await _signatures.RegisterOccurrenceAsync(Throw("fixed one"));
+        await _signatures.RegisterOccurrenceAsync(Throw("acked one"));
+
+        Assert.Equal("Regressed", (await _signatures.GetAsync(fixedId))!.GetValue("Status"));
+        Assert.Equal("Acknowledged", (await _signatures.GetAsync(ackId))!.GetValue("Status"));
+    }
+
+    [Fact]
     public async Task A_new_kind_of_failure_gets_its_own_signature()
     {
         var one = await _signatures.RegisterOccurrenceAsync(Throw("alpha"));

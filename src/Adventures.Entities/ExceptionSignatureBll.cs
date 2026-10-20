@@ -8,7 +8,7 @@ public sealed class ExceptionSignatureBll(
     EntitySchemaOf<ExceptionSignatureEntry> schema)
     : EntityBll<ExceptionSignatureEntry>(repository), IExceptionSignatureBll
 {
-    public const string NewStatus = "New";
+    public const string NewStatus = ExceptionSignatureStatus.New;
 
     public async Task<string> RegisterOccurrenceAsync(Exception exception, CancellationToken cancellationToken = default)
     {
@@ -26,6 +26,12 @@ public sealed class ExceptionSignatureBll(
             var count = known.GetValue("OccurrenceCount") is int current ? current : 0;
             known.Set("LastSeen", NewId(), now);
             known.Set("OccurrenceCount", NewId(), count + 1);
+            if (string.Equals(known.GetValue("Status") as string, ExceptionSignatureStatus.Fixed, StringComparison.Ordinal))
+            {
+                // it was declared fixed and it happened again: a regression is worth more attention than a new kind
+                known.Set("Status", NewId(), ExceptionSignatureStatus.Regressed);
+            }
+
             await UpdateAsync(known, cancellationToken).ConfigureAwait(false);
             return known.EntityId!.Value;
         }
@@ -58,6 +64,27 @@ public sealed class ExceptionSignatureBll(
                 entry.GetValue("Status") as string ?? NewStatus))
             .OrderByDescending(summary => summary.LastSeen)
             .ToList();
+
+    public async Task<bool> SetStatusAsync(string signatureId, string status, CancellationToken cancellationToken = default)
+    {
+        if (!ExceptionSignatureStatus.Settable.Contains(status, StringComparer.Ordinal))
+        {
+            throw new Adventures.Common.Exceptions.InputValidationException(new Dictionary<string, string[]>
+            {
+                ["status"] = [$"Status must be one of: {string.Join(", ", ExceptionSignatureStatus.Settable)}."],
+            });
+        }
+
+        var entry = await GetAsync(signatureId, cancellationToken).ConfigureAwait(false);
+        if (entry is null)
+        {
+            return false;
+        }
+
+        entry.Set("Status", NewId(), status);
+        await UpdateAsync(entry, cancellationToken).ConfigureAwait(false);
+        return true;
+    }
 
     private static string NewId() => Guid.NewGuid().ToString();
 }
