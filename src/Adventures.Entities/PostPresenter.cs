@@ -4,7 +4,7 @@ namespace Adventures.Entities;
 public sealed class PostPresenter(IPostBll bll, EntitySchemaOf<Post> schema, IEntityRelationProvider? relations = null)
     : EntityPresenter<Post>(bll, schema.Schema, s => new Post(s), relations)
 {
-    private static readonly HashSet<string> Managed = new(["IsPublished"], StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> Managed = new(["IsPublished", "RevisionOf"], StringComparer.OrdinalIgnoreCase);
 
     protected override IReadOnlySet<string> ServerManagedFields => Managed;
 

@@ -161,6 +161,9 @@ public static class EntityConstants
 
         /// <summary>Seed 007 adds the Categories and Tags fields to Post (seed 006 had been applied; a named seed applies once).</summary>
         public const string TaxonomySeedName = "007-post-taxonomy";
+
+        /// <summary>Seed 008 adds RevisionOf to Post: a draft that proposes changes to a published post.</summary>
+        public const string RevisionSeedName = "008-post-revision";
         public const string DefaultGraph = "https://global-webnet.com/graph/content";
         public const string SchemaBase = "https://schema.global-webnet.com/content/";
         public const string IdBase = "https://global-webnet.com/id/";

@@ -14,7 +14,7 @@ public sealed record DraftPost(
 
 /// <summary>One post as the authoring surface reports it.</summary>
 public sealed record DraftSummary(
-    string Id, string Title, string Slug, bool IsPublished, string? DatePublished, IReadOnlyList<string> Categories, IReadOnlyList<string> Tags);
+    string Id, string Title, string Slug, bool IsPublished, string? DatePublished, IReadOnlyList<string> Categories, IReadOnlyList<string> Tags, string? RevisionOf = null);
 
 /// <summary>A category or tag as the authoring surface reports it.</summary>
 public sealed record TaxonomyTerm(string Id, string Name);
@@ -31,6 +31,13 @@ public interface IContentAuthoring
 
     /// <summary>Revises a draft the author owns; null when no such post. Throws <see cref="BusinessRuleException"/> for a published post or someone else post.</summary>
     Task<DraftSummary?> UpdateDraftAsync(string authorUserName, string postId, DraftPost draft, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Proposes changes to one of the author own PUBLISHED posts without touching what readers see: a draft copy carrying the changes,
+    /// marked as a revision of the post. One open revision per post (asking again updates it). An administrator applies or discards it in
+    /// the admin. Null when no such post; refused for a draft (edit it directly), someone else post.
+    /// </summary>
+    Task<DraftSummary?> ProposeRevisionAsync(string authorUserName, string publishedPostId, DraftPost changes, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<DraftSummary>> ListMineAsync(string authorUserName, CancellationToken cancellationToken = default);
 
@@ -49,7 +56,8 @@ public sealed class ContentAuthoring(
     IEntityPresenter<Post> posts,
     IEntityPresenter<Category> categories,
     IEntityPresenter<Tag> tags,
-    IUserPresenter users) : IContentAuthoring
+    IUserPresenter users,
+    IPostBll postBll) : IContentAuthoring
 {
     public async Task<DraftSummary> CreateDraftAsync(string authorUserName, DraftPost draft, CancellationToken cancellationToken = default)
     {
@@ -86,6 +94,63 @@ public sealed class ContentAuthoring(
         return updated is null ? null : Summarise(updated.Entity, updated.Schema);
     }
 
+    public async Task<DraftSummary?> ProposeRevisionAsync(string authorUserName, string publishedPostId, DraftPost changes, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        var authorId = await AuthorIdAsync(authorUserName, cancellationToken).ConfigureAwait(false);
+        var original = await posts.GetFormAsync(publishedPostId, cancellationToken).ConfigureAwait(false);
+        if (original is null)
+        {
+            return null;
+        }
+
+        if (!string.Equals(original.Entity.Values.GetValueOrDefault("Author"), authorId, StringComparison.Ordinal))
+        {
+            throw new BusinessRuleException("This post was written by someone else; a revision cannot be proposed here.");
+        }
+
+        if (!string.Equals(original.Entity.Values.GetValueOrDefault("IsPublished"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new BusinessRuleException("This post is still a draft: change it directly instead of proposing a revision.");
+        }
+
+        // start from the published post so a revision that names only the content keeps the title, description, categories and tags
+        var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var field in new[] { "Title", "Content", "Description", "EnableComments", "Categories", "Tags" })
+        {
+            if (original.Entity.Values.GetValueOrDefault(field) is { Length: > 0 } current)
+            {
+                values[field] = current;
+            }
+        }
+
+        foreach (var (name, value) in await ValuesAsync(changes, cancellationToken).ConfigureAwait(false))
+        {
+            if (!name.Equals("Slug", StringComparison.OrdinalIgnoreCase))
+            {
+                values[name] = value; // the published slug is stable: a revision never changes the address
+            }
+        }
+
+        var grid = await posts.GetGridAsync(new EntityGridQuery(PageSize: EntityGridQuery.MaxPageSize), cancellationToken).ConfigureAwait(false);
+        var open = grid.Rows.FirstOrDefault(row => string.Equals(row.Values.GetValueOrDefault("RevisionOf"), publishedPostId, StringComparison.Ordinal));
+        string revisionId;
+        if (open is not null)
+        {
+            revisionId = open.EntityId;
+            await posts.UpdateAsync(revisionId, new EntityDataModel(revisionId, values), cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            values["Author"] = authorId;
+            revisionId = (await posts.CreateAsync(new EntityDataModel(string.Empty, values), cancellationToken).ConfigureAwait(false)).Entity.EntityId;
+            await postBll.MarkRevisionAsync(revisionId, publishedPostId, cancellationToken).ConfigureAwait(false);
+        }
+
+        var saved = await posts.GetFormAsync(revisionId, cancellationToken).ConfigureAwait(false);
+        return saved is null ? null : Summarise(saved.Entity, saved.Schema);
+    }
+
     public async Task<IReadOnlyList<DraftSummary>> ListMineAsync(string authorUserName, CancellationToken cancellationToken = default)
     {
         var authorId = await AuthorIdAsync(authorUserName, cancellationToken).ConfigureAwait(false);
@@ -116,7 +181,12 @@ public sealed class ContentAuthoring(
 
     private async Task<Dictionary<string, string?>> ValuesAsync(DraftPost draft, CancellationToken cancellationToken)
     {
-        var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase) { ["Title"] = draft.Title };
+        var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(draft.Title))
+        {
+            values["Title"] = draft.Title;
+        }
+
         if (draft.Content is not null)
         {
             values["Content"] = draft.Content;
@@ -195,7 +265,8 @@ public sealed class ContentAuthoring(
             string.Equals(row.Values.GetValueOrDefault("IsPublished"), "true", StringComparison.OrdinalIgnoreCase),
             row.Values.GetValueOrDefault("DatePublished"),
             Names(row, "Categories"),
-            Names(row, "Tags"));
+            Names(row, "Tags"),
+            row.Values.GetValueOrDefault("RevisionOf") is { Length: > 0 } of ? of : null);
     }
 
     private static IReadOnlyList<string> Names(EntityDataModel row, string field) =>

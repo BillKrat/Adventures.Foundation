@@ -18,6 +18,7 @@ public sealed class ContentAuthoringTests : IAsyncLifetime
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-006-content.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-007-post-taxonomy.nq"));
+        await store.SeedFromFileAsync(Path.Combine(seeds, "seed-008-post-revision.nq"));
         var quads = await store.QueryAsync();
 
         var services = new ServiceCollection();
@@ -108,5 +109,82 @@ public sealed class ContentAuthoringTests : IAsyncLifetime
     public async Task AnUnknownAuthorIsRefused()
     {
         await Assert.ThrowsAsync<BusinessRuleException>(() => _authoring.CreateDraftAsync("NoSuchUser", new DraftPost("x")));
+    }
+
+    private async Task<string> PublishedAsync(string title, string content = "v1")
+    {
+        var draft = await _authoring.CreateDraftAsync("Claude", new DraftPost(title, Content: content, Categories: ["Help"], Tags: ["Pages"], Description: "orig"));
+        await _services.GetRequiredService<IPostBll>().PublishAsync(draft.Id);
+        return draft.Id;
+    }
+
+    [Fact]
+    public async Task ARevisionOfAPublishedPost_IsAHiddenDraftCopyWithTheChanges_AndTheOriginalIsUntouched()
+    {
+        var id = await PublishedAsync("Pages help");
+
+        var revision = await _authoring.ProposeRevisionAsync("Claude", id, new DraftPost(string.Empty, Content: "v2 with new steps"));
+
+        Assert.NotNull(revision);
+        Assert.False(revision!.IsPublished);
+        Assert.Equal(id, revision.RevisionOf);
+        Assert.Equal("Pages help", revision.Title);                // untouched fields carry over from the published post
+        Assert.Equal(["Help"], revision.Categories);
+        var presenter = _services.GetRequiredService<IEntityPresenter<Post>>();
+        Assert.Equal("v1", (await presenter.GetFormAsync(id))!.Entity.Values["Content"]);  // readers still see v1
+        Assert.Equal("v2 with new steps", (await presenter.GetFormAsync(revision.Id))!.Entity.Values["Content"]);
+    }
+
+    [Fact]
+    public async Task AskingAgain_UpdatesTheOneOpenRevision_NotAnotherCopy()
+    {
+        var id = await PublishedAsync("Pages help");
+        var first = await _authoring.ProposeRevisionAsync("Claude", id, new DraftPost(string.Empty, Content: "v2"));
+
+        var second = await _authoring.ProposeRevisionAsync("Claude", id, new DraftPost(string.Empty, Content: "v3"));
+
+        Assert.Equal(first!.Id, second!.Id);
+        Assert.Equal(2, (await _authoring.ListMineAsync("Claude")).Count);
+    }
+
+    [Fact]
+    public async Task ApplyingARevision_UpdatesTheOriginalKeepingItsAddress_AndRemovesTheRevision()
+    {
+        var id = await PublishedAsync("Pages help");
+        var revision = await _authoring.ProposeRevisionAsync("Claude", id, new DraftPost("Pages help, revised", Content: "v2", Categories: ["Help", "Admin"]));
+        var bll = _services.GetRequiredService<IPostBll>();
+        var presenter = _services.GetRequiredService<IEntityPresenter<Post>>();
+
+        Assert.True(await bll.ApplyRevisionAsync(revision!.Id));
+
+        var form = await presenter.GetFormAsync(id);
+        Assert.Equal("Pages help, revised", form!.Entity.Values["Title"]);
+        Assert.Equal("v2", form.Entity.Values["Content"]);
+        Assert.Equal("pages-help", form.Entity.Values["Slug"]);   // the published address never changes
+        Assert.Equal("true", form.Entity.Values["IsPublished"]);
+        Assert.Equal(["Admin", "Help"], form.Entity.Display!["Categories"].Split(", ").Order());
+        Assert.Null(await presenter.GetFormAsync(revision.Id));
+        Assert.False(await bll.ApplyRevisionAsync(revision.Id));
+    }
+
+    [Fact]
+    public async Task ARevisionCannotBePublished_CanBeDiscarded_AndTheOtherCasesAreRefused()
+    {
+        var id = await PublishedAsync("Pages help");
+        var revision = await _authoring.ProposeRevisionAsync("Claude", id, new DraftPost(string.Empty, Content: "v2"));
+        var bll = _services.GetRequiredService<IPostBll>();
+
+        var publish = await Assert.ThrowsAsync<BusinessRuleException>(() => bll.PublishAsync(revision!.Id));
+        Assert.Contains("apply or discard", publish.Message);
+        Assert.True(await bll.DiscardRevisionAsync(revision!.Id));
+        Assert.Single(await _authoring.ListMineAsync("Claude"));
+
+        var draft = await _authoring.CreateDraftAsync("Claude", new DraftPost("Still a draft"));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _authoring.ProposeRevisionAsync("Claude", draft.Id, new DraftPost(string.Empty, Content: "x")));
+        var foreign = await _authoring.CreateDraftAsync("Admin", new DraftPost("Admins post"));
+        await _services.GetRequiredService<IPostBll>().PublishAsync(foreign.Id);
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _authoring.ProposeRevisionAsync("Claude", foreign.Id, new DraftPost(string.Empty, Content: "x")));
+        Assert.Null(await _authoring.ProposeRevisionAsync("Claude", "no-such-post", new DraftPost(string.Empty)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => bll.DiscardRevisionAsync(id)); // a normal post is not a revision
     }
 }

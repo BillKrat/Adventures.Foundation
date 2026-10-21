@@ -21,6 +21,7 @@ public sealed class PostBllTests : IAsyncLifetime
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-006-content.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-007-post-taxonomy.nq"));
+        await store.SeedFromFileAsync(Path.Combine(seeds, "seed-008-post-revision.nq"));
         var quads = await store.QueryAsync();
 
         var services = new ServiceCollection();
