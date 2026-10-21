@@ -152,6 +152,17 @@ public static class EntityConstants
     }
 
     /// <summary>
+    /// The legacy mirror layer: one schema per ported BlogEngine.NET table, field for field (see ai-research-blog docs, the legacy table
+    /// migration plan). Generated into <c>Sql/seed/seed-009-legacy-schemas.nq</c>; never edited by hand.
+    /// </summary>
+    public static class Legacy
+    {
+        public const string SchemaSeedName = "009-legacy-schemas";
+        public const string DefaultGraph = "https://global-webnet.com/graph/legacy";
+        public const string SchemaBase = "https://schema.global-webnet.com/legacy/";
+    }
+
+    /// <summary>
     /// The content model (pages, posts, categories, tags), new entities under the schema host convention; shipped by
     /// <c>Sql/seed/seed-006-content.nq</c> and modelled on what the BlogEngine admin edits (see the review in ai-research-blog docs).
     /// </summary>
