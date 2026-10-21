@@ -158,6 +158,9 @@ public static class EntityConstants
     public static class Legacy
     {
         public const string SchemaSeedName = "009-legacy-schemas";
+
+        /// <summary>Seed 010 adds the Id field every legacy schema needs (seed 009 had been applied; a named seed applies once).</summary>
+        public const string IdFieldsSeedName = "010-legacy-ids";
         public const string DefaultGraph = "https://global-webnet.com/graph/legacy";
         public const string SchemaBase = "https://schema.global-webnet.com/legacy/";
     }
