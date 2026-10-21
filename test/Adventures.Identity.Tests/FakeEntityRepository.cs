@@ -19,8 +19,16 @@ internal sealed class FakeEntityRepository : IEntityRepository
     }
 
     public Task<Entity> CreateAsync(Entity entity, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<Entity?> GetAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<bool> UpdateAsync(Entity entity, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public List<Entity> UpdateCalls { get; } = [];
+
+    public Task<Entity?> GetAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(EntityToReturn);
+
+    public Task<bool> UpdateAsync(Entity entity, CancellationToken cancellationToken = default)
+    {
+        UpdateCalls.Add(entity);
+        return Task.FromResult(true);
+    }
+
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<IReadOnlyList<Entity>> ListAsync(EntityQuery query, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 }

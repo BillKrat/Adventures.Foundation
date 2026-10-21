@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json.Nodes;
 using Adventures.Data;
 using Adventures.Security;
 
@@ -65,5 +66,55 @@ public sealed class UserAccountService(
 
         var mustChangePassword = credential.MustChangePassword || account.Status == UserStatus.MustChangePassword;
         return LoginResult.Success(issued.AccessToken, issued.ExpiresAtUtc, mustChangePassword);
+    }
+
+    public async Task<ChangePasswordResult> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(currentPassword);
+        ArgumentException.ThrowIfNullOrWhiteSpace(newPassword);
+
+        var credential = await credentialStore.GetAsync(userId, cancellationToken);
+        if (credential is null)
+        {
+            return ChangePasswordResult.NotFound;
+        }
+
+        if (credential.LockedUntil is { } lockedUntil && lockedUntil > DateTimeOffset.UtcNow)
+        {
+            return ChangePasswordResult.AccountLocked;
+        }
+
+        if (!passwordHasher.Verify(currentPassword, credential.PasswordHash))
+        {
+            await credentialStore.RecordFailedLoginAsync(userId, LockoutThreshold, LockoutDuration, cancellationToken);
+            return ChangePasswordResult.InvalidCurrentPassword;
+        }
+
+        if (!PasswordPolicy.IsAcceptable(newPassword, currentPassword))
+        {
+            return ChangePasswordResult.NewPasswordRejected;
+        }
+
+        await credentialStore.SetPasswordAsync(userId, passwordHasher.Hash(newPassword), credential.PasswordAlgorithm, cancellationToken);
+        await ClearMustChangeStatusAsync(userId, cancellationToken);
+        return ChangePasswordResult.Succeeded;
+    }
+
+    /// <summary>
+    /// The user entity carries its own "must_change_password" status, and login reports a change as required if either it or the
+    /// credential flag is set - so after a change the status goes back to "active" too (a disabled account is left alone).
+    /// </summary>
+    private async Task ClearMustChangeStatusAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var entity = await entityRepository.GetAsync(userId, cancellationToken);
+        if (entity is null
+            || JsonNode.Parse(entity.StandardFieldsJson) is not JsonObject fields
+            || fields["status"]?.GetValue<string>() != "must_change_password")
+        {
+            return;
+        }
+
+        fields["status"] = "active";
+        await entityRepository.UpdateAsync(entity with { StandardFieldsJson = fields.ToJsonString() }, cancellationToken);
     }
 }

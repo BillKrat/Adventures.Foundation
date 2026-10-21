@@ -19,4 +19,10 @@ public interface IUserCredentialStore
     /// if the new count reaches <paramref name="lockoutThreshold"/>. Call after a failed password check.
     /// </summary>
     Task RecordFailedLoginAsync(Guid userId, int lockoutThreshold, TimeSpan lockoutDuration, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Replaces the stored hash (and algorithm), clears must_change_password, resets the failed-login counter and any lockout.
+    /// Call after the caller has verified the current password.
+    /// </summary>
+    Task SetPasswordAsync(Guid userId, string passwordHash, string passwordAlgorithm, CancellationToken cancellationToken = default);
 }

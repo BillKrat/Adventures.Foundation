@@ -11,4 +11,11 @@ namespace Adventures.Identity;
 public interface IUserAccountService
 {
     Task<LoginResult> LoginAsync(string tenant, string username, string password, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Changes a user's own password: verifies <paramref name="currentPassword"/> (a wrong one counts toward the same lockout as
+    /// a failed login), enforces <see cref="PasswordPolicy"/> on <paramref name="newPassword"/>, stores the new hash, and clears
+    /// the must-change flag on both the credential row and the user entity's status.
+    /// </summary>
+    Task<ChangePasswordResult> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken = default);
 }

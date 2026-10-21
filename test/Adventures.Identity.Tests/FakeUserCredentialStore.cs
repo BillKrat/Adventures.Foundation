@@ -6,6 +6,14 @@ internal sealed class FakeUserCredentialStore : IUserCredentialStore
     public List<Guid> SuccessfulLoginCalls { get; } = [];
     public List<(Guid UserId, int LockoutThreshold, TimeSpan LockoutDuration)> FailedLoginCalls { get; } = [];
 
+    public List<(Guid UserId, string Hash, string Algorithm)> SetPasswordCalls { get; } = [];
+
+    public Task SetPasswordAsync(Guid userId, string passwordHash, string passwordAlgorithm, CancellationToken cancellationToken = default)
+    {
+        SetPasswordCalls.Add((userId, passwordHash, passwordAlgorithm));
+        return Task.CompletedTask;
+    }
+
     public Task<UserCredential?> GetAsync(Guid userId, CancellationToken cancellationToken = default) =>
         Task.FromResult(CredentialToReturn);
 
