@@ -59,4 +59,19 @@ public sealed class PostgresUserCredentialStore(ISqlExecutor executor) : IUserCr
             },
             cancellationToken);
     }
+
+    public Task SetPasswordAsync(Guid userId, string passwordHash, string passwordAlgorithm, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE user_credentials
+            SET password_hash = @PasswordHash, password_algorithm = @PasswordAlgorithm, must_change_password = false,
+                failed_login_attempts = 0, locked_until = NULL, updated_at = @Now
+            WHERE user_id = @UserId
+            """;
+
+        return _executor.ExecuteAsync(
+            sql,
+            new { UserId = userId, PasswordHash = passwordHash, PasswordAlgorithm = passwordAlgorithm, Now = DateTimeOffset.UtcNow },
+            cancellationToken);
+    }
 }
