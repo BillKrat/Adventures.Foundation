@@ -17,7 +17,7 @@ public sealed class PublicContentTests : IAsyncLifetime
     {
         var store = new InMemoryNQuadStore();
         var seeds = Path.Combine(AppContext.BaseDirectory, "Sql", "seed");
-        foreach (var file in new[] { "seed.nq", "seed-006-content.nq", "seed-007-post-taxonomy.nq" })
+        foreach (var file in new[] { "seed.nq", "seed-006-content.nq", "seed-007-post-taxonomy.nq", "seed-008-post-revision.nq" })
         {
             await store.SeedFromFileAsync(Path.Combine(seeds, file));
         }
@@ -98,6 +98,44 @@ public sealed class PublicContentTests : IAsyncLifetime
         Assert.Equal("Claude", post.Summary.Author);
         Assert.Equal(["Help"], post.Summary.Categories);
         Assert.DoesNotContain("@", post.Summary.Author);
+    }
+
+    [Fact]
+    public async Task AnAdministratorsViewIncludesDrafts_MarkedAsDrafts_ButNeverRevisions_AndAVisitorStillGetsNone()
+    {
+        var published = await PublishedPostAsync("Live post", categories: ["Help"]);
+        await _authoring.CreateDraftAsync("Claude", new DraftPost("Collab draft", Categories: ["Collaboration"]));
+        await _authoring.ProposeRevisionAsync("Claude", published, new DraftPost("Live post", Content: "v2"));
+
+        var visitor = await _public.ListPostsAsync(1, 10, null, null);
+        var admin = await _public.ListPostsAsync(1, 10, null, null, includeDrafts: true);
+
+        Assert.Equal(["Live post"], visitor.Posts.Select(p => p.Title));
+        Assert.All(visitor.Posts, p => Assert.False(p.IsDraft));
+        Assert.Equal(["Collab draft", "Live post"], admin.Posts.Select(p => p.Title).Order());   // the revision of Live post is not a post of its own
+        Assert.True(admin.Posts.Single(p => p.Title == "Collab draft").IsDraft);
+        Assert.False(admin.Posts.Single(p => p.Title == "Live post").IsDraft);
+        Assert.Null(await _public.GetPostAsync("collab-draft"));
+        Assert.True((await _public.GetPostAsync("collab-draft", includeDrafts: true))!.Summary.IsDraft);
+        Assert.Contains("Collaboration", (await _public.GetCategoriesAsync(includeDrafts: true)).Select(t => t.Name));
+        Assert.DoesNotContain("Collaboration", (await _public.GetCategoriesAsync()).Select(t => t.Name));
+    }
+
+    [Fact]
+    public async Task ADraftPageShowsInAnAdministratorsMenuAndView_FlaggedAsDraft_AndNeverBecomesTheFrontPage()
+    {
+        await PageAsync("Live page", order: 1);
+        await PageAsync("Draft page", published: false, order: 2, front: true);
+
+        var visitorMenu = await _public.GetMenuAsync();
+        var adminMenu = await _public.GetMenuAsync(includeDrafts: true);
+
+        Assert.Equal(["Live page"], visitorMenu.Select(m => m.Title));
+        Assert.Equal(["Live page", "Draft page"], adminMenu.Select(m => m.Title));
+        Assert.True(adminMenu.Single(m => m.Title == "Draft page").IsDraft);
+        Assert.Null(await _public.GetPageAsync("draft-page"));
+        Assert.True((await _public.GetPageAsync("draft-page", includeDrafts: true))!.IsDraft);
+        Assert.Null(await _public.GetFrontPageAsync());
     }
 
     [Fact]
