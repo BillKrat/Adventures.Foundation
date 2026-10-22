@@ -136,6 +136,22 @@ public sealed class ContentAuthoringTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TheListNamesTheOriginalOfARevision_AndLeavesOrdinaryPostsBlank()
+    {
+        var id = await PublishedAsync("Pages help");
+        var revision = await _authoring.ProposeRevisionAsync("Claude", id, new DraftPost(string.Empty, Content: "v2"));
+        var presenter = _services.GetRequiredService<IEntityPresenter<Post>>();
+
+        var grid = await presenter.GetGridAsync(new EntityGridQuery());
+
+        var revisionRow = grid.Rows.Single(r => r.EntityId == revision!.Id);
+        var originalRow = grid.Rows.Single(r => r.EntityId == id);
+        Assert.Equal(id, revisionRow.Values["RevisionOf"]);
+        Assert.Equal("Pages help", revisionRow.Display!["RevisionOf"]);
+        Assert.False(originalRow.Display?.ContainsKey("RevisionOf") ?? false);
+    }
+
+    [Fact]
     public async Task AskingAgain_UpdatesTheOneOpenRevision_NotAnotherCopy()
     {
         var id = await PublishedAsync("Pages help");
