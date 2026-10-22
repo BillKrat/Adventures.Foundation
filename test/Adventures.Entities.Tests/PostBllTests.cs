@@ -73,6 +73,24 @@ public sealed class PostBllTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TheListShowsTheNewestPostFirst_UnlessTheCallerSorts()
+    {
+        await _posts.CreateAsync(Data(("Title", "Oldest")));
+        await Task.Delay(20);
+        await _posts.CreateAsync(Data(("Title", "Middle")));
+        await Task.Delay(20);
+        await _posts.CreateAsync(Data(("Title", "Newest")));
+
+        var byDefault = await _posts.GetGridAsync(new EntityGridQuery());
+        Assert.Equal(["Newest", "Middle", "Oldest"], byDefault.Rows.Select(r => r.Values["Title"]));
+        Assert.Equal("DatePublished", byDefault.Paging!.Sort);
+        Assert.True(byDefault.Paging.Descending);
+
+        var byTitle = await _posts.GetGridAsync(new EntityGridQuery(Sort: "Title"));
+        Assert.Equal(["Middle", "Newest", "Oldest"], byTitle.Rows.Select(r => r.Values["Title"]));
+    }
+
+    [Fact]
     public async Task OnlyThePublishActionChangesTheState_AndAnUpdateCannotFlipIt()
     {
         var id = (await _posts.CreateAsync(Data(("Title", "Draft")))).Entity.EntityId;

@@ -9,4 +9,7 @@ public sealed class PostPresenter(IPostBll bll, EntitySchemaOf<Post> schema, IEn
     protected override IReadOnlySet<string> ServerManagedFields => Managed;
 
     protected override IReadOnlySet<string> ReadOnlyFields => Managed;
+
+    /// <summary>Newest first: a draft is dated when it is created, so the posts to review or publish are at the top of the list.</summary>
+    protected override (string Field, bool Descending)? DefaultSort => ("DatePublished", true);
 }
