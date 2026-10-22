@@ -161,8 +161,21 @@ public static class EntityConstants
 
         /// <summary>Seed 010 adds the Id field every legacy schema needs (seed 009 had been applied; a named seed applies once).</summary>
         public const string IdFieldsSeedName = "010-legacy-ids";
+
+        /// <summary>Seed 012: the mirror schemas of wave 2 (be_Settings, be_CustomFields), columns and Id field in one file; generated like 009 and 010.</summary>
+        public const string Wave2SeedName = "012-legacy-wave2";
         public const string DefaultGraph = "https://global-webnet.com/graph/legacy";
         public const string SchemaBase = "https://schema.global-webnet.com/legacy/";
+    }
+
+    /// <summary>The site settings (title, tagline, posts per page, legacy time zone): named rows an administrator edits; defined in <c>Sql/seed/seed-011-site-settings.nq</c>.</summary>
+    public static class Site
+    {
+        public const string SeedName = "011-site-settings";
+        public const string DefaultGraph = "https://global-webnet.com/graph/site";
+        public const string SettingSchemaIri = "https://schema.global-webnet.com/site/Setting";
+        public const string SettingBaseIri = "https://global-webnet.com/id/site-setting/";
+        public const string SettingTypeIri = "https://global-webnet.com/ontology/site#Setting";
     }
 
     /// <summary>

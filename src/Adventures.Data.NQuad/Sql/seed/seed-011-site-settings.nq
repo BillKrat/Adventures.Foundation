@@ -1,0 +1,42 @@
+<https://schema.global-webnet.com/site/Setting> <https://global-webnet.com/ontology/schema#type> <https://global-webnet.com/ontology/schema#Schema> <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting> <https://global-webnet.com/ontology/schema#displayField> "Name" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/site/Setting/Id> <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Id> <https://global-webnet.com/ontology/schema#name> "Id" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Id> <https://global-webnet.com/ontology/schema#fieldType> "Guid" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Id> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/site#settingId> <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Id> <https://global-webnet.com/ontology/schema#order> "0" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Id> <https://global-webnet.com/ontology/schema#label> "Id" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/site/Setting/Name> <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Name> <https://global-webnet.com/ontology/schema#name> "Name" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Name> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Name> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/site#name> <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Name> <https://global-webnet.com/ontology/schema#order> "1" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Name> <https://global-webnet.com/ontology/schema#required> "true" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Name> <https://global-webnet.com/ontology/schema#label> "Setting" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/site/Setting/Value> <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Value> <https://global-webnet.com/ontology/schema#name> "Value" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Value> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Value> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/site#value> <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Value> <https://global-webnet.com/ontology/schema#order> "2" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Value> <https://global-webnet.com/ontology/schema#label> "Value" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/site/Setting/Description> <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Description> <https://global-webnet.com/ontology/schema#name> "Description" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Description> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Description> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/site#description> <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Description> <https://global-webnet.com/ontology/schema#order> "3" <https://global-webnet.com/graph/site> .
+<https://schema.global-webnet.com/site/Setting/Description> <https://global-webnet.com/ontology/schema#label> "Description" <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d01> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://global-webnet.com/ontology/site#Setting> <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d01> <https://global-webnet.com/ontology/site#name> "SiteTitle" <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d01> <https://global-webnet.com/ontology/site#value> "AI Research Blog" <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d01> <https://global-webnet.com/ontology/site#description> "The name shown in the header and the browser tab." <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d02> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://global-webnet.com/ontology/site#Setting> <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d02> <https://global-webnet.com/ontology/site#name> "Tagline" <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d02> <https://global-webnet.com/ontology/site#description> "A short line under the title (optional)." <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d03> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://global-webnet.com/ontology/site#Setting> <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d03> <https://global-webnet.com/ontology/site#name> "PostsPerPage" <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d03> <https://global-webnet.com/ontology/site#value> "10" <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d03> <https://global-webnet.com/ontology/site#description> "How many posts the list shows on a page (1 to 50)." <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d04> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://global-webnet.com/ontology/site#Setting> <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d04> <https://global-webnet.com/ontology/site#name> "TimeZone" <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d04> <https://global-webnet.com/ontology/site#value> "UTC" <https://global-webnet.com/graph/site> .
+<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d04> <https://global-webnet.com/ontology/site#description> "The time zone the legacy BlogEngine dates were written in (for the migration)." <https://global-webnet.com/graph/site> .
