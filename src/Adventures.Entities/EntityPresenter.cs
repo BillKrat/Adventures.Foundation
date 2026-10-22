@@ -30,6 +30,9 @@ public class EntityPresenter<TEntity>(
     protected virtual EntityPermissions PermissionsFor(TEntity entity) => EntityPermissions.Full;
 
     /// <summary>Fields a grid does not show as a column by default (the client gear can still add them). The entity id is never a useful column.</summary>
+    /// <summary>The order of the list when the caller names none (a field and whether it runs descending); null keeps the natural order. Posts use it to show the newest first.</summary>
+    protected virtual (string Field, bool Descending)? DefaultSort => null;
+
     protected virtual IReadOnlySet<string> ListHiddenFields { get; } = new HashSet<string>([DynamicEntity.EntityIdPropertyName], StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Whether the caller may add a new entity from the grid (rendering only; the controller and Bll enforce).</summary>
@@ -76,6 +79,11 @@ public class EntityPresenter<TEntity>(
     {
         ArgumentNullException.ThrowIfNull(query);
         var all = await Bll.ListAsync(cancellationToken).ConfigureAwait(false);
+        if (DefaultSort is { } fallback && string.IsNullOrWhiteSpace(query.Sort))
+        {
+            query = query with { Sort = fallback.Field, Descending = fallback.Descending };
+        }
+
         var (page, paging) = EntityGridPager.Apply(Schema, all, query);
         var grid = EntityGridModel.From(Schema, page, ReadOnlyFields, ListHiddenFields);
         if (relations is not null)
