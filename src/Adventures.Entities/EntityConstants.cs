@@ -165,6 +165,16 @@ public static class EntityConstants
         public const string SchemaBase = "https://schema.global-webnet.com/legacy/";
     }
 
+    /// <summary>The site settings (title, tagline, posts per page, legacy time zone): named rows an administrator edits; defined in <c>Sql/seed/seed-011-site-settings.nq</c>.</summary>
+    public static class Site
+    {
+        public const string SeedName = "011-site-settings";
+        public const string DefaultGraph = "https://global-webnet.com/graph/site";
+        public const string SettingSchemaIri = "https://schema.global-webnet.com/site/Setting";
+        public const string SettingBaseIri = "https://global-webnet.com/id/site-setting/";
+        public const string SettingTypeIri = "https://global-webnet.com/ontology/site#Setting";
+    }
+
     /// <summary>
     /// The content model (pages, posts, categories, tags), new entities under the schema host convention; shipped by
     /// <c>Sql/seed/seed-006-content.nq</c> and modelled on what the BlogEngine admin edits (see the review in ai-research-blog docs).
