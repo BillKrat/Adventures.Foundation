@@ -41,6 +41,12 @@ public interface IContentAuthoring
 
     Task<IReadOnlyList<DraftSummary>> ListMineAsync(string authorUserName, CancellationToken cancellationToken = default);
 
+    /// <summary>The conversation under one of the author own posts (oldest first). Refused for a post that is someone else's.</summary>
+    Task<IReadOnlyList<ConversationEntry>> ListCommentsAsync(string authorUserName, string postId, CancellationToken cancellationToken = default);
+
+    /// <summary>Adds a plain comment (never a decision: the human records those) to the conversation under one of the author own posts.</summary>
+    Task<ConversationEntry> AddCommentAsync(string authorUserName, string postId, string text, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<TaxonomyTerm>> ListCategoriesAsync(CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<TaxonomyTerm>> ListTagsAsync(CancellationToken cancellationToken = default);
@@ -57,8 +63,34 @@ public sealed class ContentAuthoring(
     IEntityPresenter<Category> categories,
     IEntityPresenter<Tag> tags,
     IUserPresenter users,
-    IPostBll postBll) : IContentAuthoring
+    IPostBll postBll,
+    IConversation? conversation = null) : IContentAuthoring
 {
+    public async Task<IReadOnlyList<ConversationEntry>> ListCommentsAsync(string authorUserName, string postId, CancellationToken cancellationToken = default)
+    {
+        await EnsureOwnPostAsync(authorUserName, postId, cancellationToken).ConfigureAwait(false);
+        return await Conversation().ListAsync(postId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<ConversationEntry> AddCommentAsync(string authorUserName, string postId, string text, CancellationToken cancellationToken = default)
+    {
+        await EnsureOwnPostAsync(authorUserName, postId, cancellationToken).ConfigureAwait(false);
+        return await Conversation().AddAsync(postId, authorUserName, CommentKinds.Comment, text, cancellationToken).ConfigureAwait(false);
+    }
+
+    private IConversation Conversation() => conversation ?? throw new InvalidOperationException("The conversation service is not registered.");
+
+    private async Task EnsureOwnPostAsync(string authorUserName, string postId, CancellationToken cancellationToken)
+    {
+        var authorId = await AuthorIdAsync(authorUserName, cancellationToken).ConfigureAwait(false);
+        var existing = await posts.GetFormAsync(postId, cancellationToken).ConfigureAwait(false)
+            ?? throw new BusinessRuleException("The post does not exist.");
+        if (!string.Equals(existing.Entity.Values.GetValueOrDefault("Author"), authorId, StringComparison.Ordinal))
+        {
+            throw new BusinessRuleException("This post was written by someone else; its conversation cannot be used here.");
+        }
+    }
+
     public async Task<DraftSummary> CreateDraftAsync(string authorUserName, DraftPost draft, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(draft);
