@@ -127,6 +127,18 @@ public sealed class PageBllTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TwoPagesNeverShareAnAddress()
+    {
+        var first = await CreateAsync("About");
+        var second = await CreateAsync("About");
+
+        Assert.Equal("about", (await _presenter.GetFormAsync(first))!.Entity.Values["Slug"]);
+        Assert.Equal("about-2", (await _presenter.GetFormAsync(second))!.Entity.Values["Slug"]);
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _presenter.CreateAsync(new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["Title"] = "Team", ["Slug"] = "ABOUT" })));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _presenter.UpdateAsync(second, new EntityDataModel(second, new Dictionary<string, string?> { ["Slug"] = "about" })));
+    }
+
+    [Fact]
     public async Task ParentChoicesExcludeThePageBeingEdited()
     {
         var root = await CreateAsync("Article");
