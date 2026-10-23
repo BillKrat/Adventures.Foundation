@@ -22,6 +22,7 @@ public sealed class PostBllTests : IAsyncLifetime
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-006-content.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-007-post-taxonomy.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-008-post-revision.nq"));
+        await store.SeedFromFileAsync(Path.Combine(seeds, "seed-013-post-approval.nq"));
         var quads = await store.QueryAsync();
 
         var services = new ServiceCollection();
@@ -88,6 +89,40 @@ public sealed class PostBllTests : IAsyncLifetime
 
         var byTitle = await _posts.GetGridAsync(new EntityGridQuery(Sort: "Title"));
         Assert.Equal(["Middle", "Newest", "Oldest"], byTitle.Rows.Select(r => r.Values["Title"]));
+    }
+
+    [Fact]
+    public async Task Approval_IsSetOnlyByTheServer_RecordsWhoAndWhen_AndIsClearedByAnyOtherState()
+    {
+        var id = (await _posts.CreateAsync(Data(("Title", "Review summary")))).Entity.EntityId;
+
+        var attempt = await Assert.ThrowsAsync<InputValidationException>(() => _posts.UpdateAsync(id, Data(("Approval", "Approved"))));
+        Assert.Contains("cannot be changed", attempt.Errors["Approval"].Single());
+
+        Assert.True(await _bll.SetApprovalAsync(id, PostApproval.Approved, "Admin"));
+        var approved = (await _posts.GetFormAsync(id))!.Entity.Values;
+        Assert.Equal("Approved", approved["Approval"]);
+        Assert.Equal("Admin", approved["ApprovedBy"]);
+        Assert.False(string.IsNullOrEmpty(approved["ApprovedAt"]));
+
+        Assert.True(await _bll.SetApprovalAsync(id, PostApproval.ChangesRequested, "Admin"));
+        var requested = (await _posts.GetFormAsync(id))!.Entity.Values;
+        Assert.Equal("Changes requested", requested["Approval"]);
+        Assert.True(string.IsNullOrEmpty(requested.GetValueOrDefault("ApprovedBy")));
+        Assert.True(string.IsNullOrEmpty(requested.GetValueOrDefault("ApprovedAt")));
+    }
+
+    [Fact]
+    public async Task Approval_RefusesAnUnknownState_AProposedRevision_AndAMissingPost()
+    {
+        var id = (await _posts.CreateAsync(Data(("Title", "A post")))).Entity.EntityId;
+        await _bll.PublishAsync(id);
+        var revision = (await _posts.CreateAsync(Data(("Title", "A post, revised")))).Entity.EntityId;
+        await _bll.MarkRevisionAsync(revision, id);
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _bll.SetApprovalAsync(id, "Maybe", "Admin"));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _bll.SetApprovalAsync(revision, PostApproval.Approved, "Admin"));
+        Assert.False(await _bll.SetApprovalAsync(Guid.NewGuid().ToString(), PostApproval.Approved, "Admin"));
     }
 
     [Fact]

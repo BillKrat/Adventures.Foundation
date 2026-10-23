@@ -191,6 +191,9 @@ public static class EntityConstants
 
         /// <summary>Seed 008 adds RevisionOf to Post: a draft that proposes changes to a published post.</summary>
         public const string RevisionSeedName = "008-post-revision";
+
+        /// <summary>Seed 013 adds Approval, ApprovedBy and ApprovedAt to Post: the review state of a collaboration post, changed only by the server (the approve actions).</summary>
+        public const string ApprovalSeedName = "013-post-approval";
         public const string DefaultGraph = "https://global-webnet.com/graph/content";
         public const string SchemaBase = "https://schema.global-webnet.com/content/";
         public const string IdBase = "https://global-webnet.com/id/";

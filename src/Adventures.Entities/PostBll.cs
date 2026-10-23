@@ -24,6 +24,40 @@ public sealed class PostBll(IEntityRepository<Post> posts) : EntityBll<Post>(pos
         return base.UpdateAsync(entity, cancellationToken);
     }
 
+    public async Task<bool> SetApprovalAsync(string postId, string status, string? approvedBy, CancellationToken cancellationToken = default)
+    {
+        if (!PostApproval.All.Contains(status, StringComparer.Ordinal))
+        {
+            throw new BusinessRuleException($"The review state must be one of: {string.Join(", ", PostApproval.All)}.");
+        }
+
+        var post = await GetAsync(postId, cancellationToken).ConfigureAwait(false);
+        if (post is null)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(post.GetValue("RevisionOf") as string))
+        {
+            throw new BusinessRuleException("This is a proposed revision, which is applied or discarded, not reviewed.");
+        }
+
+        post.Set("Approval", Guid.NewGuid().ToString(), status);
+        if (status == PostApproval.Approved)
+        {
+            post.Set("ApprovedBy", Guid.NewGuid().ToString(), approvedBy ?? string.Empty);
+            post.Set("ApprovedAt", Guid.NewGuid().ToString(), DateTimeOffset.UtcNow);
+        }
+        else
+        {
+            post.Clear("ApprovedBy");
+            post.Clear("ApprovedAt");
+        }
+
+        await Repository.UpdateAsync(post, cancellationToken).ConfigureAwait(false);
+        return true;
+    }
+
     public Task<bool> PublishAsync(string postId, CancellationToken cancellationToken = default) => SetPublishedAsync(postId, true, cancellationToken);
 
     public Task<bool> UnpublishAsync(string postId, CancellationToken cancellationToken = default) => SetPublishedAsync(postId, false, cancellationToken);
@@ -159,4 +193,17 @@ public sealed class PostBll(IEntityRepository<Post> posts) : EntityBll<Post>(pos
             post.Set("DatePublished", Guid.NewGuid().ToString(), DateTimeOffset.UtcNow);
         }
     }
+}
+
+/// <summary>The review states of a collaboration post (see <see cref="IPostBll.SetApprovalAsync"/>). Empty means the post is not under review.</summary>
+public static class PostApproval
+{
+    public const string NeedsReview = "Needs review";
+    public const string Approved = "Approved";
+    public const string ChangesRequested = "Changes requested";
+
+    public static readonly IReadOnlyList<string> All = [NeedsReview, Approved, ChangesRequested];
+
+    /// <summary>The category whose posts are reviewed (the collaboration channel); posts written by the authoring surface into it start as <see cref="NeedsReview"/>.</summary>
+    public const string CollaborationCategory = "Collaboration";
 }

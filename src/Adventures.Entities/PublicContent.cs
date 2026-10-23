@@ -5,7 +5,7 @@ namespace Adventures.Entities;
 /// in the view an administrator gets (see <see cref="IPublicContent"/>): a visitor never receives a draft.
 /// </summary>
 public sealed record PublicPostSummary(
-    string Title, string Slug, string? Description, string? DatePublished, string? Author, IReadOnlyList<string> Categories, IReadOnlyList<string> Tags, bool IsDraft = false);
+    string Title, string Slug, string? Description, string? DatePublished, string? Author, IReadOnlyList<string> Categories, IReadOnlyList<string> Tags, bool IsDraft = false, string? Approval = null);
 
 /// <summary>A post to read: the summary plus its Markdown content (the reader renders it).</summary>
 public sealed record PublicPost(PublicPostSummary Summary, string Content, bool EnableComments);
@@ -134,7 +134,9 @@ public sealed class PublicContent(IEntityPresenter<Post> posts, IEntityPresenter
                     row.Display?.GetValueOrDefault("Author"),
                     categories,
                     tags,
-                    !IsTrue(row.Values.GetValueOrDefault("IsPublished")));
+                    !IsTrue(row.Values.GetValueOrDefault("IsPublished")),
+                    // the review state is for the administrator's view only: a visitor never learns that a post is under review
+                    includeDrafts && row.Values.GetValueOrDefault("Approval") is { Length: > 0 } approval ? approval : null);
                 return new PostRow(summary, row.Values.GetValueOrDefault("Content") ?? string.Empty, IsTrue(row.Values.GetValueOrDefault("EnableComments")), categories, tags);
             })
             .ToList();
