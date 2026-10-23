@@ -211,6 +211,13 @@ public static class EntityConstants
         public const string CategoryBaseIri = IdBase + "category/";
         public const string CategoryTypeIri = OntologyBase + "Category";
 
+        public const string CommentSchemaIri = SchemaBase + "Comment";
+        public const string CommentBaseIri = IdBase + "comment/";
+        public const string CommentTypeIri = OntologyBase + "Comment";
+
+        /// <summary>Seed 014 adds the Comment schema: the conversation under a post.</summary>
+        public const string CommentsSeedName = "014-comments";
+
         public const string TagSchemaIri = SchemaBase + "Tag";
         public const string TagBaseIri = IdBase + "tag/";
         public const string TagTypeIri = OntologyBase + "Tag";

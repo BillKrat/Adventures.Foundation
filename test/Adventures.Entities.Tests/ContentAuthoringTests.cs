@@ -20,11 +20,15 @@ public sealed class ContentAuthoringTests : IAsyncLifetime
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-007-post-taxonomy.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-008-post-revision.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-013-post-approval.nq"));
+        await store.SeedFromFileAsync(Path.Combine(seeds, "seed-014-comments.nq"));
         var quads = await store.QueryAsync();
 
         var services = new ServiceCollection();
         services.AddSingleton<INQuadStore>(store);
         const string graph = EntityConstants.Content.DefaultGraph;
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Content.CommentSchemaIri), EntityConstants.Content.CommentBaseIri, EntityConstants.Content.CommentTypeIri, graph, s => new Comment(s));
+        services.AddScoped<IEntityBll<Comment>>(p => new EntityBll<Comment>(p.GetRequiredService<IEntityRepository<Comment>>()));
+        services.AddScoped<IConversation, Conversation>();
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Content.PostSchemaIri), EntityConstants.Content.PostBaseIri, EntityConstants.Content.PostTypeIri, graph, s => new Post(s));
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Content.CategorySchemaIri), EntityConstants.Content.CategoryBaseIri, EntityConstants.Content.CategoryTypeIri, graph, s => new Category(s));
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Content.TagSchemaIri), EntityConstants.Content.TagBaseIri, EntityConstants.Content.TagTypeIri, graph, s => new Tag(s));
@@ -117,6 +121,41 @@ public sealed class ContentAuthoringTests : IAsyncLifetime
         var draft = await _authoring.CreateDraftAsync("Claude", new DraftPost(title, Content: content, Categories: ["Help"], Tags: ["Pages"], Description: "orig"));
         await _services.GetRequiredService<IPostBll>().PublishAsync(draft.Id);
         return draft.Id;
+    }
+
+    [Fact]
+    public async Task TheConversationUnderAPost_IsAddedOnlyByOrToTheAuthor_OldestFirst_AndNeverCarriesADecisionFromTheAuthor()
+    {
+        var mine = await _authoring.CreateDraftAsync("Claude", new DraftPost("Review summary", Categories: ["Collaboration"]));
+        var conversation = _services.GetRequiredService<IConversation>();
+
+        await _authoring.AddCommentAsync("Claude", mine.Id, "  Answering item 1: yes.  ");
+        await Task.Delay(10);
+        await conversation.AddAsync(mine.Id, "Admin", CommentKinds.Decision, "Decided: site settings go ahead.");
+
+        var thread = await _authoring.ListCommentsAsync("Claude", mine.Id);
+        Assert.Equal(["Answering item 1: yes.", "Decided: site settings go ahead."], thread.Select(e => e.Body));
+        Assert.Equal(["Comment", "Decision"], thread.Select(e => e.Kind));
+        Assert.Equal(["Claude", "Admin"], thread.Select(e => e.Author));
+        Assert.All(thread, e => Assert.False(string.IsNullOrEmpty(e.Created)));
+        Assert.Empty(await conversation.ListAsync(Guid.NewGuid().ToString()));
+    }
+
+    [Fact]
+    public async Task AConversationEntry_IsRefusedWhenEmptyTooLongOfAnUnknownKindOrForAnotherAuthorsPost()
+    {
+        var mine = await _authoring.CreateDraftAsync("Claude", new DraftPost("Mine"));
+        var conversation = _services.GetRequiredService<IConversation>();
+        var users = _services.GetRequiredService<IUserPresenter>();
+        var other = users.GetFormByUserNameAsync("Admin").Result!.Entity.EntityId;
+        _ = other;
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => conversation.AddAsync(mine.Id, "Admin", CommentKinds.Comment, "   "));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => conversation.AddAsync(mine.Id, "Admin", CommentKinds.Comment, new string('x', Conversation.MaxBodyLength + 1)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => conversation.AddAsync(mine.Id, "Admin", "Shout", "hello"));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => conversation.AddAsync(Guid.NewGuid().ToString(), "Admin", CommentKinds.Comment, "hello"));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _authoring.AddCommentAsync("Admin", mine.Id, "not my post"));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _authoring.ListCommentsAsync("Admin", mine.Id));
     }
 
     [Fact]
