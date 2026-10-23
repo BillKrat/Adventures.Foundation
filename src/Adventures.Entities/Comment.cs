@@ -15,6 +15,9 @@ public static class CommentKinds
 /// <summary>One entry of a post's conversation, as the reader of it sees it.</summary>
 public sealed record ConversationEntry(string Id, string Author, string Kind, string Created, string Body);
 
+/// <summary>A decision with the post it was recorded under.</summary>
+public sealed record DecisionEntry(string Id, string PostId, string PostTitle, string PostSlug, string Author, string Created, string Body);
+
 /// <summary>
 /// The durable record of the conversation about a post: who said what, when, and which statements were decisions. Entries are only
 /// added (never edited or removed here), oldest first, so the thread reads as it happened. The host decides who may call it.
@@ -26,6 +29,9 @@ public interface IConversation
 
     /// <summary>Adds an entry. Refused (a business-rule error) for a missing post, an unknown kind, an empty text or a text over <see cref="Conversation.MaxBodyLength"/>.</summary>
     Task<ConversationEntry> AddAsync(string postId, string author, string kind, string body, CancellationToken cancellationToken = default);
+
+    /// <summary>Every entry of kind Decision across all posts, newest first, each with the post it belongs to (a post that no longer exists is skipped).</summary>
+    Task<IReadOnlyList<DecisionEntry>> ListDecisionsAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>Implementation over the comment repository and the post rules.</summary>
@@ -66,6 +72,27 @@ public sealed class Conversation(IEntityBll<Comment> comments, IPostBll posts, E
         comment.Set("Created", Guid.NewGuid().ToString(), DateTimeOffset.UtcNow);
         comment.Set("Body", Guid.NewGuid().ToString(), text);
         return ToEntry(await comments.CreateAsync(comment, cancellationToken).ConfigureAwait(false));
+    }
+
+    public async Task<IReadOnlyList<DecisionEntry>> ListDecisionsAsync(CancellationToken cancellationToken = default)
+    {
+        var decisions = (await comments.ListAsync(cancellationToken).ConfigureAwait(false))
+            .Where(c => string.Equals(c.GetValue("Kind") as string, CommentKinds.Decision, StringComparison.Ordinal))
+            .ToList();
+        var result = new List<DecisionEntry>();
+        foreach (var group in decisions.GroupBy(c => c.GetValue("Post") as string ?? string.Empty))
+        {
+            var post = group.Key.Length == 0 ? null : await posts.GetAsync(group.Key, cancellationToken).ConfigureAwait(false);
+            if (post is null)
+            {
+                continue;
+            }
+
+            result.AddRange(group.Select(ToEntry).Select(e => new DecisionEntry(
+                e.Id, group.Key, post.GetValue("Title") as string ?? string.Empty, post.GetValue("Slug") as string ?? string.Empty, e.Author, e.Created, e.Body)));
+        }
+
+        return result.OrderByDescending(d => d.Created, StringComparer.Ordinal).ToList();
     }
 
     private static ConversationEntry ToEntry(Comment comment) => new(

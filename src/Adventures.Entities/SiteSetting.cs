@@ -64,3 +64,19 @@ public sealed class SiteSettings(IEntityPresenter<SiteSetting> presenter) : ISit
         return values;
     }
 }
+
+/// <summary>
+/// The presenter of the site settings: the four known settings are edited (their value only), never renamed, created or deleted,
+/// because the site reads them by name and falls back to a default for a missing one (renaming SiteTitle would silently lose the title).
+/// </summary>
+public sealed class SiteSettingPresenter(IEntityBll<SiteSetting> bll, EntitySchemaOf<SiteSetting> schema, IEntityRelationProvider? relations = null)
+    : EntityPresenter<SiteSetting>(bll, schema.Schema, s => new SiteSetting(s), relations)
+{
+    private static readonly HashSet<string> Fixed = new(["Name", "Description"], StringComparer.OrdinalIgnoreCase);
+
+    protected override IReadOnlySet<string> ReadOnlyFields => Fixed;
+
+    protected override bool CanCreate => false;
+
+    protected override EntityPermissions PermissionsFor(SiteSetting entity) => new(CanUpdate: true, CanDelete: false);
+}

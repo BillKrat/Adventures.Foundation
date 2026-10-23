@@ -23,8 +23,7 @@ public sealed class SiteSettingsTests : IAsyncLifetime
         services.AddSingleton<INQuadStore>(store);
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Site.SettingSchemaIri), EntityConstants.Site.SettingBaseIri, EntityConstants.Site.SettingTypeIri, EntityConstants.Site.DefaultGraph, s => new SiteSetting(s));
         services.AddScoped<IEntityBll<SiteSetting>>(p => new EntityBll<SiteSetting>(p.GetRequiredService<IEntityRepository<SiteSetting>>()));
-        services.AddScoped<IEntityPresenter<SiteSetting>>(p => new EntityPresenter<SiteSetting>(
-            p.GetRequiredService<IEntityBll<SiteSetting>>(), p.GetRequiredService<EntitySchemaOf<SiteSetting>>().Schema, s => new SiteSetting(s), null));
+        services.AddScoped<IEntityPresenter<SiteSetting>, SiteSettingPresenter>();
         services.AddScoped<ISiteSettings, SiteSettings>();
         _services = services.BuildServiceProvider();
         _presenter = _services.GetRequiredService<IEntityPresenter<SiteSetting>>();
@@ -63,6 +62,22 @@ public sealed class SiteSettingsTests : IAsyncLifetime
         var site = await _settings.GetPublicAsync();
         Assert.Equal("Adventures on the Edge", site.Title);
         Assert.Equal(10, site.PostsPerPage);   // not a number: the default
+    }
+
+    [Fact]
+    public async Task OnlyTheValueIsEditable_ASettingCannotBeRenamed_AndNoneCanBeCreatedFromTheForm()
+    {
+        var title = (await _presenter.ListAsync()).Single(r => r.Values["Name"] == "SiteTitle");
+
+        var rename = await Assert.ThrowsAsync<Adventures.Common.Exceptions.InputValidationException>(() => _presenter.UpdateAsync(title.EntityId, Row("Titel", "x")));
+        Assert.Contains("Name", rename.Errors.Keys);
+        await _presenter.UpdateAsync(title.EntityId, Row("SiteTitle", "Adventures"));   // the same name with a new value is fine
+
+        Assert.Equal("Adventures", (await _settings.GetPublicAsync()).Title);
+        Assert.Null(await _presenter.GetNewFormAsync());
+        var form = await _presenter.GetFormAsync(title.EntityId);
+        Assert.False(form!.Permissions!.CanDelete);
+        Assert.True(form.Schema.Fields.Single(f => f.Name == "Name").IsReadOnly);
     }
 
     [Fact]

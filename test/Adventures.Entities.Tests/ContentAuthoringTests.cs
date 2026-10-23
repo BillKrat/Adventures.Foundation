@@ -142,6 +142,25 @@ public sealed class ContentAuthoringTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TheDecisionsList_HasOnlyDecisions_NewestFirst_WithTheirPost()
+    {
+        var first = await _authoring.CreateDraftAsync("Claude", new DraftPost("First summary"));
+        var second = await _authoring.CreateDraftAsync("Claude", new DraftPost("Second summary"));
+        var conversation = _services.GetRequiredService<IConversation>();
+        await conversation.AddAsync(first.Id, "Admin", CommentKinds.Decision, "Site settings go ahead.");
+        await Task.Delay(10);
+        await conversation.AddAsync(first.Id, "Claude", CommentKinds.Comment, "Noted.");
+        await conversation.AddAsync(second.Id, "Admin", CommentKinds.Decision, "Collaborators role waits for a second person.");
+
+        var decisions = await conversation.ListDecisionsAsync();
+
+        Assert.Equal(["Collaborators role waits for a second person.", "Site settings go ahead."], decisions.Select(d => d.Body));
+        Assert.Equal(["Second summary", "First summary"], decisions.Select(d => d.PostTitle));
+        Assert.Equal([second.Id, first.Id], decisions.Select(d => d.PostId));
+        Assert.All(decisions, d => Assert.Equal("Admin", d.Author));
+    }
+
+    [Fact]
     public async Task AConversationEntry_IsRefusedWhenEmptyTooLongOfAnUnknownKindOrForAnotherAuthorsPost()
     {
         var mine = await _authoring.CreateDraftAsync("Claude", new DraftPost("Mine"));
