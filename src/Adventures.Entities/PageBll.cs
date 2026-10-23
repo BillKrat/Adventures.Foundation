@@ -5,13 +5,13 @@ namespace Adventures.Entities;
 /// <summary>
 /// The page rules: a page cannot be its own parent or sit under one of its own descendants (no cycles in the tree); only one
 /// page is the front page (setting it on one clears it on the others); an empty slug is made from the title; a new page gets
-/// a publication date. Everything else is the generic Bll (required fields, the audit trail).
+/// a publication date; a slug is unique among pages (see <see cref="SlugRules"/>). Everything else is the generic Bll (required fields, the audit trail).
 /// </summary>
 public sealed class PageBll(IEntityRepository<Page> pages) : EntityBll<Page>(pages), IPageBll
 {
     public override async Task<Page> CreateAsync(Page entity, CancellationToken cancellationToken = default)
     {
-        Prepare(entity);
+        await PrepareAsync(entity, selfId: null, storedSlug: null, cancellationToken).ConfigureAwait(false);
         var created = await base.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
         await ClearOtherFrontPagesAsync(created, cancellationToken).ConfigureAwait(false);
         return created;
@@ -19,17 +19,27 @@ public sealed class PageBll(IEntityRepository<Page> pages) : EntityBll<Page>(pag
 
     public override async Task UpdateAsync(Page entity, CancellationToken cancellationToken = default)
     {
-        Prepare(entity);
+        var id = entity.EntityId?.Value;
+        var stored = id is null ? null : await GetAsync(id, cancellationToken).ConfigureAwait(false);
+        await PrepareAsync(entity, id, stored?.GetValue("Slug") as string, cancellationToken).ConfigureAwait(false);
         await RejectCycleAsync(entity, cancellationToken).ConfigureAwait(false);
         await base.UpdateAsync(entity, cancellationToken).ConfigureAwait(false);
         await ClearOtherFrontPagesAsync(entity, cancellationToken).ConfigureAwait(false);
     }
 
-    private static void Prepare(Page page)
+    private async Task PrepareAsync(Page page, string? selfId, string? storedSlug, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(page.GetValue("Slug") as string) && page.GetValue("Title") is string title && !string.IsNullOrWhiteSpace(title))
+        var title = page.GetValue("Title") as string ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(page.GetValue("Slug") as string) || !string.IsNullOrWhiteSpace(title))
         {
-            page.Set("Slug", Guid.NewGuid().ToString(), Slugify(title));
+            var others = (await ListAsync(cancellationToken).ConfigureAwait(false))
+                .Where(p => p.EntityId is not null)
+                .Select(p => (p.EntityId!.Value, p.GetValue("Slug") as string ?? string.Empty, p.GetValue("Title") as string ?? string.Empty));
+            var resolved = SlugRules.Resolve(page.GetValue("Slug") as string, title, selfId, storedSlug, others);
+            if (resolved.Length > 0)
+            {
+                page.Set("Slug", Guid.NewGuid().ToString(), resolved);
+            }
         }
 
         if (page.GetValue("DatePublished") is null)

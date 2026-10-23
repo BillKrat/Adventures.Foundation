@@ -126,6 +126,29 @@ public sealed class PostBllTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TwoPostsNeverShareAnAddress_AGeneratedOneGetsASuffix_ATypedOneIsRefused_AndARevisionNeverBlocks()
+    {
+        var first = (await _posts.CreateAsync(Data(("Title", "Release notes")))).Entity;
+        var second = (await _posts.CreateAsync(Data(("Title", "Release notes")))).Entity;
+        Assert.Equal("release-notes", first.Values["Slug"]);
+        Assert.Equal("release-notes-2", second.Values["Slug"]);
+
+        var typed = await Assert.ThrowsAsync<BusinessRuleException>(() => _posts.CreateAsync(Data(("Title", "Other"), ("Slug", "Release-Notes"))));
+        Assert.Contains("Release notes", typed.Message);
+
+        var moved = await Assert.ThrowsAsync<BusinessRuleException>(() => _posts.UpdateAsync(second.EntityId, Data(("Slug", "release-notes"))));
+        Assert.Contains("already used", moved.Message);
+        var saved = await _posts.UpdateAsync(second.EntityId, Data(("Title", "Release notes 2")));   // the slug is untouched: fine
+        Assert.Equal("release-notes-2", saved!.Entity.Values["Slug"]);
+
+        await _bll.PublishAsync(first.EntityId);
+        var revision = (await _posts.CreateAsync(Data(("Title", "Release notes")))).Entity.EntityId;
+        await _bll.MarkRevisionAsync(revision, first.EntityId);
+        var next = (await _posts.CreateAsync(Data(("Title", "Brand new"), ("Slug", "release-notes-3")))).Entity;   // the hidden revision holds no address
+        Assert.Equal("release-notes-3", next.Values["Slug"]);
+    }
+
+    [Fact]
     public async Task OnlyThePublishActionChangesTheState_AndAnUpdateCannotFlipIt()
     {
         var id = (await _posts.CreateAsync(Data(("Title", "Draft")))).Entity.EntityId;

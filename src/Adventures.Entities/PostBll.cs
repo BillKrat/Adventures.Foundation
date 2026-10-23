@@ -11,17 +11,19 @@ public sealed class PostBll(IEntityRepository<Post> posts) : EntityBll<Post>(pos
 {
     private static readonly string[] CopiedByRevision = ["Title", "Content", "Description", "EnableComments"];
 
-    public override Task<Post> CreateAsync(Post entity, CancellationToken cancellationToken = default)
+    public override async Task<Post> CreateAsync(Post entity, CancellationToken cancellationToken = default)
     {
-        Prepare(entity);
+        await PrepareAsync(entity, selfId: null, storedSlug: null, cancellationToken).ConfigureAwait(false);
         entity.Set("IsPublished", Guid.NewGuid().ToString(), false);
-        return base.CreateAsync(entity, cancellationToken);
+        return await base.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
     }
 
-    public override Task UpdateAsync(Post entity, CancellationToken cancellationToken = default)
+    public override async Task UpdateAsync(Post entity, CancellationToken cancellationToken = default)
     {
-        Prepare(entity);
-        return base.UpdateAsync(entity, cancellationToken);
+        var id = entity.EntityId?.Value;
+        var stored = id is null ? null : await GetAsync(id, cancellationToken).ConfigureAwait(false);
+        await PrepareAsync(entity, id, stored?.GetValue("Slug") as string, cancellationToken).ConfigureAwait(false);
+        await base.UpdateAsync(entity, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> SetApprovalAsync(string postId, string status, string? approvedBy, CancellationToken cancellationToken = default)
@@ -181,11 +183,20 @@ public sealed class PostBll(IEntityRepository<Post> posts) : EntityBll<Post>(pos
         return true;
     }
 
-    private static void Prepare(Post post)
+    private async Task PrepareAsync(Post post, string? selfId, string? storedSlug, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(post.GetValue("Slug") as string) && post.GetValue("Title") is string title && !string.IsNullOrWhiteSpace(title))
+        var title = post.GetValue("Title") as string ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(post.GetValue("Slug") as string) || !string.IsNullOrWhiteSpace(title))
         {
-            post.Set("Slug", Guid.NewGuid().ToString(), PageBll.Slugify(title));
+            // proposed revisions are hidden copies and never clash; a revision itself is saved before it is marked, so its generated slug may gain a suffix, which nobody reads
+            var others = (await ListAsync(cancellationToken).ConfigureAwait(false))
+                .Where(p => p.EntityId is not null && string.IsNullOrEmpty(p.GetValue("RevisionOf") as string))
+                .Select(p => (p.EntityId!.Value, p.GetValue("Slug") as string ?? string.Empty, p.GetValue("Title") as string ?? string.Empty));
+            var resolved = SlugRules.Resolve(post.GetValue("Slug") as string, title, selfId, storedSlug, others);
+            if (resolved.Length > 0)
+            {
+                post.Set("Slug", Guid.NewGuid().ToString(), resolved);
+            }
         }
 
         if (post.GetValue("DatePublished") is null)
