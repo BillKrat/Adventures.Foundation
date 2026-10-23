@@ -29,6 +29,7 @@
     <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-011-site-settings.nq" Link="Sql\seed\seed-011-site-settings.nq" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-007-post-taxonomy.nq" Link="Sql\seed\seed-007-post-taxonomy.nq" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-008-post-revision.nq" Link="Sql\seed\seed-008-post-revision.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-013-post-approval.nq" Link="Sql\seed\seed-013-post-approval.nq" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

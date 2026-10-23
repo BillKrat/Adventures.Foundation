@@ -22,6 +22,12 @@ public interface IPostBll : IEntityBll<Post>
     /// </summary>
     Task<bool> ApplyRevisionAsync(string revisionId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Sets the review state of a post to one of <see cref="PostApproval.All"/>. An approval records who approved it and when; any other
+    /// state clears both. False when the post does not exist; refused for a proposed revision or an unknown state.
+    /// </summary>
+    Task<bool> SetApprovalAsync(string postId, string status, string? approvedBy, CancellationToken cancellationToken = default);
+
     /// <summary>Removes a revision without applying it. False when it does not exist; refused when the post is not a revision.</summary>
     Task<bool> DiscardRevisionAsync(string revisionId, CancellationToken cancellationToken = default);
 }

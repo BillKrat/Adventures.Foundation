@@ -19,6 +19,7 @@ public sealed class ContentAuthoringTests : IAsyncLifetime
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-006-content.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-007-post-taxonomy.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-008-post-revision.nq"));
+        await store.SeedFromFileAsync(Path.Combine(seeds, "seed-013-post-approval.nq"));
         var quads = await store.QueryAsync();
 
         var services = new ServiceCollection();
@@ -116,6 +117,34 @@ public sealed class ContentAuthoringTests : IAsyncLifetime
         var draft = await _authoring.CreateDraftAsync("Claude", new DraftPost(title, Content: content, Categories: ["Help"], Tags: ["Pages"], Description: "orig"));
         await _services.GetRequiredService<IPostBll>().PublishAsync(draft.Id);
         return draft.Id;
+    }
+
+    [Fact]
+    public async Task ACollaborationDraft_StartsAsNeedsReview_AnOrdinaryDraftHasNoReviewState()
+    {
+        var collab = await _authoring.CreateDraftAsync("Claude", new DraftPost("Review summary", Categories: ["Collaboration"]));
+        var ordinary = await _authoring.CreateDraftAsync("Claude", new DraftPost("A normal draft", Categories: ["Help"]));
+
+        Assert.Equal(PostApproval.NeedsReview, collab.Approval);
+        Assert.Null(ordinary.Approval);
+        Assert.Equal(PostApproval.NeedsReview, (await _authoring.ListMineAsync("Claude")).Single(p => p.Title == "Review summary").Approval);
+    }
+
+    [Fact]
+    public async Task ChangingAnApprovedOrRejectedCollaborationDraft_PutsItBackToNeedsReview()
+    {
+        var bll = _services.GetRequiredService<IPostBll>();
+        var draft = await _authoring.CreateDraftAsync("Claude", new DraftPost("Review summary", Categories: ["Collaboration"]));
+        await bll.SetApprovalAsync(draft.Id, PostApproval.Approved, "Admin");
+
+        var edited = await _authoring.UpdateDraftAsync("Claude", draft.Id, new DraftPost(string.Empty, Content: "second version"));
+
+        Assert.Equal(PostApproval.NeedsReview, edited!.Approval);
+
+        await bll.SetApprovalAsync(draft.Id, PostApproval.ChangesRequested, "Admin");
+        var again = await _authoring.UpdateDraftAsync("Claude", draft.Id, new DraftPost(string.Empty, Content: "third version"));
+
+        Assert.Equal(PostApproval.NeedsReview, again!.Approval);
     }
 
     [Fact]

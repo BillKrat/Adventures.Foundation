@@ -17,7 +17,7 @@ public sealed class PublicContentTests : IAsyncLifetime
     {
         var store = new InMemoryNQuadStore();
         var seeds = Path.Combine(AppContext.BaseDirectory, "Sql", "seed");
-        foreach (var file in new[] { "seed.nq", "seed-006-content.nq", "seed-007-post-taxonomy.nq", "seed-008-post-revision.nq" })
+        foreach (var file in new[] { "seed.nq", "seed-006-content.nq", "seed-007-post-taxonomy.nq", "seed-008-post-revision.nq", "seed-013-post-approval.nq" })
         {
             await store.SeedFromFileAsync(Path.Combine(seeds, file));
         }
@@ -119,6 +119,21 @@ public sealed class PublicContentTests : IAsyncLifetime
         Assert.True((await _public.GetPostAsync("collab-draft", includeDrafts: true))!.Summary.IsDraft);
         Assert.Contains("Collaboration", (await _public.GetCategoriesAsync(includeDrafts: true)).Select(t => t.Name));
         Assert.DoesNotContain("Collaboration", (await _public.GetCategoriesAsync()).Select(t => t.Name));
+    }
+
+    [Fact]
+    public async Task TheReviewStateIsPartOfTheAdministratorsViewOnly()
+    {
+        await _authoring.CreateDraftAsync("Claude", new DraftPost("Collab draft", Categories: ["Collaboration"]));
+        var published = await PublishedPostAsync("Collab live", categories: ["Collaboration"]);
+        await _postBll.SetApprovalAsync(published, PostApproval.Approved, "Admin");
+
+        var visitor = await _public.ListPostsAsync(1, 10, null, null);
+        var admin = await _public.ListPostsAsync(1, 10, null, null, includeDrafts: true);
+
+        Assert.All(visitor.Posts, p => Assert.Null(p.Approval));
+        Assert.Equal(PostApproval.NeedsReview, admin.Posts.Single(p => p.Title == "Collab draft").Approval);
+        Assert.Equal(PostApproval.Approved, admin.Posts.Single(p => p.Title == "Collab live").Approval);
     }
 
     [Fact]

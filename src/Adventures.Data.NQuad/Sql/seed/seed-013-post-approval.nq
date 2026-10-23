@@ -1,0 +1,20 @@
+<https://schema.global-webnet.com/content/Post> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/content/Post/Approval> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Approval> <https://global-webnet.com/ontology/schema#name> "Approval" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Approval> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Approval> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/content#approval> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Approval> <https://global-webnet.com/ontology/schema#order> "12" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Approval> <https://global-webnet.com/ontology/schema#label> "Approval" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/content/Post/ApprovedBy> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ApprovedBy> <https://global-webnet.com/ontology/schema#name> "ApprovedBy" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ApprovedBy> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ApprovedBy> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/content#approvedBy> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ApprovedBy> <https://global-webnet.com/ontology/schema#order> "13" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ApprovedBy> <https://global-webnet.com/ontology/schema#label> "Approved by" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ApprovedBy> <https://global-webnet.com/ontology/schema#listVisible> "false" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/content/Post/ApprovedAt> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ApprovedAt> <https://global-webnet.com/ontology/schema#name> "ApprovedAt" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ApprovedAt> <https://global-webnet.com/ontology/schema#fieldType> "DateTimeOffset" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ApprovedAt> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/content#approvedAt> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ApprovedAt> <https://global-webnet.com/ontology/schema#order> "14" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ApprovedAt> <https://global-webnet.com/ontology/schema#label> "Approved on" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ApprovedAt> <https://global-webnet.com/ontology/schema#listVisible> "false" <https://global-webnet.com/graph/content> .

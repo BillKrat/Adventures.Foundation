@@ -14,7 +14,7 @@ public sealed record DraftPost(
 
 /// <summary>One post as the authoring surface reports it.</summary>
 public sealed record DraftSummary(
-    string Id, string Title, string Slug, bool IsPublished, string? DatePublished, IReadOnlyList<string> Categories, IReadOnlyList<string> Tags, string? RevisionOf = null);
+    string Id, string Title, string Slug, bool IsPublished, string? DatePublished, IReadOnlyList<string> Categories, IReadOnlyList<string> Tags, string? RevisionOf = null, string? Approval = null);
 
 /// <summary>A category or tag as the authoring surface reports it.</summary>
 public sealed record TaxonomyTerm(string Id, string Name);
@@ -66,6 +66,13 @@ public sealed class ContentAuthoring(
         var values = await ValuesAsync(draft, cancellationToken).ConfigureAwait(false);
         values["Author"] = authorId;
         var created = await posts.CreateAsync(new EntityDataModel(string.Empty, values), cancellationToken).ConfigureAwait(false);
+        // a draft filed under Collaboration goes to the human for review
+        if (InCollaboration(created.Entity))
+        {
+            await postBll.SetApprovalAsync(created.Entity.EntityId, PostApproval.NeedsReview, null, cancellationToken).ConfigureAwait(false);
+            created = await posts.GetFormAsync(created.Entity.EntityId, cancellationToken).ConfigureAwait(false) ?? created;
+        }
+
         return Summarise(created.Entity, created.Schema);
     }
 
@@ -91,6 +98,13 @@ public sealed class ContentAuthoring(
 
         var values = await ValuesAsync(draft, cancellationToken).ConfigureAwait(false);
         var updated = await posts.UpdateAsync(postId, new EntityDataModel(postId, values), cancellationToken).ConfigureAwait(false);
+        if (updated is not null && InCollaboration(updated.Entity) && updated.Entity.Values.GetValueOrDefault("Approval") != PostApproval.NeedsReview)
+        {
+            // the author changed a collaboration draft: an earlier approval or a request for changes no longer describes it
+            await postBll.SetApprovalAsync(postId, PostApproval.NeedsReview, null, cancellationToken).ConfigureAwait(false);
+            updated = await posts.GetFormAsync(postId, cancellationToken).ConfigureAwait(false) ?? updated;
+        }
+
         return updated is null ? null : Summarise(updated.Entity, updated.Schema);
     }
 
@@ -266,8 +280,12 @@ public sealed class ContentAuthoring(
             row.Values.GetValueOrDefault("DatePublished"),
             Names(row, "Categories"),
             Names(row, "Tags"),
-            row.Values.GetValueOrDefault("RevisionOf") is { Length: > 0 } of ? of : null);
+            row.Values.GetValueOrDefault("RevisionOf") is { Length: > 0 } of ? of : null,
+            row.Values.GetValueOrDefault("Approval") is { Length: > 0 } approval ? approval : null);
     }
+
+    private static bool InCollaboration(EntityDataModel post) =>
+        Names(post, "Categories").Contains(PostApproval.CollaborationCategory, StringComparer.OrdinalIgnoreCase);
 
     private static IReadOnlyList<string> Names(EntityDataModel row, string field) =>
         row.Display?.GetValueOrDefault(field) is { Length: > 0 } text
