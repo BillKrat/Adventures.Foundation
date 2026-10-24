@@ -39,7 +39,7 @@ public interface ICollaborationBll : IEntityBll<CollaborationItem>
 }
 
 /// <summary>The collaboration rules: a new item has a kind (Developer unless said otherwise), a creation date, and a Developer item starts as needing review.</summary>
-public sealed class CollaborationBll(IEntityRepository<CollaborationItem> items) : EntityBll<CollaborationItem>(items), ICollaborationBll
+public sealed class CollaborationBll(IEntityRepository<CollaborationItem> items, IPlugins? plugins = null) : EntityBll<CollaborationItem>(items), ICollaborationBll
 {
     public override async Task<CollaborationItem> CreateAsync(CollaborationItem entity, CancellationToken cancellationToken = default)
     {
@@ -52,6 +52,12 @@ public sealed class CollaborationBll(IEntityRepository<CollaborationItem> items)
         else if (!CollaborationKinds.All.Contains(kind, StringComparer.Ordinal))
         {
             throw new BusinessRuleException($"The kind must be one of: {string.Join(", ", CollaborationKinds.All)}.");
+        }
+
+        if (plugins is not null && PluginCatalog.ForKind(kind) is { } pluginKey && !await plugins.IsEnabledAsync(pluginKey, cancellationToken).ConfigureAwait(false))
+        {
+            var title = PluginCatalog.BuiltIn.First(p => p.Key == pluginKey).Title;
+            throw new BusinessRuleException($"The {title} plug-in is switched off; switch it on in Admin > Plugins to add items of this kind.");
         }
 
         if (entity.GetValue("DateCreated") is null)
