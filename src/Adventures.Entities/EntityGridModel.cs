@@ -1,18 +1,29 @@
 namespace Adventures.Entities;
 
 /// <summary>What a client asks of a grid: which page, how big, and the order. Bound from the query string (<c>?page=2&amp;pageSize=25&amp;sort=UserName&amp;descending=true</c>).</summary>
-public sealed record EntityGridQuery(int Page = 1, int PageSize = EntityGridQuery.DefaultPageSize, string? Sort = null, bool Descending = false)
+public sealed record EntityGridQuery(
+    int Page = 1, int PageSize = EntityGridQuery.DefaultPageSize, string? Sort = null, bool Descending = false, string? Filter = null, string? FilterValue = null)
 {
     public const int DefaultPageSize = 25;
     public const int MaxPageSize = 100;
 
     /// <summary>The query with its numbers forced into range (page at least 1, page size 1 to <see cref="MaxPageSize"/>) so a hostile or sloppy caller cannot ask for everything.</summary>
     public EntityGridQuery Normalized() =>
-        this with { Page = Math.Max(1, Page), PageSize = Math.Clamp(PageSize, 1, MaxPageSize), Sort = string.IsNullOrWhiteSpace(Sort) ? null : Sort.Trim() };
+        this with
+        {
+            Page = Math.Max(1, Page),
+            PageSize = Math.Clamp(PageSize, 1, MaxPageSize),
+            Sort = string.IsNullOrWhiteSpace(Sort) ? null : Sort.Trim(),
+            Filter = string.IsNullOrWhiteSpace(Filter) || string.IsNullOrWhiteSpace(FilterValue) ? null : Filter.Trim(),
+            FilterValue = string.IsNullOrWhiteSpace(Filter) || string.IsNullOrWhiteSpace(FilterValue) ? null : FilterValue.Trim(),
+        };
 }
 
+/// <summary>A filter a grid offers: a field and the values to choose from (the client shows a dropdown, with "all" as the default). Sent back as <c>?filter=Field&amp;filterValue=Value</c>.</summary>
+public sealed record GridFilter(string Field, string Label, IReadOnlyList<string> Choices);
+
 /// <summary>Where a grid page sits in the whole list, so the renderer can draw the pager without counting anything itself.</summary>
-public sealed record GridPaging(int Page, int PageSize, int TotalCount, string? Sort, bool Descending)
+public sealed record GridPaging(int Page, int PageSize, int TotalCount, string? Sort, bool Descending, string? Filter = null, string? FilterValue = null)
 {
     public int TotalPages => TotalCount == 0 ? 1 : (int)Math.Ceiling(TotalCount / (double)PageSize);
 }
@@ -42,7 +53,8 @@ public sealed record EntityGridModel(
     bool CanCreate = false,
     EntityPermissions? RowPermissions = null,
     EntityGridLinks? Links = null,
-    int ContractVersion = EntityContract.Version)
+    int ContractVersion = EntityContract.Version,
+    IReadOnlyList<GridFilter>? Filters = null)
 {
     public static EntityGridModel From(
         EntitySchema schema,
@@ -70,6 +82,13 @@ public static class EntityGridPager
         where TEntity : DynamicEntity
     {
         var q = query.Normalized();
+        var filterField = q.Filter is null ? null : schema.Fields.Values.FirstOrDefault(f => f.Name.Equals(q.Filter, StringComparison.OrdinalIgnoreCase))?.Name;
+        if (filterField is not null)
+        {
+            // an unknown filter field is ignored, like an unknown sort field
+            all = all.Where(e => string.Equals(SchemaTypeConverter.Format(e.GetValue(filterField)), q.FilterValue, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
         var sortField = q.Sort is null ? null : schema.Fields.Values.FirstOrDefault(f => f.Name.Equals(q.Sort, StringComparison.OrdinalIgnoreCase))?.Name;
 
         IEnumerable<TEntity> ordered = all;
@@ -84,7 +103,7 @@ public static class EntityGridPager
         var totalPages = all.Count == 0 ? 1 : (int)Math.Ceiling(all.Count / (double)q.PageSize);
         var page = Math.Min(q.Page, totalPages);
         var slice = ordered.Skip((page - 1) * q.PageSize).Take(q.PageSize).ToList();
-        return (slice, new GridPaging(page, q.PageSize, all.Count, sortField, sortField is not null && q.Descending));
+        return (slice, new GridPaging(page, q.PageSize, all.Count, sortField, sortField is not null && q.Descending, filterField, filterField is null ? null : q.FilterValue));
     }
 
     /// <summary>Nulls last; strings ignoring case; values of one type by their own order; anything else by its text.</summary>
