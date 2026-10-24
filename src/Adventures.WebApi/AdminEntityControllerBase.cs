@@ -31,6 +31,13 @@ public abstract class AdminEntityControllerBase<TEntity>(IEntityPresenter<TEntit
     protected virtual EntityFormModel Decorate(EntityFormModel form, string collectionPath) =>
         WithFieldLookups(form, form.Entity.EntityId);
 
+    /// <summary>
+    /// The asynchronous form of <see cref="Decorate"/>, for a derived controller that needs something it must await (which plug-ins are on)
+    /// to decorate a form; by default it is the synchronous one.
+    /// </summary>
+    protected virtual Task<EntityFormModel> DecorateAsync(EntityFormModel form, string collectionPath, CancellationToken cancellationToken) =>
+        Task.FromResult(Decorate(form, collectionPath));
+
     /// <summary>A derived controller adds what is its own to a grid (the filters it offers) before it is returned.</summary>
     protected virtual EntityGridModel DecorateGrid(EntityGridModel grid) => grid;
 
@@ -45,14 +52,14 @@ public abstract class AdminEntityControllerBase<TEntity>(IEntityPresenter<TEntit
     public async Task<ActionResult<EntityFormModel>> New(CancellationToken cancellationToken)
     {
         var form = await presenter.GetNewFormAsync(cancellationToken);
-        return form is null ? NotFound() : Ok(Decorate(form, CollectionPath()));
+        return form is null ? NotFound() : Ok(await DecorateAsync(form, CollectionPath(), cancellationToken));
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<EntityFormModel>> Get(string id, CancellationToken cancellationToken)
     {
         var form = await presenter.GetFormAsync(id, cancellationToken);
-        return form is null ? NotFound() : Ok(Decorate(form, CollectionPath(id)));
+        return form is null ? NotFound() : Ok(await DecorateAsync(form, CollectionPath(id), cancellationToken));
     }
 
     /// <summary>A derived controller may fill in what only the host knows (the signed-in author) before the entity is created.</summary>
@@ -65,7 +72,7 @@ public abstract class AdminEntityControllerBase<TEntity>(IEntityPresenter<TEntit
         request = await PrepareForCreateAsync(request, cancellationToken);
         var result = await CreateAsync(presenter, request, cancellationToken);
         return result.Result is ObjectResult { Value: EntityFormModel created } created201
-            ? StatusCode(created201.StatusCode ?? 201, Decorate(created, CollectionPath()))
+            ? StatusCode(created201.StatusCode ?? 201, await DecorateAsync(created, CollectionPath(), cancellationToken))
             : result;
     }
 
@@ -73,7 +80,7 @@ public abstract class AdminEntityControllerBase<TEntity>(IEntityPresenter<TEntit
     public async Task<ActionResult<EntityFormModel>> Update(string id, [FromBody] EntityDataModel request, CancellationToken cancellationToken)
     {
         var result = await UpdateAsync(presenter, id, request, cancellationToken);
-        return result.Result is OkObjectResult { Value: EntityFormModel updated } ? Ok(Decorate(updated, CollectionPath(id))) : result;
+        return result.Result is OkObjectResult { Value: EntityFormModel updated } ? Ok(await DecorateAsync(updated, CollectionPath(id), cancellationToken)) : result;
     }
 
     [HttpDelete("{id}")]
