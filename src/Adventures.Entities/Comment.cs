@@ -16,7 +16,7 @@ public static class CommentKinds
 public sealed record ConversationEntry(string Id, string Author, string Kind, string Created, string Body);
 
 /// <summary>A decision with the post it was recorded under.</summary>
-public sealed record DecisionEntry(string Id, string PostId, string PostTitle, string PostSlug, string Author, string Created, string Body);
+public sealed record DecisionEntry(string Id, string PostId, string PostTitle, string PostSlug, string Author, string Created, string Body, string Source = "post");
 
 /// <summary>
 /// The durable record of the conversation about a post: who said what, when, and which statements were decisions. Entries are only
@@ -35,7 +35,7 @@ public interface IConversation
 }
 
 /// <summary>Implementation over the comment repository and the post rules.</summary>
-public sealed class Conversation(IEntityBll<Comment> comments, IPostBll posts, EntitySchemaOf<Comment> schema) : IConversation
+public sealed class Conversation(IEntityBll<Comment> comments, IPostBll posts, EntitySchemaOf<Comment> schema, ICollaborationBll? collaboration = null) : IConversation
 {
     public const int MaxBodyLength = 8000;
 
@@ -59,9 +59,9 @@ public sealed class Conversation(IEntityBll<Comment> comments, IPostBll posts, E
             throw new Adventures.Common.Exceptions.BusinessRuleException($"The text must be between 1 and {MaxBodyLength} characters.");
         }
 
-        if (await posts.GetAsync(postId, cancellationToken).ConfigureAwait(false) is null)
+        if (await TargetAsync(postId, cancellationToken).ConfigureAwait(false) is null)
         {
-            throw new Adventures.Common.Exceptions.BusinessRuleException("The post does not exist.");
+            throw new Adventures.Common.Exceptions.BusinessRuleException("The post or collaboration item does not exist.");
         }
 
         var comment = new Comment(schema.Schema);
@@ -82,17 +82,33 @@ public sealed class Conversation(IEntityBll<Comment> comments, IPostBll posts, E
         var result = new List<DecisionEntry>();
         foreach (var group in decisions.GroupBy(c => c.GetValue("Post") as string ?? string.Empty))
         {
-            var post = group.Key.Length == 0 ? null : await posts.GetAsync(group.Key, cancellationToken).ConfigureAwait(false);
-            if (post is null)
+            var target = group.Key.Length == 0 ? null : await TargetAsync(group.Key, cancellationToken).ConfigureAwait(false);
+            if (target is null)
             {
                 continue;
             }
 
             result.AddRange(group.Select(ToEntry).Select(e => new DecisionEntry(
-                e.Id, group.Key, post.GetValue("Title") as string ?? string.Empty, post.GetValue("Slug") as string ?? string.Empty, e.Author, e.Created, e.Body)));
+                e.Id, group.Key, target.Value.Title, target.Value.Slug, e.Author, e.Created, e.Body, target.Value.Source)));
         }
 
         return result.OrderByDescending(d => d.Created, StringComparer.Ordinal).ToList();
+    }
+
+    /// <summary>What a conversation hangs under: a post, or a collaboration item (its id is looked up in both). Null when it exists in neither.</summary>
+    private async Task<(string Title, string Slug, string Source)?> TargetAsync(string id, CancellationToken cancellationToken)
+    {
+        if (await posts.GetAsync(id, cancellationToken).ConfigureAwait(false) is { } post)
+        {
+            return (post.GetValue("Title") as string ?? string.Empty, post.GetValue("Slug") as string ?? string.Empty, "post");
+        }
+
+        if (collaboration is not null && await collaboration.GetAsync(id, cancellationToken).ConfigureAwait(false) is { } item)
+        {
+            return (item.GetValue("Title") as string ?? string.Empty, string.Empty, "collaboration");
+        }
+
+        return null;
     }
 
     private static ConversationEntry ToEntry(Comment comment) => new(
