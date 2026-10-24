@@ -16,6 +16,7 @@ public static class IdentityServiceCollectionExtensions
     {
         services.AddScoped<IUserCredentialStore, PostgresUserCredentialStore>();
         services.AddScoped<IUserAccountService, UserAccountService>();
+        services.AddScoped<IUserProvisioning, UserProvisioning>();
         return services;
     }
 }

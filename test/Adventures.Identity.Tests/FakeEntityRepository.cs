@@ -18,7 +18,14 @@ internal sealed class FakeEntityRepository : IEntityRepository
         return Task.FromResult(EntityToReturn);
     }
 
-    public Task<Entity> CreateAsync(Entity entity, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public List<Entity> CreateCalls { get; } = [];
+
+    public Task<Entity> CreateAsync(Entity entity, CancellationToken cancellationToken = default)
+    {
+        CreateCalls.Add(entity);
+        return Task.FromResult(entity);
+    }
+
     public List<Entity> UpdateCalls { get; } = [];
 
     public Task<Entity?> GetAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(EntityToReturn);
