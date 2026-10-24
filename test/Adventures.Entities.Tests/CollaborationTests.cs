@@ -25,6 +25,7 @@ public sealed class CollaborationTests : IAsyncLifetime
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-013-post-approval.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-014-comments.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-015-collaboration.nq"));
+        await store.SeedFromFileAsync(Path.Combine(seeds, "seed-017-research.nq"));
         var quads = await store.QueryAsync();
 
         var services = new ServiceCollection();
@@ -150,5 +151,35 @@ public sealed class CollaborationTests : IAsyncLifetime
         Assert.Null(await _posts.GetAsync(id));
         Assert.Single(await _conversation.ListDecisionsAsync());
         Assert.Empty((await migration.RunAsync(apply: true, CancellationToken.None)).Posts);
+    }
+
+    [Fact]
+    public async Task AResearchItemStartsOpen_AndMovesThroughItsOwnStates_WithSourcesAndFindings()
+    {
+        var created = await _authoring.CreateAsync("Claude", new CollaborationDraft("Is X possible?", Kind: CollaborationKinds.Research, Sources: "- paper A", Findings: "Probably."));
+
+        Assert.Equal(ResearchStatus.Open, created.Status);
+        Assert.Null(created.Approval);
+        Assert.True(await _bll.SetStatusAsync(created.Id, ResearchStatus.Accepted));
+        var stored = await _bll.GetAsync(created.Id);
+        Assert.Equal(ResearchStatus.Accepted, stored!.GetValue("Status"));
+        Assert.Equal("- paper A", stored.GetValue("Sources"));
+        Assert.Equal("Probably.", stored.GetValue("Findings"));
+        Assert.False(await _bll.SetStatusAsync("no-such-id", ResearchStatus.Closed));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _bll.SetStatusAsync(created.Id, "Weird"));
+    }
+
+    [Fact]
+    public async Task ADeveloperItemHasNoResearchStatus_AndRevisingAResearchItemKeepsItsStatus()
+    {
+        var developer = await _authoring.CreateAsync("Claude", new CollaborationDraft("Review"));
+        Assert.Null(developer.Status);
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _bll.SetStatusAsync(developer.Id, ResearchStatus.Closed));
+
+        var research = await _authoring.CreateAsync("Claude", new CollaborationDraft("Question", Kind: CollaborationKinds.Research));
+        await _bll.SetStatusAsync(research.Id, ResearchStatus.Closed);
+        var revised = await _authoring.UpdateAsync("Claude", research.Id, new CollaborationDraft(Findings: "More"));
+
+        Assert.Equal(ResearchStatus.Closed, revised!.Status);
     }
 }

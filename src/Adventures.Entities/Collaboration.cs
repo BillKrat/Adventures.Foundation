@@ -13,6 +13,9 @@ public sealed class CollaborationItem(EntitySchema schema) : DynamicEntity(schem
 public static class CollaborationConstants
 {
     public const string SeedName = "015-collaboration";
+
+    /// <summary>Seed 017 adds the Research kind fields: Status, Sources and Findings.</summary>
+    public const string ResearchSeedName = "017-research";
     public const string DefaultGraph = "https://global-webnet.com/graph/collaboration";
     public const string SchemaIri = "https://schema.global-webnet.com/collaboration/CollaborationItem";
     public const string BaseIri = "https://global-webnet.com/id/collaboration/";
@@ -28,6 +31,16 @@ public static class CollaborationKinds
     public static readonly IReadOnlyList<string> All = [Developer, Research];
 }
 
+/// <summary>The states of a Research item: it is open, its findings were accepted into a post, or it was closed without. A Developer item uses the review states instead.</summary>
+public static class ResearchStatus
+{
+    public const string Open = "Open";
+    public const string Accepted = "Accepted into a post";
+    public const string Closed = "Closed";
+
+    public static readonly IReadOnlyList<string> All = [Open, Accepted, Closed];
+}
+
 /// <summary>Business layer of collaboration items: the generic rules plus the review state, which only the server changes.</summary>
 public interface ICollaborationBll : IEntityBll<CollaborationItem>
 {
@@ -36,6 +49,9 @@ public interface ICollaborationBll : IEntityBll<CollaborationItem>
     /// clears both. False when the item does not exist; refused for a Research item (it has no approval) or an unknown state.
     /// </summary>
     Task<bool> SetApprovalAsync(string itemId, string status, string? approvedBy, CancellationToken cancellationToken = default);
+
+    /// <summary>Sets the state of a Research item to one of <see cref="ResearchStatus.All"/>. False when the item does not exist; refused for a Developer item (it is reviewed) or an unknown state.</summary>
+    Task<bool> SetStatusAsync(string itemId, string status, CancellationToken cancellationToken = default);
 }
 
 /// <summary>The collaboration rules: a new item has a kind (Developer unless said otherwise), a creation date, and a Developer item starts as needing review.</summary>
@@ -69,8 +85,35 @@ public sealed class CollaborationBll(IEntityRepository<CollaborationItem> items,
         {
             entity.Set("Approval", Guid.NewGuid().ToString(), PostApproval.NeedsReview);
         }
+        else if (kind == CollaborationKinds.Research && string.IsNullOrEmpty(entity.GetValue("Status") as string))
+        {
+            entity.Set("Status", Guid.NewGuid().ToString(), ResearchStatus.Open);
+        }
 
         return await base.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> SetStatusAsync(string itemId, string status, CancellationToken cancellationToken = default)
+    {
+        if (!ResearchStatus.All.Contains(status, StringComparer.Ordinal))
+        {
+            throw new BusinessRuleException($"The status must be one of: {string.Join(", ", ResearchStatus.All)}.");
+        }
+
+        var item = await GetAsync(itemId, cancellationToken).ConfigureAwait(false);
+        if (item is null)
+        {
+            return false;
+        }
+
+        if (!string.Equals(item.GetValue("Kind") as string, CollaborationKinds.Research, StringComparison.Ordinal))
+        {
+            throw new BusinessRuleException("Only a Research item has a status; a Developer item is reviewed.");
+        }
+
+        item.Set("Status", Guid.NewGuid().ToString(), status);
+        await Repository.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
     public async Task<bool> SetApprovalAsync(string itemId, string status, string? approvedBy, CancellationToken cancellationToken = default)
@@ -112,7 +155,7 @@ public sealed class CollaborationBll(IEntityRepository<CollaborationItem> items,
 public sealed class CollaborationPresenter(ICollaborationBll bll, EntitySchemaOf<CollaborationItem> schema, IEntityRelationProvider? relations = null)
     : EntityPresenter<CollaborationItem>(bll, schema.Schema, s => new CollaborationItem(s), relations)
 {
-    private static readonly HashSet<string> Managed = new(["Approval", "ApprovedBy", "ApprovedAt", "DateCreated"], StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> Managed = new(["Approval", "ApprovedBy", "ApprovedAt", "DateCreated", "Status"], StringComparer.OrdinalIgnoreCase);
 
     protected override IReadOnlySet<string> ServerManagedFields => Managed;
 
@@ -124,10 +167,11 @@ public sealed class CollaborationPresenter(ICollaborationBll bll, EntitySchemaOf
 
 /// <summary>One collaboration item as the authoring surface reports it.</summary>
 public sealed record CollaborationSummary(
-    string Id, string Title, string Kind, string? Approval, string? Branch, string? Repos, string? DateCreated);
+    string Id, string Title, string Kind, string? Approval, string? Branch, string? Repos, string? DateCreated, string? Status = null);
 
 /// <summary>What an author supplies for a collaboration item.</summary>
-public sealed record CollaborationDraft(string? Title = null, string? Content = null, string? Kind = null, string? Branch = null, string? Repos = null);
+public sealed record CollaborationDraft(
+    string? Title = null, string? Content = null, string? Kind = null, string? Branch = null, string? Repos = null, string? Sources = null, string? Findings = null);
 
 /// <summary>
 /// The way an AI over MCP writes collaboration items: create one, revise its own, list its own, read and add to the conversation.
@@ -250,6 +294,8 @@ public sealed class CollaborationAuthoring(
         SetIf("Kind", draft.Kind);
         SetIf("Branch", draft.Branch);
         SetIf("Repos", draft.Repos);
+        SetIf("Sources", draft.Sources);
+        SetIf("Findings", draft.Findings);
     }
 
     private async Task<string> AuthorIdAsync(string authorUserName, CancellationToken cancellationToken)
@@ -265,7 +311,8 @@ public sealed class CollaborationAuthoring(
         item.GetValue("Approval") as string,
         item.GetValue("Branch") as string,
         item.GetValue("Repos") as string,
-        item.GetValue("DateCreated") is DateTimeOffset created ? created.ToString("O") : null);
+        item.GetValue("DateCreated") is DateTimeOffset created ? created.ToString("O") : null,
+        item.GetValue("Status") as string);
 }
 
 /// <summary>What the migration did (or, in a dry run, would do) to one post.</summary>
