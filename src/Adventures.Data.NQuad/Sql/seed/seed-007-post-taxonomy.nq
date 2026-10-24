@@ -1,0 +1,14 @@
+<https://schema.global-webnet.com/content/Post> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/content/Post/Categories> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Categories> <https://global-webnet.com/ontology/schema#name> "Categories" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Categories> <https://global-webnet.com/ontology/schema#fieldType> "refs:https://schema.global-webnet.com/content/Category" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Categories> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/content#category> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Categories> <https://global-webnet.com/ontology/schema#order> "9" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Categories> <https://global-webnet.com/ontology/schema#valuePrefix> "https://global-webnet.com/id/category/" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Categories> <https://global-webnet.com/ontology/schema#listVisible> "false" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/content/Post/Tags> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Tags> <https://global-webnet.com/ontology/schema#name> "Tags" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Tags> <https://global-webnet.com/ontology/schema#fieldType> "refs:https://schema.global-webnet.com/content/Tag" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Tags> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/content#tag> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Tags> <https://global-webnet.com/ontology/schema#order> "10" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Tags> <https://global-webnet.com/ontology/schema#valuePrefix> "https://global-webnet.com/id/tag/" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/Tags> <https://global-webnet.com/ontology/schema#listVisible> "false" <https://global-webnet.com/graph/content> .

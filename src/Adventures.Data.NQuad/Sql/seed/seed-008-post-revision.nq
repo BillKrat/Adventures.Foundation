@@ -1,0 +1,7 @@
+<https://schema.global-webnet.com/content/Post> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/content/Post/RevisionOf> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/RevisionOf> <https://global-webnet.com/ontology/schema#name> "RevisionOf" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/RevisionOf> <https://global-webnet.com/ontology/schema#fieldType> "ref:https://schema.global-webnet.com/content/Post" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/RevisionOf> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/content#revisionOf> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/RevisionOf> <https://global-webnet.com/ontology/schema#order> "11" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/RevisionOf> <https://global-webnet.com/ontology/schema#valuePrefix> "https://global-webnet.com/id/post/" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/RevisionOf> <https://global-webnet.com/ontology/schema#label> "Revision of" <https://global-webnet.com/graph/content> .

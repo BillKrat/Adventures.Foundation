@@ -1,0 +1,448 @@
+// Assessed 2026-10-24 17:37 CT (Claude): automated scan for secrets, injection and unsafe patterns - no finding in this file. See docs/artifacts/Claude-2026-10-24-security-practices-patterns-review.md (ai-research-blog).
+using System.Globalization;
+using Adventures.Entities;
+
+namespace Adventures.Data.NQuad;
+
+/// <summary>
+/// The N-Quad-backed <see cref="IEntityRepository{TEntity}"/>: CRUDL over any <see cref="DynamicEntity"/>-derived
+/// type described by an <see cref="EntitySchema"/>, generic enough that a schema with no dedicated entity class
+/// (the POC's <c>GenericEntity</c> pattern) is served exactly the same way a hand-written one (e.g. <c>User</c>)
+/// is - only the schema, base/type IRIs, and entity factory passed to the constructor differ. Never adds a
+/// Delete/Update-by-id to <see cref="INQuadStore"/>: delete tombstones the subject, update supersedes the changed
+/// field's prior quad(s) and inserts new ones, so the store stays insert/query-only.
+/// </summary>
+public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
+    where TEntity : DynamicEntity
+{
+    private const string RdfTypePredicate = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
+
+    private readonly INQuadStore _store;
+    private readonly EntitySchema _schema;
+    private readonly string _baseIri;
+    private readonly string _typeIri;
+    private readonly string _graph;
+    private readonly Func<EntitySchema, TEntity> _entityFactory;
+    private readonly Func<Guid> _quadIdFactory;
+    private readonly string _changedBy;
+    private readonly Func<DateTimeOffset> _clock;
+
+    public NQuadEntityRepository(
+        INQuadStore store,
+        EntitySchema schema,
+        string baseIri,
+        string typeIri,
+        string graph,
+        Func<EntitySchema, TEntity> entityFactory,
+        Func<Guid>? quadIdFactory = null,
+        string changedBy = "system",
+        Func<DateTimeOffset>? clock = null)
+    {
+        _store = store ?? throw new ArgumentNullException(nameof(store));
+        _schema = schema ?? throw new ArgumentNullException(nameof(schema));
+        _baseIri = string.IsNullOrWhiteSpace(baseIri)
+            ? throw new ArgumentException("A base IRI is required.", nameof(baseIri))
+            : baseIri;
+        _typeIri = string.IsNullOrWhiteSpace(typeIri)
+            ? throw new ArgumentException("A type IRI is required.", nameof(typeIri))
+            : typeIri;
+        _graph = string.IsNullOrWhiteSpace(graph)
+            ? throw new ArgumentException("A graph IRI is required.", nameof(graph))
+            : graph;
+        _entityFactory = entityFactory ?? throw new ArgumentNullException(nameof(entityFactory));
+        _quadIdFactory = quadIdFactory ?? Guid.NewGuid;
+        _changedBy = string.IsNullOrWhiteSpace(changedBy)
+            ? throw new ArgumentException("An audit actor is required.", nameof(changedBy))
+            : changedBy;
+        _clock = clock ?? (() => DateTimeOffset.UtcNow);
+    }
+
+    private static string IdPropertyName => DynamicEntity.EntityIdPropertyName;
+
+    public async Task<TEntity> CreateAsync(TEntity entity, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+        var entityId = RequireEntityId(entity);
+
+        if (await GetAsync(entityId, includeDeleted: true, cancellationToken).ConfigureAwait(false) is not null)
+        {
+            throw new InvalidOperationException($"An entity with id '{entityId}' already exists.");
+        }
+
+        var subject = ToSubject(entityId);
+        var quads = new List<NQuad> { NewQuad(subject, RdfTypePredicate, _typeIri) };
+        var auditQuads = new List<NQuad>();
+        var changedAt = _clock();
+
+        foreach (var field in _schema.Fields.Values)
+        {
+            if (field.Name.Equals(IdPropertyName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var values = entity.GetFieldValues(field.Name);
+            if (values.Count == 0)
+            {
+                continue;
+            }
+
+            var persisted = RebuildFieldWithRealQuadIds(entity, subject, field, values, quads);
+
+            auditQuads.AddRange(BuildAuditQuads(
+                field, entityId, "Create", changedAt, fromValue: null, toValue: FormatValue(persisted[0].Value)));
+        }
+
+        await _store.InsertManyAsync(quads, cancellationToken).ConfigureAwait(false);
+        await InsertIfAnyAsync(auditQuads, cancellationToken).ConfigureAwait(false);
+
+        entity.AcceptChanges();
+        return entity;
+    }
+
+    /// <summary>
+    /// A caller building a new/changed <typeparamref name="TEntity"/> has no way to know the quad id a value will
+    /// get once persisted - <see cref="DynamicEntity.Set"/>/<see cref="DynamicEntity.Add"/> require *some* id, so
+    /// it supplies a placeholder. Once this repository has generated the real ids and queued the real quads, the
+    /// entity's own values are rebuilt to carry those same ids, so a later <see cref="UpdateAsync"/> on this exact
+    /// instance supersedes the quad that is actually in the store, not the caller's placeholder.
+    /// </summary>
+    private List<FieldValue> RebuildFieldWithRealQuadIds(
+        TEntity entity,
+        string subject,
+        EntitySchemaField field,
+        IReadOnlyList<FieldValue> values,
+        List<NQuad> quads)
+    {
+        var persisted = new List<FieldValue>(values.Count);
+        foreach (var value in values)
+        {
+            var quadId = _quadIdFactory();
+            quads.Add(new NQuad(quadId, subject, field.Predicate, ApplyPrefix(field, FormatValue(value.Value)), _graph));
+            persisted.Add(new FieldValue(new EntityId(quadId.ToString()), value.Value));
+        }
+
+        entity.Set(field.Name, persisted[0].Id.Value, persisted[0].Value);
+        foreach (var value in persisted.Skip(1))
+        {
+            entity.Add(field.Name, value.Id.Value, value.Value);
+        }
+
+        return persisted;
+    }
+
+    public async Task<TEntity?> GetAsync(string entityId, bool includeDeleted = false, CancellationToken cancellationToken = default)
+    {
+        ValidateEntityId(entityId);
+        var subject = ToSubject(entityId);
+        var quads = await _store.QueryAsync(subject: subject, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (quads.Count == 0)
+        {
+            return null;
+        }
+
+        if (!includeDeleted && quads.Any(q => q.Predicate == EntityConstants.Lifecycle.DeletedAtPredicate))
+        {
+            return null;
+        }
+
+        var supersededIds = await LoadSupersededIdsAsync(quads, cancellationToken).ConfigureAwait(false);
+        return Materialize(entityId, subject, quads, supersededIds);
+    }
+
+    public async Task<IReadOnlyList<TEntity>> ListAsync(bool includeDeleted = false, CancellationToken cancellationToken = default)
+    {
+        var typeQuads = await _store.QueryAsync(predicate: RdfTypePredicate, @object: _typeIri, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var entityIds = typeQuads
+            .Where(q => q.Subject.StartsWith(_baseIri, StringComparison.Ordinal))
+            .Select(q => q.Subject[_baseIri.Length..])
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        return await LoadAsync(entityIds, includeDeleted, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<int> CountAsync(bool includeDeleted = false, CancellationToken cancellationToken = default)
+    {
+        var typeQuads = await _store.QueryAsync(predicate: RdfTypePredicate, @object: _typeIri, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var subjects = typeQuads
+            .Select(q => q.Subject)
+            .Where(subject => subject.StartsWith(_baseIri, StringComparison.Ordinal))
+            .ToHashSet(StringComparer.Ordinal);
+        if (includeDeleted || subjects.Count == 0)
+        {
+            return subjects.Count;
+        }
+
+        var tombstones = await _store.QueryAsync(predicate: EntityConstants.Lifecycle.DeletedAtPredicate, cancellationToken: cancellationToken).ConfigureAwait(false);
+        subjects.ExceptWith(tombstones.Select(q => q.Subject));
+        return subjects.Count;
+    }
+
+    /// <summary>Reads the given entities in a constant number of store calls (see the comment in the body).</summary>
+    private async Task<IReadOnlyList<TEntity>> LoadAsync(IReadOnlyCollection<string> entityIds, bool includeDeleted, CancellationToken cancellationToken)
+    {
+        // Constant number of store round trips however many entities there are: the type quads (above), every quad of
+        // those subjects, then the superseded markers for exactly those quads. One GetAsync per entity (the obvious
+        // loop) is N+1 and, against a remote database, the difference between milliseconds and seconds.
+        var subjects = entityIds.Select(ToSubject).ToArray();
+        var allQuads = await _store.QueryBySubjectsAsync(subjects, cancellationToken).ConfigureAwait(false);
+        var supersededIds = await LoadSupersededIdsAsync(allQuads, cancellationToken).ConfigureAwait(false);
+        var bySubject = allQuads.GroupBy(q => q.Subject, StringComparer.Ordinal).ToDictionary(g => g.Key, g => (IReadOnlyList<NQuad>)g.ToList(), StringComparer.Ordinal);
+
+        var results = new List<TEntity>();
+        foreach (var entityId in entityIds)
+        {
+            var subject = ToSubject(entityId);
+            if (!bySubject.TryGetValue(subject, out var quads))
+            {
+                continue;
+            }
+
+            if (!includeDeleted && quads.Any(q => q.Predicate == EntityConstants.Lifecycle.DeletedAtPredicate))
+            {
+                continue;
+            }
+
+            results.Add(Materialize(entityId, subject, quads, supersededIds));
+        }
+
+        return results;
+    }
+
+    public async Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+        var entityId = RequireEntityId(entity);
+
+        if (await GetAsync(entityId, includeDeleted: false, cancellationToken).ConfigureAwait(false) is null)
+        {
+            throw new KeyNotFoundException($"The entity with id '{entityId}' does not exist or is deleted.");
+        }
+
+        var dirtyFieldIds = entity.DirtyFieldIds;
+        if (dirtyFieldIds.Count == 0)
+        {
+            return;
+        }
+
+        var subject = ToSubject(entityId);
+        var quads = new List<NQuad>();
+        var auditQuads = new List<NQuad>();
+        var changedAt = _clock();
+        var supersededAt = changedAt.ToString("O", CultureInfo.InvariantCulture);
+
+        foreach (var field in _schema.Fields.Values.Where(f => dirtyFieldIds.Contains(f.Id)))
+        {
+            // Every prior quad for this field is superseded, not just the first - a multi-valued field (e.g. a
+            // User with two Email values) replaced by Set() would otherwise leave its second quad looking live.
+            var originalValues = entity.GetOriginalFieldValues(field.Name);
+            foreach (var original in originalValues)
+            {
+                quads.Add(NewQuad(original.Id.Value, EntityConstants.Lifecycle.SupersededAtPredicate, supersededAt));
+            }
+
+            var newValues = entity.GetFieldValues(field.Name);
+            var persisted = newValues.Count == 0
+                ? []
+                : RebuildFieldWithRealQuadIds(entity, subject, field, newValues, quads);
+
+            // The audit log records one from/to pair per field (matching the seeded AuditRecord schema, one row
+            // per field, not per value) - full per-value fidelity for a multi-valued field's audit trail is not
+            // needed yet; the supersede mechanics above (which is what "current" reads depend on) are already
+            // fully correct for every value, regardless of this simplification.
+            auditQuads.AddRange(BuildAuditQuads(
+                field,
+                entityId,
+                "Update",
+                changedAt,
+                fromValue: originalValues.Count > 0 ? FormatValue(originalValues[0].Value) : null,
+                toValue: persisted.Count > 0 ? FormatValue(persisted[0].Value) : null));
+        }
+
+        await _store.InsertManyAsync(quads, cancellationToken).ConfigureAwait(false);
+        await InsertIfAnyAsync(auditQuads, cancellationToken).ConfigureAwait(false);
+
+        entity.AcceptChanges();
+    }
+
+    public async Task<bool> DeleteAsync(string entityId, CancellationToken cancellationToken = default)
+    {
+        var entity = await GetAsync(entityId, includeDeleted: false, cancellationToken).ConfigureAwait(false);
+        if (entity is null)
+        {
+            return false;
+        }
+
+        var quads = new List<NQuad>();
+        var auditQuads = new List<NQuad>();
+        AddTombstone(entity, entityId, _clock(), quads, auditQuads);
+
+        await _store.InsertManyAsync(quads, cancellationToken).ConfigureAwait(false);
+        await InsertIfAnyAsync(auditQuads, cancellationToken).ConfigureAwait(false);
+
+        return true;
+    }
+
+    public async Task<int> DeleteManyAsync(IReadOnlyCollection<string> entityIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entityIds);
+        var ids = entityIds.Distinct(StringComparer.Ordinal).ToArray();
+        foreach (var id in ids)
+        {
+            ValidateEntityId(id);
+        }
+
+        if (ids.Length == 0)
+        {
+            return 0;
+        }
+
+        // Read all of them in a constant number of calls, then write every tombstone and audit row in one batch
+        // (all-or-nothing): deleting N entities one by one is N times the round trips, and against a remote
+        // database purging a hundred entries would take about a minute.
+        var entities = await LoadAsync(ids, includeDeleted: false, cancellationToken).ConfigureAwait(false);
+        var quads = new List<NQuad>();
+        var auditQuads = new List<NQuad>();
+        var changedAt = _clock();
+        foreach (var entity in entities)
+        {
+            AddTombstone(entity, RequireEntityId(entity), changedAt, quads, auditQuads);
+        }
+
+        quads.AddRange(auditQuads);
+        await InsertIfAnyAsync(quads, cancellationToken).ConfigureAwait(false);
+        return entities.Count;
+    }
+
+    private void AddTombstone(TEntity entity, string entityId, DateTimeOffset changedAt, List<NQuad> quads, List<NQuad> auditQuads)
+    {
+        quads.Add(NewQuad(ToSubject(entityId), EntityConstants.Lifecycle.DeletedAtPredicate, changedAt.ToString("O", CultureInfo.InvariantCulture)));
+
+        foreach (var field in _schema.Fields.Values)
+        {
+            if (field.Name.Equals(IdPropertyName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var current = entity.GetFieldValue(field.Name);
+            if (current is not null)
+            {
+                auditQuads.AddRange(BuildAuditQuads(field, entityId, "Delete", changedAt, fromValue: FormatValue(current.Value), toValue: null));
+            }
+        }
+    }
+
+    /// <summary>The ids (as strings) of those quads that a SupersededAt marker retires - read for exactly these quads, never the whole store.</summary>
+    private async Task<HashSet<string>> LoadSupersededIdsAsync(IReadOnlyCollection<NQuad> quads, CancellationToken cancellationToken)
+    {
+        var markers = await _store.QueryBySubjectsAsync(quads.Select(q => q.Id.ToString()).ToArray(), cancellationToken).ConfigureAwait(false);
+        return markers
+            .Where(m => m.Predicate == EntityConstants.Lifecycle.SupersededAtPredicate)
+            .Select(m => m.Subject)
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    private TEntity Materialize(string entityId, string subject, IReadOnlyList<NQuad> subjectQuads, HashSet<string> supersededIds)
+    {
+        // The current value(s) for (subject, predicate) are whichever of these quads have not been superseded.
+
+        var entity = _entityFactory(_schema);
+        entity.Set(IdPropertyName, subject, entityId);
+
+        foreach (var quad in subjectQuads)
+        {
+            if (quad.Predicate == RdfTypePredicate || quad.Predicate == EntityConstants.Lifecycle.DeletedAtPredicate)
+            {
+                continue;
+            }
+
+            if (supersededIds.Contains(quad.Id.ToString()))
+            {
+                continue;
+            }
+
+            if (!_schema.FieldsByPredicate.TryGetValue(quad.Predicate, out var field) ||
+                field.Name.Equals(IdPropertyName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            entity.Add(field.Name, quad.Id.ToString(), StripPrefix(field, quad.Object));
+        }
+
+        entity.AcceptChanges();
+        return entity;
+    }
+
+    private static string RequireEntityId(TEntity entity) =>
+        entity.GetValue(IdPropertyName)?.ToString()
+            ?? throw new ArgumentException($"{IdPropertyName} is required.", nameof(entity));
+
+    private static void ValidateEntityId(string entityId)
+    {
+        if (string.IsNullOrWhiteSpace(entityId))
+        {
+            throw new ArgumentException("Entity id is required.", nameof(entityId));
+        }
+    }
+
+    private string ToSubject(string entityId) => _baseIri + entityId;
+
+    private NQuad NewQuad(string subject, string predicate, string @object) =>
+        new(_quadIdFactory(), subject, predicate, @object, _graph);
+
+    private Task InsertIfAnyAsync(IReadOnlyCollection<NQuad> quads, CancellationToken cancellationToken) =>
+        quads.Count == 0 ? Task.CompletedTask : _store.InsertManyAsync(quads, cancellationToken);
+
+    private IEnumerable<NQuad> BuildAuditQuads(
+        EntitySchemaField field,
+        string entityId,
+        string action,
+        DateTimeOffset changedAt,
+        string? fromValue,
+        string? toValue)
+    {
+        var subject = EntityConstants.AuditRecord.BaseIri + Guid.NewGuid();
+        yield return NewQuad(subject, RdfTypePredicate, EntityConstants.AuditRecord.TypeIri);
+        yield return NewQuad(subject, EntityConstants.AuditRecord.EntityTypePredicate, field.EntityType);
+        yield return NewQuad(subject, EntityConstants.AuditRecord.EntityIdPredicate, entityId);
+        yield return NewQuad(subject, EntityConstants.AuditRecord.FieldIdPredicate, field.Id);
+        yield return NewQuad(subject, EntityConstants.AuditRecord.FieldNamePredicate, field.Name);
+        yield return NewQuad(subject, EntityConstants.AuditRecord.ActionPredicate, action);
+        yield return NewQuad(subject, EntityConstants.AuditRecord.ChangedAtPredicate, changedAt.ToString("O", CultureInfo.InvariantCulture));
+        yield return NewQuad(subject, EntityConstants.AuditRecord.ChangedByPredicate, _changedBy);
+        if (fromValue is not null)
+        {
+            yield return NewQuad(subject, EntityConstants.AuditRecord.FromValuePredicate, fromValue);
+        }
+
+        if (toValue is not null)
+        {
+            yield return NewQuad(subject, EntityConstants.AuditRecord.ToValuePredicate, toValue);
+        }
+    }
+
+    private static string ApplyPrefix(EntitySchemaField field, string rawValue) =>
+        field.ValuePrefix is not null && !rawValue.StartsWith(field.ValuePrefix, StringComparison.OrdinalIgnoreCase)
+            ? field.ValuePrefix + rawValue
+            : rawValue;
+
+    private static string StripPrefix(EntitySchemaField field, string rawValue) =>
+        field.ValuePrefix is not null && rawValue.StartsWith(field.ValuePrefix, StringComparison.OrdinalIgnoreCase)
+            ? rawValue[field.ValuePrefix.Length..]
+            : rawValue;
+
+    private static string FormatValue(object value) => value switch
+    {
+        DateOnly date => date.ToString("MM-dd-yyyy", CultureInfo.InvariantCulture),
+        // Round-trip ("O") form: the default invariant format drops fractional seconds, which loses ordering between
+        // two events in the same second (the exception log sorts on this).
+        DateTimeOffset moment => moment.ToString("O", CultureInfo.InvariantCulture),
+        DateTime moment => moment.ToString("O", CultureInfo.InvariantCulture),
+        IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+        string text => text,
+        _ => value.ToString() ?? throw new ArgumentException("A value must have a string representation."),
+    };
+}

@@ -1,0 +1,20 @@
+<https://schema.global-webnet.com/collaboration/CollaborationItem> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/collaboration/CollaborationItem/Status> <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Status> <https://global-webnet.com/ontology/schema#name> "Status" <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Status> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Status> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/collaboration#status> <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Status> <https://global-webnet.com/ontology/schema#order> "11" <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Status> <https://global-webnet.com/ontology/schema#label> "Research status" <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/collaboration/CollaborationItem/Sources> <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Sources> <https://global-webnet.com/ontology/schema#name> "Sources" <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Sources> <https://global-webnet.com/ontology/schema#fieldType> "Markdown" <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Sources> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/collaboration#sources> <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Sources> <https://global-webnet.com/ontology/schema#order> "12" <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Sources> <https://global-webnet.com/ontology/schema#label> "Sources" <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Sources> <https://global-webnet.com/ontology/schema#listVisible> "false" <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/collaboration/CollaborationItem/Findings> <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Findings> <https://global-webnet.com/ontology/schema#name> "Findings" <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Findings> <https://global-webnet.com/ontology/schema#fieldType> "Markdown" <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Findings> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/collaboration#findings> <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Findings> <https://global-webnet.com/ontology/schema#order> "13" <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Findings> <https://global-webnet.com/ontology/schema#label> "Findings" <https://global-webnet.com/graph/collaboration> .
+<https://schema.global-webnet.com/collaboration/CollaborationItem/Findings> <https://global-webnet.com/ontology/schema#listVisible> "false" <https://global-webnet.com/graph/collaboration> .

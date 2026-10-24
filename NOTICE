@@ -1,0 +1,27 @@
+Adventures.Foundation
+Copyright (c) 2026 Diane Kratochvil (Adventures On The Edge)
+
+This work is licensed under the Business Source License 1.1 (see LICENSE).
+Each version converts to AGPL-3.0-only on its Change Date.
+
+Earlier versions
+----------------
+Versions published before 2026-10-24 (early NuGet packages and earlier source) were released under the MIT License and remain available to their recipients under it. Everything published from 2026-10-24 onward is under the Business Source License.
+
+Commercial use
+--------------
+Free production use is limited to a Small Team (no more than two individuals)
+that does not offer a Competing Offering, as defined in LICENSE. Larger
+organizations and anyone offering a Competing Offering need a commercial
+license or subscription from Diane Kratochvil, doing business as Adventures On The Edge: https://AdventuresOnTheEdge.net
+
+Third-party components
+----------------------
+Dependencies keep their own licences (MIT, Apache-2.0, BSD, ISC, MPL-2.0 and
+similar). None is a strong-copyleft licence. The 2026-10 audit is recorded in
+docs/Claude-decision-2026-10-licensing.md in the ai-research-blog repository.
+
+Trademarks
+----------
+"Adventures On The Edge" and the product names are marks of the Licensor and are not
+licensed by this work.
