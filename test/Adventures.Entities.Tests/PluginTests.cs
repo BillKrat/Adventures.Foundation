@@ -17,6 +17,7 @@ public sealed class PluginTests : IAsyncLifetime
         var store = new InMemoryNQuadStore();
         var seeds = Path.Combine(AppContext.BaseDirectory, "Sql", "seed");
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-015-collaboration.nq"));
+        await store.SeedFromFileAsync(Path.Combine(seeds, "seed-017-research.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-016-plugins.nq"));
         var quads = await store.QueryAsync();
 
