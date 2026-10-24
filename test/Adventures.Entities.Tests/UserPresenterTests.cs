@@ -1,3 +1,4 @@
+using Adventures.Common.Exceptions;
 using Adventures.Data.NQuad;
 using Xunit;
 
@@ -97,6 +98,30 @@ public sealed class UserPresenterTests : IAsyncLifetime
         await Assert.ThrowsAsync<Adventures.Common.Exceptions.BusinessRuleException>(() => _presenter.DeleteAsync(id, id));
     }
 
+    [Fact]
+    public async Task TheBlankFormLetsAnAdministratorTypeTheUserName_ButAnExistingPersonKeepsIt()
+    {
+        var blank = await _presenter.GetNewFormAsync();
+        var existing = await _presenter.GetFormByUserNameAsync("Admin");
+
+        Assert.False(blank!.Schema.Fields.Single(f => f.Name == "UserName").IsReadOnly);
+        Assert.True(existing!.Schema.Fields.Single(f => f.Name == "UserName").IsReadOnly);
+    }
+
+    [Fact]
+    public async Task ANewUserNameMustBeWellFormedAndUnique_IgnoringCase()
+    {
+        var created = await _presenter.CreateAsync(new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["UserName"] = "  test-editor " }));
+        Assert.Equal("test-editor", created.Entity.Values["UserName"]);
+
+        var taken = await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _presenter.CreateAsync(new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["UserName"] = "TEST-EDITOR" })));
+        Assert.Contains("already taken", taken.Message);
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _presenter.CreateAsync(new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["UserName"] = "has space" })));
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _presenter.CreateAsync(new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["UserName"] = "ab" })));
+    }
     [Fact]
     public async Task DeleteAsync_OtherAccount_Succeeds()
     {
@@ -280,7 +305,7 @@ public sealed class UserPresenterTests : IAsyncLifetime
         Assert.Equal(new GridPaging(1, 3, 7, "UserName", false), first.Paging);
         Assert.Equal(3, first.Paging!.TotalPages);
         Assert.Equal(["Echo"], last.Rows.Select(r => r.Values["UserName"]));
-        Assert.False(first.CanCreate); // creating a user needs a credential the form does not collect yet
+        Assert.True(first.CanCreate); // an administrator adds a person, then sets a first password for them
         Assert.Equal(EntityPermissions.Full, first.RowPermissions);
     }
 

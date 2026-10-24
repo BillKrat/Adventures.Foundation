@@ -9,8 +9,15 @@ public sealed class UserPresenter(IUserBll userBll, EntitySchemaOf<User> userSch
     /// <summary>The login name is the identity the token and the profile lookup rely on, so it is shown but never changed through the form.</summary>
     protected override IReadOnlySet<string> ReadOnlyFields { get; } = new HashSet<string>(["UserName"], StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Creating a user needs a credential, which the form does not collect yet, so the grid offers no New for users.</summary>
-    protected override bool CanCreate => false;
+    /// <summary>
+    /// An administrator can add a person. The new person cannot sign in until an administrator sets a first password (the Set password
+    /// action, which also creates their sign-in account), and has no roles until they are assigned.
+    /// </summary>
+    protected override bool CanCreate => true;
+
+    /// <summary>The user name is fixed once the person exists, but it has to be typed when they are created, so the blank form leaves it editable.</summary>
+    public override Task<EntityFormModel?> GetNewFormAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<EntityFormModel?>(EntityFormModel.Blank(Schema, EntityPermissions.Full, new HashSet<string>(StringComparer.OrdinalIgnoreCase)));
 
     public async Task<EntityFormModel?> GetFormByUserNameAsync(string userName, CancellationToken cancellationToken = default)
     {
