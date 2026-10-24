@@ -120,7 +120,8 @@ public abstract class EntityControllerBase<TEntity> : ApiControllerBase
 
         string Page(int number) =>
             $"{path}?page={number}&pageSize={paging.PageSize}"
-            + (paging.Sort is null ? string.Empty : $"&sort={Uri.EscapeDataString(paging.Sort)}&descending={paging.Descending.ToString().ToLowerInvariant()}");
+            + (paging.Sort is null ? string.Empty : $"&sort={Uri.EscapeDataString(paging.Sort)}&descending={paging.Descending.ToString().ToLowerInvariant()}")
+            + (paging.Filter is null ? string.Empty : $"&filter={Uri.EscapeDataString(paging.Filter)}&filterValue={Uri.EscapeDataString(paging.FilterValue ?? string.Empty)}");
 
         return new EntityGridLinks(
             Page(paging.Page),

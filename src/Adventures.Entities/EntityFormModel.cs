@@ -20,7 +20,9 @@ public sealed record EntityFieldSchema(
     bool IsReadOnly = false,
     int Order = 0,
     bool IsListVisible = true,
-    string? RefSchema = null)
+    string? RefSchema = null,
+    IReadOnlyList<string>? Choices = null,
+    bool Remember = false)
 {
     /// <summary>Builds the field the client sees from a schema field; <paramref name="position"/> is its place in the schema when no order is declared.</summary>
     public static EntityFieldSchema From(EntitySchemaField field, int position, bool forceReadOnly = false, bool hideFromList = false)

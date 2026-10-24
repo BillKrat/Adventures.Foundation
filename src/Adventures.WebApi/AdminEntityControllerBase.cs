@@ -31,9 +31,15 @@ public abstract class AdminEntityControllerBase<TEntity>(IEntityPresenter<TEntit
     protected virtual EntityFormModel Decorate(EntityFormModel form, string collectionPath) =>
         WithFieldLookups(form, form.Entity.EntityId);
 
+    /// <summary>A derived controller adds what is its own to a grid (the filters it offers) before it is returned.</summary>
+    protected virtual EntityGridModel DecorateGrid(EntityGridModel grid) => grid;
+
     [HttpGet]
-    public Task<ActionResult<EntityGridModel>> List([FromQuery] EntityGridQuery query, CancellationToken cancellationToken) =>
-        GridAsync(presenter, query, cancellationToken);
+    public async Task<ActionResult<EntityGridModel>> List([FromQuery] EntityGridQuery query, CancellationToken cancellationToken)
+    {
+        var result = await GridAsync(presenter, query, cancellationToken);
+        return result.Result is OkObjectResult { Value: EntityGridModel grid } ok ? Ok(DecorateGrid(grid)) : result;
+    }
 
     [HttpGet("new")]
     public async Task<ActionResult<EntityFormModel>> New(CancellationToken cancellationToken)

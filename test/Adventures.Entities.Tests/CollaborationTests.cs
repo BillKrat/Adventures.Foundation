@@ -182,4 +182,21 @@ public sealed class CollaborationTests : IAsyncLifetime
 
         Assert.Equal(ResearchStatus.Closed, revised!.Status);
     }
+
+    [Fact]
+    public async Task AGridFilterKeepsOnlyTheMatchingRows_IgnoresAnUnknownField_AndIsRemembered()
+    {
+        await _authoring.CreateAsync("Claude", new CollaborationDraft("Review"));
+        await _authoring.CreateAsync("Claude", new CollaborationDraft("Question", Kind: CollaborationKinds.Research));
+        var all = await _bll.ListAsync();
+        var schema = _services.GetRequiredService<EntitySchemaOf<CollaborationItem>>().Schema;
+
+        var (rows, paging) = EntityGridPager.Apply(schema, all, new EntityGridQuery(Filter: "kind", FilterValue: "research"));
+
+        Assert.Equal("Question", Assert.Single(rows).GetValue("Title"));
+        Assert.Equal(1, paging.TotalCount);
+        Assert.Equal("Kind", paging.Filter);
+        Assert.Equal(2, EntityGridPager.Apply(schema, all, new EntityGridQuery(Filter: "NoSuchField", FilterValue: "x")).Page.Count);
+        Assert.Equal(2, EntityGridPager.Apply(schema, all, new EntityGridQuery()).Page.Count);
+    }
 }
