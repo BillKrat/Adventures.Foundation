@@ -32,6 +32,7 @@ public sealed class CollaborationTests : IAsyncLifetime
 
         const string graph = EntityConstants.Content.DefaultGraph;
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Content.PostSchemaIri), EntityConstants.Content.PostBaseIri, EntityConstants.Content.PostTypeIri, graph, s => new Post(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Content.CategorySchemaIri), EntityConstants.Content.CategoryBaseIri, EntityConstants.Content.CategoryTypeIri, graph, s => new Category(s));
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Content.CommentSchemaIri), EntityConstants.Content.CommentBaseIri, EntityConstants.Content.CommentTypeIri, graph, s => new Comment(s));
         services.AddScoped<IEntityBll<Comment>>(p => new EntityBll<Comment>(p.GetRequiredService<IEntityRepository<Comment>>()));
         services.AddScoped<IConversation, Conversation>();
@@ -43,6 +44,8 @@ public sealed class CollaborationTests : IAsyncLifetime
         services.AddScoped<IUserBll, UserBll>();
         services.AddScoped<IUserPresenter, UserPresenter>();
         services.AddScoped<ICollaborationAuthoring, CollaborationAuthoring>();
+        services.AddScoped<CollaborationMigration>();
+        services.AddScoped<IEntityBll<Category>>(p => new EntityBll<Category>(p.GetRequiredService<IEntityRepository<Category>>()));
         _services = services.BuildServiceProvider();
         _bll = _services.GetRequiredService<ICollaborationBll>();
         _authoring = _services.GetRequiredService<ICollaborationAuthoring>();
@@ -110,5 +113,42 @@ public sealed class CollaborationTests : IAsyncLifetime
         Assert.Equal("collaboration", decision.Source);
         Assert.Equal("Decide this", decision.PostTitle);
         await Assert.ThrowsAsync<BusinessRuleException>(() => _conversation.AddAsync("no-such-id", "Admin", CommentKinds.Comment, "x"));
+    }
+
+    [Fact]
+    public async Task TheMigrationMovesCollaborationDraftsKeepingTheirIds_AfterADryRunThatChangesNothing()
+    {
+        var categories = _services.GetRequiredService<IEntityBll<Category>>();
+        var collab = new Category(_services.GetRequiredService<EntitySchemaOf<Category>>().Schema);
+        collab.Set("Id", Guid.NewGuid().ToString(), Guid.NewGuid());
+        collab.Set("Name", Guid.NewGuid().ToString(), "Collaboration");
+        var category = await categories.CreateAsync(collab);
+        var post = new Post(_services.GetRequiredService<EntitySchemaOf<Post>>().Schema);
+        post.Set("Id", Guid.NewGuid().ToString(), Guid.NewGuid());
+        post.Set("Title", Guid.NewGuid().ToString(), "An old review");
+        post.Set("Content", Guid.NewGuid().ToString(), "# body");
+        post.Add("Categories", Guid.NewGuid().ToString(), category.EntityId!.Value);
+        post = await _posts.CreateAsync(post);
+        await _posts.SetApprovalAsync(post.EntityId!.Value, PostApproval.Approved, "Admin");
+        var id = post.EntityId!.Value;
+        await _conversation.AddAsync(id, "Admin", CommentKinds.Decision, "Go");
+        var migration = _services.GetRequiredService<CollaborationMigration>();
+
+        var dry = await migration.RunAsync(apply: false, CancellationToken.None);
+
+        Assert.Equal(id, Assert.Single(dry.Posts).Id);
+        Assert.Empty(await _bll.ListAsync());
+        Assert.NotNull(await _posts.GetAsync(id));
+
+        var done = await migration.RunAsync(apply: true, CancellationToken.None);
+
+        Assert.Single(done.Posts);
+        var item = await _bll.GetAsync(id);
+        Assert.Equal("An old review", item!.GetValue("Title"));
+        Assert.Equal(PostApproval.Approved, item.GetValue("Approval"));
+        Assert.Equal(CollaborationKinds.Developer, item.GetValue("Kind"));
+        Assert.Null(await _posts.GetAsync(id));
+        Assert.Single(await _conversation.ListDecisionsAsync());
+        Assert.Empty((await migration.RunAsync(apply: true, CancellationToken.None)).Posts);
     }
 }
