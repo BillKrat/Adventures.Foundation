@@ -60,6 +60,26 @@ public sealed class PostgresUserCredentialStore(ISqlExecutor executor) : IUserCr
             cancellationToken);
     }
 
+    public Task CreateOrResetAsync(Guid userId, string passwordHash, string passwordAlgorithm, bool mustChangePassword, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            INSERT INTO user_credentials (user_id, password_hash, password_algorithm, must_change_password)
+            VALUES (@UserId, @PasswordHash, @PasswordAlgorithm, @MustChangePassword)
+            ON CONFLICT (user_id) DO UPDATE SET
+                password_hash = EXCLUDED.password_hash,
+                password_algorithm = EXCLUDED.password_algorithm,
+                must_change_password = EXCLUDED.must_change_password,
+                failed_login_attempts = 0,
+                locked_until = NULL,
+                updated_at = now()
+            """;
+
+        return _executor.ExecuteAsync(
+            sql,
+            new { UserId = userId, PasswordHash = passwordHash, PasswordAlgorithm = passwordAlgorithm, MustChangePassword = mustChangePassword },
+            cancellationToken);
+    }
+
     public Task SetPasswordAsync(Guid userId, string passwordHash, string passwordAlgorithm, CancellationToken cancellationToken = default)
     {
         const string sql = """

@@ -8,6 +8,14 @@ internal sealed class FakeUserCredentialStore : IUserCredentialStore
 
     public List<(Guid UserId, string Hash, string Algorithm)> SetPasswordCalls { get; } = [];
 
+    public List<(Guid UserId, string Hash, string Algorithm, bool MustChange)> CreateOrResetCalls { get; } = [];
+
+    public Task CreateOrResetAsync(Guid userId, string passwordHash, string passwordAlgorithm, bool mustChangePassword, CancellationToken cancellationToken = default)
+    {
+        CreateOrResetCalls.Add((userId, passwordHash, passwordAlgorithm, mustChangePassword));
+        return Task.CompletedTask;
+    }
+
     public Task SetPasswordAsync(Guid userId, string passwordHash, string passwordAlgorithm, CancellationToken cancellationToken = default)
     {
         SetPasswordCalls.Add((userId, passwordHash, passwordAlgorithm));

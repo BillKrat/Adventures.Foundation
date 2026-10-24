@@ -18,6 +18,29 @@ public sealed class UserBll(IEntityRepository<User> users) : EntityBll<User>(use
             string.Equals(user.GetValue("UserName")?.ToString(), userName, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>The user name is the sign-in name and the lookup key: letters, digits, dot, dash and underscore (3 to 64), and nobody else may already have it.</summary>
+    public override async Task<User> CreateAsync(User entity, CancellationToken cancellationToken = default)
+    {
+        var name = entity.GetValue("UserName")?.ToString()?.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            throw new BusinessRuleException("A user name is required.");
+        }
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(name, "^[A-Za-z0-9._-]{3,64}$"))
+        {
+            throw new BusinessRuleException("The user name may use letters, digits, dot, dash and underscore only, 3 to 64 characters, no spaces.");
+        }
+
+        if (await FindByUserNameAsync(name, cancellationToken).ConfigureAwait(false) is not null)
+        {
+            throw new BusinessRuleException("That user name is already taken.");
+        }
+
+        entity.Set("UserName", Guid.NewGuid().ToString(), name);
+        return await base.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
+    }
+
     public Task<bool> DeleteAsync(string userId, string currentUserId, CancellationToken cancellationToken = default)
     {
         if (string.Equals(userId, currentUserId, StringComparison.Ordinal))

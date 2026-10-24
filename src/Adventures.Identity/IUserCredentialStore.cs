@@ -24,5 +24,8 @@ public interface IUserCredentialStore
     /// Replaces the stored hash (and algorithm), clears must_change_password, resets the failed-login counter and any lockout.
     /// Call after the caller has verified the current password.
     /// </summary>
+    /// <summary>Creates the credential row for a user, or replaces its password; clears a lockout and the failed-attempt count. Used when an administrator sets a first or a new password.</summary>
+    Task CreateOrResetAsync(Guid userId, string passwordHash, string passwordAlgorithm, bool mustChangePassword, CancellationToken cancellationToken = default);
+
     Task SetPasswordAsync(Guid userId, string passwordHash, string passwordAlgorithm, CancellationToken cancellationToken = default);
 }
