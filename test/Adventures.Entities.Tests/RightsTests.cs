@@ -121,6 +121,37 @@ public sealed class RightsTests : IAsyncLifetime
         Assert.DoesNotContain(Rights.UsersManage, rights);
     }
 
+    private async Task<string?> RightsTextOfAsync(string roleName) =>
+        (await _services.GetRequiredService<IEntityRepository<Role>>().ListAsync()).Single(r => (string)r.GetValue("Name")! == roleName).GetValue("Rights") as string;
+
+    [Fact]
+    public async Task TheUpgradeLetsTheReviewerCommentAsWellAsApprove_AndLeavesTheEditorReadOnlyOnCollaboration()
+    {
+        var roles = _services.GetRequiredService<IEntityRepository<Role>>();
+        Assert.DoesNotContain("collaboration.write", await RightsTextOfAsync("Reviewer"));
+
+        Assert.Equal(1, await RoleRightsUpgrade.ApplyAsync(roles));
+
+        var reviewer = Rights.Parse(await RightsTextOfAsync("Reviewer"));
+        Assert.Contains(Rights.CollaborationReview, reviewer);
+        Assert.Contains(Rights.CollaborationWrite, reviewer);
+        Assert.DoesNotContain(Rights.CollaborationWrite, Rights.Parse(await RightsTextOfAsync("Editor")));
+    }
+
+    [Fact]
+    public async Task TheUpgradeIsRepeatable_AndNeverOverwritesRightsAnAdministratorHasEdited()
+    {
+        var roles = _services.GetRequiredService<IEntityRepository<Role>>();
+        Assert.Equal(1, await RoleRightsUpgrade.ApplyAsync(roles));
+        Assert.Equal(0, await RoleRightsUpgrade.ApplyAsync(roles)); // already done
+
+        var reviewer = (await roles.ListAsync()).Single(r => (string)r.GetValue("Name")! == "Reviewer");
+        reviewer.Set("Rights", Guid.NewGuid().ToString(), "admin.access,posts.read");
+        await roles.UpdateAsync(reviewer);
+        Assert.Equal(0, await RoleRightsUpgrade.ApplyAsync(roles));
+        Assert.Equal("admin.access,posts.read", await RightsTextOfAsync("Reviewer"));
+    }
+
     [Fact]
     public async Task APersonWithNoRoleOrNoAccountHasNothing()
     {
