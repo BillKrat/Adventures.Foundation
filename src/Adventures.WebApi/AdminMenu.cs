@@ -1,5 +1,6 @@
 // Assessed 2026-10-24 17:37 CT (Claude): automated scan for secrets, injection and unsafe patterns - no finding in this file. See docs/artifacts/Claude-2026-10-24-security-practices-patterns-review.md (ai-research-blog).
 using System.Security.Claims;
+using Adventures.Entities;
 using Adventures.Security;
 
 namespace Adventures.WebApi;
@@ -17,7 +18,8 @@ public sealed record AdminMenuItemDefinition(
     string? Icon = null,
     string? RequiredRole = null,
     bool Available = true,
-    int Order = 0);
+    int Order = 0,
+    string? RequiredRight = null);
 
 /// <summary>One menu entry as the client renders it. <see cref="Badge"/> is a count to show beside it (active exceptions), or null.</summary>
 public sealed record AdminMenuItem(string Id, string Label, string? Route, string? Icon, bool Available, int? Badge);
@@ -37,7 +39,7 @@ public static class AdminMenuBuilder
     /// <param name="user">The caller; their roles come from the token claim, the same two spellings the role policies accept.</param>
     /// <param name="badges">Counts to show beside an entry, by item id.</param>
     public static AdminMenuModel Build(
-        IEnumerable<AdminMenuItemDefinition> definitions, ClaimsPrincipal user, IReadOnlyDictionary<string, int>? badges = null)
+        IEnumerable<AdminMenuItemDefinition> definitions, ClaimsPrincipal user, IReadOnlyDictionary<string, int>? badges = null, IReadOnlySet<string>? rights = null)
     {
         ArgumentNullException.ThrowIfNull(definitions);
         ArgumentNullException.ThrowIfNull(user);
@@ -47,8 +49,11 @@ public static class AdminMenuBuilder
             .ToHashSet(StringComparer.Ordinal);
         var signedIn = user.Identity?.IsAuthenticated == true;
 
+        // an entry that names a right is listed only for a caller who holds it (and admin.access); an entry that names a role keeps the older rule
         var visible = definitions
-            .Where(item => item.RequiredRole is null ? signedIn : roles.Contains(item.RequiredRole))
+            .Where(item => item.RequiredRight is { } right
+                ? rights is not null && rights.Contains(Rights.AdminAccess) && rights.Contains(right)
+                : item.RequiredRole is null ? signedIn : roles.Contains(item.RequiredRole))
             .ToList();
 
         var sections = visible
