@@ -7,12 +7,6 @@ depending on expensive identity, data or AI service providers. The `Adventures.*
 are the meat of that kit; [`ai-research-blog`](https://github.com/BillKrat/ai-research-blog) is a
 single, complete blog application that shows how to use them.
 
-**License:** Business Source License 1.1. Free production use for a pre-scale operator (one
-individual, under $100,000 in annual revenue and in outside funding, not offering a competing
-hosted platform); non-production use is always free; each version becomes AGPL-3.0 after four
-years. See [LICENSE](LICENSE) and [NOTICE](NOTICE). These terms are under attorney review and may
-change for future versions.
-
 Reusable .NET class libraries shared across "Adventures.*"-family projects — extracted from
 [`ai-research-blog`](https://github.com/BillKrat/ai-research-blog) on 2026-09-19 because neither
 library is actually specific to that project. Naming convention: **`Adventures.*`** for anything
@@ -105,4 +99,4 @@ later if that stops being true; don't force it prematurely.
 
 ## License
 
-Business Source License 1.1 (see [LICENSE](LICENSE) and [NOTICE](NOTICE)). Free production use for a pre-scale operator (one individual, under $100,000 gross annual revenue and under $100,000 outside funding) that does not offer a competing hosted platform; non-production use is always free; everyone else needs a commercial license or subscription from Diane Kratochvil, doing business as Adventures On The Edge. Each version converts to AGPL-3.0 after four years. These terms are under attorney review and may change for future versions. Versions published before 2026-10-24 remain under MIT. Outside contributions: see [CONTRIBUTING.md](CONTRIBUTING.md).
+Source-available under the Business Source License 1.1 (see [LICENSE](LICENSE) and [NOTICE](NOTICE)); non-production use is always free. Versions published before 2026-10-24 remain under MIT. Outside contributions: see [CONTRIBUTING.md](CONTRIBUTING.md).
