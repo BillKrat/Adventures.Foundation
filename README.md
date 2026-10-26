@@ -1,5 +1,18 @@
 # Adventures.Foundation
 
+**The core of an AI starter kit for developers.** Our mission is to give every developer a fully
+functional foundation for building with AI, so one person can build something with the potential
+to succeed for as little as about $60 a month (hosting, a domain and an AI subscription), without
+depending on expensive identity, data or AI service providers. The `Adventures.*` libraries here
+are the meat of that kit; [`ai-research-blog`](https://github.com/BillKrat/ai-research-blog) is a
+single, complete blog application that shows how to use them.
+
+**License:** Business Source License 1.1. Free production use for a pre-scale operator (one
+individual, under $100,000 in annual revenue and in outside funding, not offering a competing
+hosted platform); non-production use is always free; each version becomes AGPL-3.0 after four
+years. See [LICENSE](LICENSE) and [NOTICE](NOTICE). These terms are under attorney review and may
+change for future versions.
+
 Reusable .NET class libraries shared across "Adventures.*"-family projects — extracted from
 [`ai-research-blog`](https://github.com/BillKrat/ai-research-blog) on 2026-09-19 because neither
 library is actually specific to that project. Naming convention: **`Adventures.*`** for anything
@@ -37,7 +50,7 @@ console app, an Azure Function, etc.
 
 ## Why extracted, not just referenced in place
 
-`ai-research-blog` is an open-source, cost-conscious "AI starter kit" (see its own
+`ai-research-blog` is a source-available, cost-conscious "AI starter kit" example (see its own
 `docs/Claude-architecture-decisions.md` for that project's full rationale, e.g. why it rejected Auth0's M2M
 free-tier quota). A second, separate Angular/backend app — a security-provider/admin UI mirroring
 what Auth0's own dashboard does, for managing tenants/orgs/users/M2M clients — needs the *same*
