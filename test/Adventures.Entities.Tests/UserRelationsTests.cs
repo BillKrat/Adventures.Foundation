@@ -23,6 +23,7 @@ public sealed class UserRelationsTests : IAsyncLifetime
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-004-identity.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-005-identity-required.nq"));
+        await store.SeedFromFileAsync(Path.Combine(seeds, "seed-018-role-rights.nq"));
         var quads = await store.QueryAsync();
 
         var services = new ServiceCollection();
@@ -179,6 +180,49 @@ public sealed class UserRelationsTests : IAsyncLifetime
         var (claudeId, adminRoleId, _, _) = await IdsAsync();
         await _writer.AddAsync(_userSchema, claudeId, "TenantRoles", Assignment(first.Values["Tenant"]!, adminRoleId));
         Assert.True(await _writer.RemoveAsync(_userSchema, adminId, "TenantRoles", first.EntityId));
+    }
+
+    [Fact]
+    public async Task ARoleAssignmentChange_IsAuditedAgainstTheActingUser_NotSystem()
+    {
+        var (userId, _, editorId, tenantId) = await IdsAsync();
+
+        var created = await _writer.AddAsync(_userSchema, userId, "TenantRoles", Assignment(tenantId, editorId), "Admin");
+        await _writer.RemoveAsync(_userSchema, userId, "TenantRoles", created!.EntityId, "Admin");
+
+        var store = _services.GetRequiredService<INQuadStore>();
+        var subjects = (await store.QueryAsync(predicate: EntityConstants.AuditRecord.EntityIdPredicate, @object: created.EntityId)).Select(q => q.Subject).ToList();
+        Assert.NotEmpty(subjects);
+        foreach (var subject in subjects)
+        {
+            var by = Assert.Single(await store.QueryAsync(subject: subject, predicate: EntityConstants.AuditRecord.ChangedByPredicate));
+            Assert.Equal("Admin", by.Object);
+        }
+    }
+
+    [Fact]
+    public async Task APersonCannotRemoveTheirOwnAssignmentOfAManagingRole_ButAnotherAdministratorCan()
+    {
+        var admin = await _users.GetFormByUserNameAsync("Admin");
+        var adminId = admin!.Entity.EntityId;
+        var own = admin.Relations!.Single(r => r.Name == "TenantRoles").Grid.Rows.First();
+        var (claudeId, adminRoleId, _, _) = await IdsAsync();
+        await _writer.AddAsync(_userSchema, claudeId, "TenantRoles", Assignment(own.Values["Tenant"]!, adminRoleId), "Admin"); // so it is not the last Admin
+
+        var refused = await Assert.ThrowsAsync<Adventures.Common.Exceptions.BusinessRuleException>(
+            () => _writer.RemoveAsync(_userSchema, adminId, "TenantRoles", own.EntityId, "Admin"));
+        Assert.Contains("your own", refused.Message);
+
+        Assert.True(await _writer.RemoveAsync(_userSchema, adminId, "TenantRoles", own.EntityId, "Claude"));
+    }
+
+    [Fact]
+    public async Task APersonMayRemoveTheirOwnAssignmentOfARoleThatManagesNothing()
+    {
+        var (userId, _, editorId, tenantId) = await IdsAsync();
+        var created = await _writer.AddAsync(_userSchema, userId, "TenantRoles", Assignment(tenantId, editorId), "Claude");
+
+        Assert.True(await _writer.RemoveAsync(_userSchema, userId, "TenantRoles", created!.EntityId, "Claude"));
     }
 
     [Fact]

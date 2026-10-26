@@ -68,7 +68,7 @@ public abstract class EntityControllerBase<TEntity> : ApiControllerBase
         parentSchema.Relations.Any(r => r.Name.Equals(relationName, StringComparison.OrdinalIgnoreCase))
             ? GuardedAsync(async () =>
             {
-                var created = await writer.AddAsync(parentSchema, parentId, relationName, data, cancellationToken).ConfigureAwait(false);
+                var created = await writer.AddAsync(parentSchema, parentId, relationName, data, User.Identity?.Name, cancellationToken).ConfigureAwait(false);
                 return created is null ? (IActionResult)NotFound() : StatusCode(StatusCodes.Status201Created, created);
             })
             : Task.FromResult<IActionResult>(NotFound());
@@ -78,7 +78,7 @@ public abstract class EntityControllerBase<TEntity> : ApiControllerBase
         IEntityRelationWriter writer, EntitySchema parentSchema, string parentId, string relationName, string childId, CancellationToken cancellationToken) =>
         parentSchema.Relations.Any(r => r.Name.Equals(relationName, StringComparison.OrdinalIgnoreCase))
             ? GuardedAsync(async () =>
-                await writer.RemoveAsync(parentSchema, parentId, relationName, childId, cancellationToken).ConfigureAwait(false) ? (IActionResult)NoContent() : NotFound())
+                await writer.RemoveAsync(parentSchema, parentId, relationName, childId, User.Identity?.Name, cancellationToken).ConfigureAwait(false) ? (IActionResult)NoContent() : NotFound())
             : Task.FromResult<IActionResult>(NotFound());
 
     /// <summary>

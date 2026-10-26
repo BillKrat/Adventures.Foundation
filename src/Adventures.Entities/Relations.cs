@@ -34,7 +34,7 @@ public interface IEntityRelationProvider
 
 /// <summary>What is about to change in a relation, handed to the <see cref="IRelationChangeGuard"/>s before it does.</summary>
 public sealed record RelationChange(
-    EntitySchema ParentSchema, string ParentId, EntityRelationDefinition Relation, IReadOnlyDictionary<string, string?> ChildValues, string? ChildId);
+    EntitySchema ParentSchema, string ParentId, EntityRelationDefinition Relation, IReadOnlyDictionary<string, string?> ChildValues, string? ChildId, string? ActingUserName = null);
 
 /// <summary>A business rule over relation changes (the last administrator cannot be removed). Throw <see cref="Adventures.Common.Exceptions.BusinessRuleException"/> to refuse.</summary>
 public interface IRelationChangeGuard
@@ -53,11 +53,11 @@ public interface IEntityRelationWriter
 {
     /// <summary>The created child, or null when the parent does not exist. Throws <see cref="Adventures.Common.Exceptions.InputValidationException"/> or <see cref="Adventures.Common.Exceptions.BusinessRuleException"/> for a refused change.</summary>
     Task<EntityDataModel?> AddAsync(
-        EntitySchema parentSchema, string parentId, string relationName, EntityDataModel data, CancellationToken cancellationToken = default);
+        EntitySchema parentSchema, string parentId, string relationName, EntityDataModel data, string? actingUserName = null, CancellationToken cancellationToken = default);
 
     /// <summary>True when the child was removed; false when it is not a child of this parent.</summary>
     Task<bool> RemoveAsync(
-        EntitySchema parentSchema, string parentId, string relationName, string childId, CancellationToken cancellationToken = default);
+        EntitySchema parentSchema, string parentId, string relationName, string childId, string? actingUserName = null, CancellationToken cancellationToken = default);
 }
 
 /// <summary>An entity of any schema, for code that reads entities generically (the relation provider) without a class per type.</summary>

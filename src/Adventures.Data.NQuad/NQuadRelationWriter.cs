@@ -21,7 +21,7 @@ public sealed class NQuadRelationWriter(
         types.GroupBy(t => t.Schema.SchemaIri, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
     public async Task<EntityDataModel?> AddAsync(
-        EntitySchema parentSchema, string parentId, string relationName, EntityDataModel data, CancellationToken cancellationToken = default)
+        EntitySchema parentSchema, string parentId, string relationName, EntityDataModel data, string? actingUserName = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(parentSchema);
         ArgumentNullException.ThrowIfNull(data);
@@ -62,7 +62,7 @@ public sealed class NQuadRelationWriter(
             throw new BusinessRuleException("This entry already exists.");
         }
 
-        var change = new RelationChange(parentSchema, parentId, relation, values, ChildId: null);
+        var change = new RelationChange(parentSchema, parentId, relation, values, ChildId: null, actingUserName);
         foreach (var guard in guards)
         {
             await guard.CheckAddAsync(change, cancellationToken).ConfigureAwait(false);
@@ -79,7 +79,7 @@ public sealed class NQuadRelationWriter(
             }
         }
 
-        var created = await Repository(child).CreateAsync(entity, cancellationToken).ConfigureAwait(false);
+        var created = await Repository(child, actingUserName).CreateAsync(entity, cancellationToken).ConfigureAwait(false);
         if (!relation.Reverse)
         {
             await store.InsertAsync(
@@ -91,7 +91,7 @@ public sealed class NQuadRelationWriter(
     }
 
     public async Task<bool> RemoveAsync(
-        EntitySchema parentSchema, string parentId, string relationName, string childId, CancellationToken cancellationToken = default)
+        EntitySchema parentSchema, string parentId, string relationName, string childId, string? actingUserName = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(parentSchema);
         var (relation, parent, child) = Resolve(parentSchema, relationName);
@@ -105,13 +105,13 @@ public sealed class NQuadRelationWriter(
         var values = child.Schema.Fields.Keys
             .Where(name => !name.Equals(DynamicEntity.EntityIdPropertyName, StringComparison.OrdinalIgnoreCase))
             .ToDictionary(name => name, name => SchemaTypeConverter.Format(existing.GetValue(name)), StringComparer.OrdinalIgnoreCase);
-        var change = new RelationChange(parentSchema, parentId, relation, values, childId);
+        var change = new RelationChange(parentSchema, parentId, relation, values, childId, actingUserName);
         foreach (var guard in guards)
         {
             await guard.CheckRemoveAsync(change, cancellationToken).ConfigureAwait(false);
         }
 
-        return await Repository(child).DeleteAsync(childId, cancellationToken).ConfigureAwait(false);
+        return await Repository(child, actingUserName).DeleteAsync(childId, cancellationToken).ConfigureAwait(false);
     }
 
     private (EntityRelationDefinition Relation, EntityTypeRegistration Parent, EntityTypeRegistration Child) Resolve(EntitySchema parentSchema, string relationName)
@@ -126,8 +126,8 @@ public sealed class NQuadRelationWriter(
         return (relation, parent, child);
     }
 
-    private NQuadEntityRepository<DynamicRecord> Repository(EntityTypeRegistration type) =>
-        new(store, type.Schema, type.BaseIri, type.TypeIri, type.Graph, schema => new DynamicRecord(schema));
+    private NQuadEntityRepository<DynamicRecord> Repository(EntityTypeRegistration type, string? actingUserName = null) =>
+        new(store, type.Schema, type.BaseIri, type.TypeIri, type.Graph, schema => new DynamicRecord(schema), changedBy: string.IsNullOrWhiteSpace(actingUserName) ? "system" : actingUserName);
 
     /// <summary>The current children of one parent (the same indexed lookup the provider uses), tombstoned ones excluded.</summary>
     private async Task<IReadOnlyList<DynamicRecord>> ChildrenAsync(
@@ -199,12 +199,55 @@ public sealed class LastTenantAdministratorGuard(INQuadStore store, IEnumerable<
     }
 }
 
+/// <summary>
+/// Nobody removes their own role assignment when that role lets them manage users or roles: it would lock them out of the very screen they
+/// are using, and a mistaken click is hard to undo without another administrator. Another administrator can still remove it, and the
+/// last-administrator guard still protects the tenant. Threat addressed: accidental self-lockout from role administration.
+/// </summary>
+public sealed class SelfLockoutGuard(INQuadStore store, IEnumerable<EntityTypeRegistration> types) : IRelationChangeGuard
+{
+    public Task CheckAddAsync(RelationChange change, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public async Task CheckRemoveAsync(RelationChange change, CancellationToken cancellationToken = default)
+    {
+        if (change.Relation.ChildSchemaIri is not (EntityConstants.Identity.TenantRoleSchemaIri or EntityConstants.Identity.OrganizationRoleSchemaIri)
+            || string.IsNullOrWhiteSpace(change.ActingUserName)
+            || !change.ChildValues.TryGetValue("Role", out var roleId) || string.IsNullOrEmpty(roleId))
+        {
+            return;
+        }
+
+        var byIri = types.GroupBy(t => t.Schema.SchemaIri, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        if (!byIri.TryGetValue(change.ParentSchema.SchemaIri, out var userType) || !byIri.TryGetValue(EntityConstants.Identity.RoleSchemaIri, out var roleType))
+        {
+            return;
+        }
+
+        var user = await Repository(userType).GetAsync(change.ParentId, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (user is null || !string.Equals(user.GetValue("UserName") as string, change.ActingUserName, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var role = await Repository(roleType).GetAsync(roleId, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var rights = Rights.Parse(role?.GetValue("Rights") as string);
+        if (rights.Contains(Rights.UsersManage) || rights.Contains(Rights.RolesManage))
+        {
+            throw new BusinessRuleException("You cannot remove your own role that lets you manage users or roles. Ask another administrator to do it.");
+        }
+    }
+
+    private NQuadEntityRepository<DynamicRecord> Repository(EntityTypeRegistration type) =>
+        new(store, type.Schema, type.BaseIri, type.TypeIri, type.Graph, s => new DynamicRecord(s));
+}
+
 public static class NQuadRelationWriterServiceCollectionExtensions
 {
     /// <summary>Registers the relation writer and the last-administrator guard (on top of <see cref="NQuadRelationServiceCollectionExtensions.AddNQuadRelations"/>).</summary>
     public static IServiceCollection AddNQuadRelationWriter(this IServiceCollection services)
     {
         services.AddScoped<IRelationChangeGuard, LastTenantAdministratorGuard>();
+        services.AddScoped<IRelationChangeGuard, SelfLockoutGuard>();
         return services.AddScoped<IEntityRelationWriter, NQuadRelationWriter>();
     }
 }
