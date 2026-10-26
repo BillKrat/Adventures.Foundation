@@ -2,7 +2,7 @@
 
 **The core of an AI starter kit for developers.** Our mission is to give every developer a fully
 functional foundation for building with AI, so one person can build something with the potential
-to succeed for as little as about $35 a month (hosting, a domain and an AI subscription), without
+to succeed for less than $35 a month (hosting $38/qtr and an AI subscription $20/mon), without
 depending on expensive identity, data or AI service providers. The `Adventures.*` libraries here
 are the meat of that kit; [`ai-research-blog`](https://github.com/BillKrat/ai-research-blog) is a
 single, complete blog application that shows how to use them.
