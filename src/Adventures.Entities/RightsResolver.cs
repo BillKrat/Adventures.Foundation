@@ -9,6 +9,12 @@ public interface IRightsResolver
     /// A person who is unknown, or has no role, has none.
     /// </summary>
     Task<IReadOnlySet<string>> ResolveAsync(string userName, IEnumerable<string> signInRoles, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// What the person from the data alone would be allowed (no sign-in roles) if the role <paramref name="roleId"/> carried <paramref name="roleRights"/> instead of what it holds now.
+    /// Nothing is saved; the role editor uses it to refuse a change that would lock administrators out before it is made.
+    /// </summary>
+    Task<IReadOnlySet<string>> ResolveIfRoleAsync(string userName, string roleId, string roleRights, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Resolves rights from the role assignments edited on Admin > Users and the <c>Rights</c> of each role.</summary>
@@ -17,7 +23,14 @@ public sealed class RightsResolver(
 {
     public const string LegacyAdministratorRole = "TenantAdmin";
 
-    public async Task<IReadOnlySet<string>> ResolveAsync(string userName, IEnumerable<string> signInRoles, CancellationToken cancellationToken = default)
+    public Task<IReadOnlySet<string>> ResolveAsync(string userName, IEnumerable<string> signInRoles, CancellationToken cancellationToken = default) =>
+        ResolveCoreAsync(userName, signInRoles, null, null, cancellationToken);
+
+    public Task<IReadOnlySet<string>> ResolveIfRoleAsync(string userName, string roleId, string roleRights, CancellationToken cancellationToken = default) =>
+        ResolveCoreAsync(userName, [], roleId, roleRights, cancellationToken);
+
+    private async Task<IReadOnlySet<string>> ResolveCoreAsync(
+        string userName, IEnumerable<string> signInRoles, string? overrideRoleId, string? overrideRights, CancellationToken cancellationToken)
     {
         if (signInRoles.Contains(LegacyAdministratorRole, StringComparer.Ordinal))
         {
@@ -40,7 +53,7 @@ public sealed class RightsResolver(
         {
             if (await roles.GetAsync(roleId!, cancellationToken).ConfigureAwait(false) is { } role)
             {
-                granted.UnionWith(Rights.Parse(role.GetValue("Rights") as string));
+                granted.UnionWith(Rights.Parse(roleId == overrideRoleId ? overrideRights : role.GetValue("Rights") as string));
             }
         }
 

@@ -24,6 +24,9 @@ public sealed class RightsAuthorizationTests
     {
         public int Calls { get; private set; }
 
+        public Task<IReadOnlySet<string>> ResolveIfRoleAsync(string userName, string roleId, string roleRights, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task<IReadOnlySet<string>> ResolveAsync(string userName, IEnumerable<string> signInRoles, CancellationToken cancellationToken = default)
         {
             Calls++;
