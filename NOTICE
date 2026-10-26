@@ -4,6 +4,10 @@ Copyright (c) 2026 Diane Kratochvil (Adventures On The Edge)
 This work is licensed under the Business Source License 1.1 (see LICENSE).
 Each version converts to AGPL-3.0-only on its Change Date.
 
+Status
+------
+These licence terms are under attorney review and may change. Any change applies to versions released after it; a version already released keeps the terms it was released under.
+
 Earlier versions
 ----------------
 Versions published before 2026-10-24 (early NuGet packages and earlier source) were released under the MIT License and remain available to their recipients under it. Everything published from 2026-10-24 onward is under the Business Source License.
