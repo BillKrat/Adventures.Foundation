@@ -40,7 +40,7 @@ public class RequestHardeningTests
     public void The_token_limit_defaults_to_ten_a_minute_per_client()
     {
         var context = ClientAt("203.0.113.5");
-        using var limiter = PartitionedRateLimiter.Create<HttpContext, string>(c => RequestHardening.TokenPartition(c, RequestHardening.DefaultTokensPerMinute));
+        using var limiter = PartitionedRateLimiter.Create<HttpContext, string>(c => RequestHardening.ClientPartition(c, RequestHardening.DefaultTokensPerMinute));
 
         var granted = Enumerable.Range(0, 12).Count(_ => limiter.AttemptAcquire(context).IsAcquired);
 
@@ -48,9 +48,34 @@ public class RequestHardeningTests
     }
 
     [Fact]
+    public void The_health_limit_defaults_to_thirty_a_minute_per_client()
+    {
+        var context = ClientAt("203.0.113.5");
+        var perMinute = RequestHardening.ResolveLimit(new ConfigurationBuilder().Build(), RequestHardening.HealthPerMinuteKey, RequestHardening.DefaultHealthPerMinute);
+        using var limiter = PartitionedRateLimiter.Create<HttpContext, string>(c => RequestHardening.ClientPartition(c, perMinute));
+
+        var granted = Enumerable.Range(0, 40).Count(_ => limiter.AttemptAcquire(context).IsAcquired);
+
+        Assert.Equal(30, granted);
+    }
+
+    [Theory]
+    [InlineData("5", 5)]
+    [InlineData("0", 30)]
+    [InlineData("-3", 30)]
+    [InlineData("abc", 30)]
+    public void A_configured_health_limit_is_used_only_when_it_is_a_positive_number(string configured, int expected)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { [RequestHardening.HealthPerMinuteKey] = configured }).Build();
+
+        Assert.Equal(expected, RequestHardening.ResolveLimit(configuration, RequestHardening.HealthPerMinuteKey, RequestHardening.DefaultHealthPerMinute));
+    }
+
+    [Fact]
     public void A_second_client_has_its_own_allowance()
     {
-        using var limiter = PartitionedRateLimiter.Create<HttpContext, string>(c => RequestHardening.TokenPartition(c, 2));
+        using var limiter = PartitionedRateLimiter.Create<HttpContext, string>(c => RequestHardening.ClientPartition(c, 2));
         var first = ClientAt("203.0.113.5");
         var second = ClientAt("203.0.113.6");
 
