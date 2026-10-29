@@ -103,6 +103,33 @@ public sealed class CollaborationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TheAuthorCanReadTheBodyOfItsOwnItem_AndNobodyElseCan()
+    {
+        var created = await _authoring.CreateAsync("Claude", new CollaborationDraft("Read me", Content: "## Test steps\n1. Run it", Kind: CollaborationKinds.Research, Sources: "src", Findings: "found"));
+
+        var detail = await _authoring.GetAsync("Claude", created.Id);
+
+        Assert.Equal("## Test steps\n1. Run it", detail!.Content);
+        Assert.Equal("src", detail.Sources);
+        Assert.Equal("found", detail.Findings);
+        Assert.Equal("Read me", detail.Summary.Title);
+        Assert.False(detail.Truncated);
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _authoring.GetAsync("Admin", created.Id));
+        Assert.Null(await _authoring.GetAsync("Claude", Guid.NewGuid().ToString()));
+    }
+
+    [Fact]
+    public async Task TheBodyIsCappedAndSaysSo()
+    {
+        var created = await _authoring.CreateAsync("Claude", new CollaborationDraft("Long", Content: new string('x', CollaborationAuthoring.MaxBodyCharacters + 50)));
+
+        var detail = await _authoring.GetAsync("Claude", created.Id);
+
+        Assert.Equal(CollaborationAuthoring.MaxBodyCharacters, detail!.Content!.Length);
+        Assert.True(detail.Truncated);
+    }
+
+    [Fact]
     public async Task TheSharedConversationWorksUnderAnItem_AndItsDecisionsAreListedWithTheirSource()
     {
         var created = await _authoring.CreateAsync("Claude", new CollaborationDraft("Decide this"));

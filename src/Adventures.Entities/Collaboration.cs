@@ -174,6 +174,9 @@ public sealed record CollaborationSummary(
 public sealed record CollaborationDraft(
     string? Title = null, string? Content = null, string? Kind = null, string? Branch = null, string? Repos = null, string? Sources = null, string? Findings = null);
 
+/// <summary>One collaboration item with its text; a body longer than the cap is cut and <see cref="Truncated"/> says so.</summary>
+public sealed record CollaborationDetail(CollaborationSummary Summary, string? Content, string? Sources, string? Findings, bool Truncated);
+
 /// <summary>
 /// The way an AI over MCP writes collaboration items: create one, revise its own, list its own, read and add to the conversation.
 /// There is no route to approve (the human does that in the admin), to change an item written by someone else, or to touch a post.
@@ -186,6 +189,9 @@ public interface ICollaborationAuthoring
     Task<CollaborationSummary?> UpdateAsync(string authorUserName, string itemId, CollaborationDraft draft, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<CollaborationSummary>> ListMineAsync(string authorUserName, CancellationToken cancellationToken = default);
+
+    /// <summary>Reads the text of an item the author owns (size-capped); null when no such item.</summary>
+    Task<CollaborationDetail?> GetAsync(string authorUserName, string itemId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ConversationEntry>> ListCommentsAsync(string authorUserName, string itemId, CancellationToken cancellationToken = default);
 
@@ -251,6 +257,36 @@ public sealed class CollaborationAuthoring(
             .Select(Summarise)
             .OrderByDescending(s => s.DateCreated, StringComparer.Ordinal)
             .ToList();
+    }
+
+    /// <summary>The most characters of any one text field a read returns.</summary>
+    public const int MaxBodyCharacters = 100_000;
+
+    public async Task<CollaborationDetail?> GetAsync(string authorUserName, string itemId, CancellationToken cancellationToken = default)
+    {
+        var authorId = await AuthorIdAsync(authorUserName, cancellationToken).ConfigureAwait(false);
+        var item = await items.GetAsync(itemId, cancellationToken).ConfigureAwait(false);
+        if (item is null)
+        {
+            return null;
+        }
+
+        EnsureOwn(item, authorId);
+        var truncated = false;
+        string? Text(string field)
+        {
+            var value = item.GetValue(field) as string;
+            if (value is { } v && v.Length > MaxBodyCharacters)
+            {
+                truncated = true;
+                return v[..MaxBodyCharacters];
+            }
+
+            return value;
+        }
+
+        var (content, sources, findings) = (Text("Content"), Text("Sources"), Text("Findings"));
+        return new CollaborationDetail(Summarise(item), content, sources, findings, truncated);
     }
 
     public async Task<IReadOnlyList<ConversationEntry>> ListCommentsAsync(string authorUserName, string itemId, CancellationToken cancellationToken = default)
