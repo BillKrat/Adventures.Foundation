@@ -6,7 +6,7 @@ namespace Adventures.Entities;
 /// <summary>
 /// The page rules: a page cannot be its own parent or sit under one of its own descendants (no cycles in the tree); only one
 /// page is the front page (setting it on one clears it on the others); an empty slug is made from the title; a new page gets
-/// a publication date; a slug is unique among pages (see <see cref="SlugRules"/>). Everything else is the generic Bll (required fields, the audit trail).
+/// a publication date; a slug is unique among pages (see <see cref="SlugRules"/>). Everything else is the generic Bll (required fields).
 /// </summary>
 public sealed class PageBll(IEntityRepository<Page> pages) : EntityBll<Page>(pages), IPageBll
 {

@@ -24,7 +24,6 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
     private readonly string _graph;
     private readonly Func<EntitySchema, TEntity> _entityFactory;
     private readonly Func<Guid> _quadIdFactory;
-    private readonly string _changedBy;
     private readonly Func<DateTimeOffset> _clock;
 
     public NQuadEntityRepository(
@@ -35,7 +34,6 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
         string graph,
         Func<EntitySchema, TEntity> entityFactory,
         Func<Guid>? quadIdFactory = null,
-        string changedBy = "system",
         Func<DateTimeOffset>? clock = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
@@ -51,9 +49,6 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
             : graph;
         _entityFactory = entityFactory ?? throw new ArgumentNullException(nameof(entityFactory));
         _quadIdFactory = quadIdFactory ?? Guid.NewGuid;
-        _changedBy = string.IsNullOrWhiteSpace(changedBy)
-            ? throw new ArgumentException("An audit actor is required.", nameof(changedBy))
-            : changedBy;
         _clock = clock ?? (() => DateTimeOffset.UtcNow);
     }
 
@@ -71,9 +66,6 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
 
         var subject = ToSubject(entityId);
         var quads = new List<NQuad> { NewQuad(subject, RdfTypePredicate, _typeIri) };
-        var auditQuads = new List<NQuad>();
-        var changedAt = _clock();
-
         foreach (var field in _schema.Fields.Values)
         {
             if (field.Name.Equals(IdPropertyName, StringComparison.OrdinalIgnoreCase))
@@ -87,14 +79,10 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
                 continue;
             }
 
-            var persisted = RebuildFieldWithRealQuadIds(entity, subject, field, values, quads);
-
-            auditQuads.AddRange(BuildAuditQuads(
-                field, entityId, "Create", changedAt, fromValue: null, toValue: FormatValue(persisted[0].Value)));
+            RebuildFieldWithRealQuadIds(entity, subject, field, values, quads);
         }
 
         await _store.InsertManyAsync(quads, cancellationToken).ConfigureAwait(false);
-        await InsertIfAnyAsync(auditQuads, cancellationToken).ConfigureAwait(false);
 
         entity.AcceptChanges();
         return entity;
@@ -228,9 +216,7 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
 
         var subject = ToSubject(entityId);
         var quads = new List<NQuad>();
-        var auditQuads = new List<NQuad>();
-        var changedAt = _clock();
-        var supersededAt = changedAt.ToString("O", CultureInfo.InvariantCulture);
+        var supersededAt = _clock().ToString("O", CultureInfo.InvariantCulture);
 
         foreach (var field in _schema.Fields.Values.Where(f => dirtyFieldIds.Contains(f.Id)))
         {
@@ -243,25 +229,13 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
             }
 
             var newValues = entity.GetFieldValues(field.Name);
-            var persisted = newValues.Count == 0
-                ? []
-                : RebuildFieldWithRealQuadIds(entity, subject, field, newValues, quads);
-
-            // The audit log records one from/to pair per field (matching the seeded AuditRecord schema, one row
-            // per field, not per value) - full per-value fidelity for a multi-valued field's audit trail is not
-            // needed yet; the supersede mechanics above (which is what "current" reads depend on) are already
-            // fully correct for every value, regardless of this simplification.
-            auditQuads.AddRange(BuildAuditQuads(
-                field,
-                entityId,
-                "Update",
-                changedAt,
-                fromValue: originalValues.Count > 0 ? FormatValue(originalValues[0].Value) : null,
-                toValue: persisted.Count > 0 ? FormatValue(persisted[0].Value) : null));
+            if (newValues.Count > 0)
+            {
+                RebuildFieldWithRealQuadIds(entity, subject, field, newValues, quads);
+            }
         }
 
         await _store.InsertManyAsync(quads, cancellationToken).ConfigureAwait(false);
-        await InsertIfAnyAsync(auditQuads, cancellationToken).ConfigureAwait(false);
 
         entity.AcceptChanges();
     }
@@ -275,11 +249,9 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
         }
 
         var quads = new List<NQuad>();
-        var auditQuads = new List<NQuad>();
-        AddTombstone(entity, entityId, _clock(), quads, auditQuads);
+        AddTombstone(entityId, _clock(), quads);
 
         await _store.InsertManyAsync(quads, cancellationToken).ConfigureAwait(false);
-        await InsertIfAnyAsync(auditQuads, cancellationToken).ConfigureAwait(false);
 
         return true;
     }
@@ -298,41 +270,23 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
             return 0;
         }
 
-        // Read all of them in a constant number of calls, then write every tombstone and audit row in one batch
+        // Read all of them in a constant number of calls, then write every tombstone in one batch
         // (all-or-nothing): deleting N entities one by one is N times the round trips, and against a remote
         // database purging a hundred entries would take about a minute.
         var entities = await LoadAsync(ids, includeDeleted: false, cancellationToken).ConfigureAwait(false);
         var quads = new List<NQuad>();
-        var auditQuads = new List<NQuad>();
         var changedAt = _clock();
         foreach (var entity in entities)
         {
-            AddTombstone(entity, RequireEntityId(entity), changedAt, quads, auditQuads);
+            AddTombstone(RequireEntityId(entity), changedAt, quads);
         }
 
-        quads.AddRange(auditQuads);
         await InsertIfAnyAsync(quads, cancellationToken).ConfigureAwait(false);
         return entities.Count;
     }
 
-    private void AddTombstone(TEntity entity, string entityId, DateTimeOffset changedAt, List<NQuad> quads, List<NQuad> auditQuads)
-    {
+    private void AddTombstone(string entityId, DateTimeOffset changedAt, List<NQuad> quads) =>
         quads.Add(NewQuad(ToSubject(entityId), EntityConstants.Lifecycle.DeletedAtPredicate, changedAt.ToString("O", CultureInfo.InvariantCulture)));
-
-        foreach (var field in _schema.Fields.Values)
-        {
-            if (field.Name.Equals(IdPropertyName, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var current = entity.GetFieldValue(field.Name);
-            if (current is not null)
-            {
-                auditQuads.AddRange(BuildAuditQuads(field, entityId, "Delete", changedAt, fromValue: FormatValue(current.Value), toValue: null));
-            }
-        }
-    }
 
     /// <summary>The ids (as strings) of those quads that a SupersededAt marker retires - read for exactly these quads, never the whole store.</summary>
     private async Task<HashSet<string>> LoadSupersededIdsAsync(IReadOnlyCollection<NQuad> quads, CancellationToken cancellationToken)
@@ -395,34 +349,6 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
 
     private Task InsertIfAnyAsync(IReadOnlyCollection<NQuad> quads, CancellationToken cancellationToken) =>
         quads.Count == 0 ? Task.CompletedTask : _store.InsertManyAsync(quads, cancellationToken);
-
-    private IEnumerable<NQuad> BuildAuditQuads(
-        EntitySchemaField field,
-        string entityId,
-        string action,
-        DateTimeOffset changedAt,
-        string? fromValue,
-        string? toValue)
-    {
-        var subject = EntityConstants.AuditRecord.BaseIri + Guid.NewGuid();
-        yield return NewQuad(subject, RdfTypePredicate, EntityConstants.AuditRecord.TypeIri);
-        yield return NewQuad(subject, EntityConstants.AuditRecord.EntityTypePredicate, field.EntityType);
-        yield return NewQuad(subject, EntityConstants.AuditRecord.EntityIdPredicate, entityId);
-        yield return NewQuad(subject, EntityConstants.AuditRecord.FieldIdPredicate, field.Id);
-        yield return NewQuad(subject, EntityConstants.AuditRecord.FieldNamePredicate, field.Name);
-        yield return NewQuad(subject, EntityConstants.AuditRecord.ActionPredicate, action);
-        yield return NewQuad(subject, EntityConstants.AuditRecord.ChangedAtPredicate, changedAt.ToString("O", CultureInfo.InvariantCulture));
-        yield return NewQuad(subject, EntityConstants.AuditRecord.ChangedByPredicate, _changedBy);
-        if (fromValue is not null)
-        {
-            yield return NewQuad(subject, EntityConstants.AuditRecord.FromValuePredicate, fromValue);
-        }
-
-        if (toValue is not null)
-        {
-            yield return NewQuad(subject, EntityConstants.AuditRecord.ToValuePredicate, toValue);
-        }
-    }
 
     private static string ApplyPrefix(EntitySchemaField field, string rawValue) =>
         field.ValuePrefix is not null && !rawValue.StartsWith(field.ValuePrefix, StringComparison.OrdinalIgnoreCase)

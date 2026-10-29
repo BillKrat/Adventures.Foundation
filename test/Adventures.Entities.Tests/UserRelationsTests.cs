@@ -183,24 +183,6 @@ public sealed class UserRelationsTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ARoleAssignmentChange_IsAuditedAgainstTheActingUser_NotSystem()
-    {
-        var (userId, _, editorId, tenantId) = await IdsAsync();
-
-        var created = await _writer.AddAsync(_userSchema, userId, "TenantRoles", Assignment(tenantId, editorId), "Admin");
-        await _writer.RemoveAsync(_userSchema, userId, "TenantRoles", created!.EntityId, "Admin");
-
-        var store = _services.GetRequiredService<INQuadStore>();
-        var subjects = (await store.QueryAsync(predicate: EntityConstants.AuditRecord.EntityIdPredicate, @object: created.EntityId)).Select(q => q.Subject).ToList();
-        Assert.NotEmpty(subjects);
-        foreach (var subject in subjects)
-        {
-            var by = Assert.Single(await store.QueryAsync(subject: subject, predicate: EntityConstants.AuditRecord.ChangedByPredicate));
-            Assert.Equal("Admin", by.Object);
-        }
-    }
-
-    [Fact]
     public async Task APersonCannotRemoveTheirOwnAssignmentOfAManagingRole_ButAnotherAdministratorCan()
     {
         var admin = await _users.GetFormByUserNameAsync("Admin");

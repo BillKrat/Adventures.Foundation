@@ -249,7 +249,7 @@ public sealed class UserPresenterTests : IAsyncLifetime
 
         await _presenter.UpdateAsync(id, new EntityDataModel(id, values));
 
-        // one superseded marker + one new value quad + the audit rows for that one field - far fewer than a full rewrite
+        // one superseded marker + one new value quad - far fewer than a full rewrite
         var added = await _store.CountAsync() - countBefore;
         Assert.InRange(added, 2, 12);
         Assert.Equal("555-0199", (await _presenter.GetFormAsync(id))!.Entity.Values["Phone"]);

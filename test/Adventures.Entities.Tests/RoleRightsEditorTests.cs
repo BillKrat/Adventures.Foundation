@@ -141,22 +141,4 @@ public sealed class RoleRightsEditorTests : IAsyncLifetime
 
         Assert.Equal("admin.access,posts.read", stored);
     }
-
-    [Fact]
-    public async Task ARightsChangeLeavesAnAuditTrailForTheRole()
-    {
-        var editor = await RoleIdAsync("Editor");
-
-        await _editor.SetRightsAsync(editor, [Rights.AdminAccess], "Admin");
-
-        var store = _services.GetRequiredService<INQuadStore>();
-        var subjects = (await store.QueryAsync(predicate: EntityConstants.AuditRecord.EntityIdPredicate, @object: editor)).Select(q => q.Subject);
-        var to = new List<string>();
-        foreach (var subject in subjects)
-        {
-            to.AddRange((await store.QueryAsync(subject: subject, predicate: EntityConstants.AuditRecord.ToValuePredicate)).Select(q => q.Object));
-        }
-
-        Assert.Contains("admin.access", to);
-    }
 }

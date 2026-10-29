@@ -8,7 +8,7 @@ public interface IRoleRightsEditor
     /// <summary>
     /// Stores <paramref name="rights"/> (each once, in catalog order) as the rights of the role and returns the stored text, or null when the role does not exist.
     /// Throws <see cref="BusinessRuleException"/> for an unknown right, for a change that would take away the acting person's own ability to manage users and
-    /// roles, and for one that would leave nobody with it. The change is audited against the acting user by the role repository.
+    /// roles, and for one that would leave nobody with it.
     /// </summary>
     Task<string?> SetRightsAsync(string roleId, IReadOnlyCollection<string> rights, string actingUserName, CancellationToken cancellationToken = default);
 }

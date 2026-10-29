@@ -144,8 +144,7 @@ public class EntityPresenter<TEntity>(
     /// <item>"" (empty): if the field currently holds a value, the user cleared it, so it is cleared (and a required field
     /// then fails the Bll's required check); if it holds nothing, there is nothing to do. Either way "" is never parsed,
     /// so an unset non-string field (DateOnly, Guid, ...) cannot throw.</item>
-    /// <item>a value equal to the current one: skipped, so saving an unchanged form writes nothing (no new quad, no audit
-    /// row per field per save).</item>
+    /// <item>a value equal to the current one: skipped, so saving an unchanged form writes nothing (no new quad per field per save).</item>
     /// </list>
     /// </summary>
     /// <summary>A read-only field (declared by the schema or by <see cref="ReadOnlyFields"/>) may be sent back unchanged but not changed: the flag is for rendering, this is the enforcement.</summary>

@@ -7,7 +7,7 @@ namespace Adventures.Data.NQuad;
 
 /// <summary>
 /// Adds and removes the children of a relation in the N-Quad store. A child is created or tombstoned through its own
-/// repository (so its audit trail and lifecycle are the ordinary ones) and the link between parent and child is one quad:
+/// repository (so its lifecycle is the ordinary one) and the link between parent and child is one quad:
 /// forward relations write it on the parent (the parent points at the child), reverse relations need no extra quad because
 /// the child holds the pointer in its own field. Removing a child tombstones it; the link quad stays but a tombstoned child
 /// is never listed, so the relation no longer shows it.
@@ -79,7 +79,7 @@ public sealed class NQuadRelationWriter(
             }
         }
 
-        var created = await Repository(child, actingUserName).CreateAsync(entity, cancellationToken).ConfigureAwait(false);
+        var created = await Repository(child).CreateAsync(entity, cancellationToken).ConfigureAwait(false);
         if (!relation.Reverse)
         {
             await store.InsertAsync(
@@ -111,7 +111,7 @@ public sealed class NQuadRelationWriter(
             await guard.CheckRemoveAsync(change, cancellationToken).ConfigureAwait(false);
         }
 
-        return await Repository(child, actingUserName).DeleteAsync(childId, cancellationToken).ConfigureAwait(false);
+        return await Repository(child).DeleteAsync(childId, cancellationToken).ConfigureAwait(false);
     }
 
     private (EntityRelationDefinition Relation, EntityTypeRegistration Parent, EntityTypeRegistration Child) Resolve(EntitySchema parentSchema, string relationName)
@@ -126,8 +126,8 @@ public sealed class NQuadRelationWriter(
         return (relation, parent, child);
     }
 
-    private NQuadEntityRepository<DynamicRecord> Repository(EntityTypeRegistration type, string? actingUserName = null) =>
-        new(store, type.Schema, type.BaseIri, type.TypeIri, type.Graph, schema => new DynamicRecord(schema), changedBy: string.IsNullOrWhiteSpace(actingUserName) ? "system" : actingUserName);
+    private NQuadEntityRepository<DynamicRecord> Repository(EntityTypeRegistration type) =>
+        new(store, type.Schema, type.BaseIri, type.TypeIri, type.Graph, schema => new DynamicRecord(schema));
 
     /// <summary>The current children of one parent (the same indexed lookup the provider uses), tombstoned ones excluded.</summary>
     private async Task<IReadOnlyList<DynamicRecord>> ChildrenAsync(

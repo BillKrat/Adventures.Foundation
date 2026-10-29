@@ -129,7 +129,7 @@ public sealed class NQuadEntityRepositoryListCostTests
     }
 
     [Fact]
-    public async Task DeleteManyAsync_WritesTheSameAuditRowsAsDeletingOneByOne()
+    public async Task DeleteManyAsync_TombstonesTheSameAsDeletingOneByOne()
     {
         var (batch, batchStore) = await SeedAsync(2);
         var (single, singleStore) = await SeedAsync(2);
@@ -138,10 +138,10 @@ public sealed class NQuadEntityRepositoryListCostTests
         await single.DeleteAsync("w0");
         await single.DeleteAsync("w1");
 
-        var batchAudits = (await batchStore.QueryAsync(predicate: EntityConstants.AuditRecord.ActionPredicate, @object: "Delete")).Count;
-        var singleAudits = (await singleStore.QueryAsync(predicate: EntityConstants.AuditRecord.ActionPredicate, @object: "Delete")).Count;
-        Assert.Equal(singleAudits, batchAudits);
-        Assert.True(batchAudits > 0);
+        var batchMarks = (await batchStore.QueryAsync(predicate: EntityConstants.Lifecycle.DeletedAtPredicate)).Count;
+        var singleMarks = (await singleStore.QueryAsync(predicate: EntityConstants.Lifecycle.DeletedAtPredicate)).Count;
+        Assert.Equal(singleMarks, batchMarks);
+        Assert.Equal(2, batchMarks);
     }
 
     [Fact]

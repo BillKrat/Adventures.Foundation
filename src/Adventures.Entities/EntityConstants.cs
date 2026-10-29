@@ -57,7 +57,7 @@ public static class EntityConstants
 
         /// <summary>
         /// IRIs for <see cref="Adventures.Entities.SchemaEntity"/> instances - a schema definition
-        /// (e.g. the seed-authored "User" and "AuditRecord" schemas) treated as an ordinary
+        /// (e.g. the seed-authored "User" schema) treated as an ordinary
         /// <c>NQuadEntityRepository{TEntity}</c>-managed entity, discovered the same way every other
         /// entity is: a standard rdf:type triple, not the <see cref="TypePredicate"/> marker
         /// <c>SchemaDal</c> reads. <see cref="EntityTypeIri"/> deliberately reuses <see cref="TypeIri"/> -
@@ -226,9 +226,8 @@ public static class EntityConstants
 
     /// <summary>
     /// Mechanical "is this still current" bookkeeping for <see cref="IEntityRepository{TEntity}"/>: a tombstoned
-    /// entity or a superseded field-value quad is never physically removed, so history is always reconstructable.
-    /// Deliberately separate from <see cref="AuditRecord"/> - this is cheap, mechanical, and not meant to be read by
-    /// a person; <see cref="AuditRecord"/> is the human-facing "what changed and why" log.
+    /// entity or a superseded field-value quad is not physically removed. This is storage mechanics only: it records no
+    /// actor, is not a tamper-evident log and is not an audit trail; the software makes no such claim (see NOTICE, Regulated use).
     /// </summary>
     public static class Lifecycle
     {
@@ -239,27 +238,5 @@ public static class EntityConstants
 
         /// <summary>Quad: (superseded quad's own id as a string, SupersededAtPredicate, ISO-8601 timestamp).</summary>
         public const string SupersededAtPredicate = BaseIri + "supersededAt";
-    }
-
-    /// <summary>
-    /// Same shape and predicate IRIs as the POC's <c>PocConstants.Audit</c> (and the seed data already carries this
-    /// exact schema, unused, in <c>artifacts/seed.nq</c> / <c>Sql/seed/seed.nq</c>) - kept identical rather than
-    /// reinvented so the two stay compatible. One row per changed field, written by
-    /// <see cref="IEntityRepository{TEntity}"/> on every Create/Update/Delete.
-    /// </summary>
-    public static class AuditRecord
-    {
-        public const string SchemaIri = "https://global-webnet.com/schema/AuditRecord";
-        public const string BaseIri = "https://global-webnet.com/id/audit/";
-        public const string TypeIri = "https://global-webnet.com/ontology/audit#AuditRecord";
-        public const string EntityTypePredicate = "https://global-webnet.com/ontology/audit#entityType";
-        public const string EntityIdPredicate = "https://global-webnet.com/ontology/audit#entityId";
-        public const string FieldIdPredicate = "https://global-webnet.com/ontology/audit#fieldId";
-        public const string FieldNamePredicate = "https://global-webnet.com/ontology/audit#fieldName";
-        public const string ActionPredicate = "https://global-webnet.com/ontology/audit#action";
-        public const string ChangedAtPredicate = "https://global-webnet.com/ontology/audit#changedAt";
-        public const string ChangedByPredicate = "https://global-webnet.com/ontology/audit#changedBy";
-        public const string FromValuePredicate = "https://global-webnet.com/ontology/audit#fromValue";
-        public const string ToValuePredicate = "https://global-webnet.com/ontology/audit#toValue";
     }
 }

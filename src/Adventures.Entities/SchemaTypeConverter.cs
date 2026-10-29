@@ -11,7 +11,7 @@ namespace Adventures.Entities;
 /// it directly on them throws a generic <see cref="InvalidCastException"/> unrelated to any real
 /// schema mismatch. Every conversion below is explicitly <see cref="CultureInfo.InvariantCulture"/> -
 /// the default (current-thread culture) would parse the same stored value differently depending on
-/// server locale, which is unacceptable for an audited/reproducible system.
+/// server locale, which is unacceptable for a reproducible system.
 /// Instance-based, not static, so a caller can add application-specific type names (e.g. an
 /// enum) without mutating shared global state that other callers/tests would also see.
 /// </summary>

@@ -12,7 +12,7 @@ namespace Adventures.WebApi;
 /// Swagger/attribute routing, so each app still writes its own small, concrete, attribute-decorated
 /// controller; this is the part of that controller that would otherwise be copy-pasted. Delete is
 /// deliberately not provided here - every real entity's delete needs at least an acting-user id for
-/// audit/authorization, which does not generalize the same way (see <see cref="IUserPresenter"/>'s
+/// authorization, which does not generalize the same way (see <see cref="IUserPresenter"/>'s
 /// guarded overload) - a concrete controller calls its presenter's own Delete directly, wrapped in
 /// <see cref="ApiControllerBase.GuardedAsync"/>.
 /// </summary>

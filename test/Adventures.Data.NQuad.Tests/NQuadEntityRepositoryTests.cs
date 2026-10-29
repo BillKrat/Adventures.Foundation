@@ -63,14 +63,34 @@ public class NQuadEntityRepositoryTests : IAsyncLifetime
             () => _repository.CreateAsync(NewUser(_schema, id, "Ada2", "Lovelace2", "mailto:ada2@example.com")));
     }
 
+    // The product makes no audit-trail claim (it is not designed for regulated use): no change history is written as a feature.
+    private async Task AssertNoAuditRecordsAsync()
+    {
+        var all = await _store.QueryAsync();
+        Assert.DoesNotContain(all, q => q.Predicate.Contains("/ontology/audit#", StringComparison.OrdinalIgnoreCase) || q.Object.Contains("/ontology/audit#", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(all, q => q.Subject.Contains("/id/audit/", StringComparison.OrdinalIgnoreCase));
+    }
+
     [Fact]
-    public async Task CreateAsync_WritesOneAuditRowPerField()
+    public async Task CreateUpdateAndDelete_WriteNoAuditRecords()
     {
         var id = Guid.NewGuid().ToString();
-        await _repository.CreateAsync(NewUser(_schema, id, "Ada", "Lovelace", "mailto:ada@example.com"));
+        var user = NewUser(_schema, id, "Ada", "Lovelace", "mailto:ada@example.com");
+        await _repository.CreateAsync(user);
+        await AssertNoAuditRecordsAsync();
 
-        var auditQuads = await _store.QueryAsync(predicate: EntityConstants.AuditRecord.ActionPredicate, @object: "Create");
-        Assert.Equal(3, auditQuads.Count); // First, Last, Email
+        user.Set("First", Guid.NewGuid().ToString(), "Augusta");
+        await _repository.UpdateAsync(user);
+        await _repository.DeleteAsync(id);
+
+        await AssertNoAuditRecordsAsync();
+    }
+
+    [Fact]
+    public async Task TheSeedDefinesNoAuditSchema()
+    {
+        var all = await _store.QueryAsync();
+        Assert.DoesNotContain(all, q => q.Subject.Contains("AuditRecord", StringComparison.OrdinalIgnoreCase) || q.Object.Contains("AuditRecord", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -157,17 +177,6 @@ public class NQuadEntityRepositoryTests : IAsyncLifetime
         await _repository.DeleteAsync(id);
 
         Assert.False(await _repository.DeleteAsync(id));
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WritesOneAuditRowPerField()
-    {
-        var id = Guid.NewGuid().ToString();
-        await _repository.CreateAsync(NewUser(_schema, id, "Ada", "Lovelace", "mailto:ada@example.com"));
-        await _repository.DeleteAsync(id);
-
-        var deleteAudits = await _store.QueryAsync(predicate: EntityConstants.AuditRecord.ActionPredicate, @object: "Delete");
-        Assert.Equal(3, deleteAudits.Count); // First, Last, Email
     }
 
     [Fact]

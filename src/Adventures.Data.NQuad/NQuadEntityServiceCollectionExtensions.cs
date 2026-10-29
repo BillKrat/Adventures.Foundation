@@ -11,22 +11,14 @@ namespace Adventures.Data.NQuad;
 /// </summary>
 public static class NQuadEntityServiceCollectionExtensions
 {
-    /// <summary>The audit actor recorded when no signed-in user is available (startup seeding, background work).</summary>
-    public const string SystemActor = "system";
-
-    /// <summary>
-    /// Registers a scoped <see cref="IEntityRepository{TEntity}"/> over the registered <see cref="INQuadStore"/>.
-    /// <paramref name="changedBy"/> is evaluated per scope, so the audit trail records who made each change
-    /// (e.g. the current request's user name); null or blank falls back to <see cref="SystemActor"/>.
-    /// </summary>
+    /// <summary>Registers a scoped <see cref="IEntityRepository{TEntity}"/> over the registered <see cref="INQuadStore"/>.</summary>
     public static IServiceCollection AddNQuadEntityRepository<TEntity>(
         this IServiceCollection services,
         EntitySchema schema,
         string baseIri,
         string typeIri,
         string graph,
-        Func<EntitySchema, TEntity> entityFactory,
-        Func<IServiceProvider, string?>? changedBy = null)
+        Func<EntitySchema, TEntity> entityFactory)
         where TEntity : DynamicEntity
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -38,17 +30,7 @@ public static class NQuadEntityServiceCollectionExtensions
         services.AddSingleton(new EntityTypeRegistration(schema, baseIri, typeIri, graph));
 
         return services.AddScoped<IEntityRepository<TEntity>>(provider =>
-        {
-            var actor = changedBy?.Invoke(provider);
-            return new NQuadEntityRepository<TEntity>(
-                provider.GetRequiredService<INQuadStore>(),
-                schema,
-                baseIri,
-                typeIri,
-                graph,
-                entityFactory,
-                changedBy: string.IsNullOrWhiteSpace(actor) ? SystemActor : actor);
-        });
+            new NQuadEntityRepository<TEntity>(provider.GetRequiredService<INQuadStore>(), schema, baseIri, typeIri, graph, entityFactory));
     }
 
     /// <summary>

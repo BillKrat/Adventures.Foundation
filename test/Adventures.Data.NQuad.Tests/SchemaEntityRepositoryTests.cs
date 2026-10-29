@@ -171,7 +171,7 @@ public sealed class SchemaEntityRepositoryTests : IAsyncLifetime
         var live = await _schemaRepository.ListAsync();
 
         Assert.Contains(live, s => s.GetValue("Id")!.ToString() == schemaId);
-        // The seed-authored "User"/"AuditRecord" schema subjects predate this repository and were
+        // The seed-authored "User" schema subject predate this repository and were
         // written with SchemaDal's schema#type marker, not a standard rdf:type triple - by design
         // they are not discoverable via ListAsync, only by GetAsync(id) (see the fact below).
         Assert.DoesNotContain(live, s => s.GetValue("Id")!.ToString() == "User");
