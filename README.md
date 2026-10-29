@@ -97,6 +97,10 @@ Bump `<Version>` in each project's `.csproj` independently — `Adventures.Secur
 because they're evolving at the same pace during early development. Split into separate repos
 later if that stops being true; don't force it prematurely.
 
+## Not for regulated use
+
+This software is a general-purpose starter kit. It is **not designed, validated or licensed for regulated use**: health care and life sciences (including clinical or other human-subjects research), financial services, safety-critical or critical-infrastructure systems, government or defence compliance regimes, or any setting that needs a validated system, an audit trail, electronic signatures or a compliance certification. It has no regulatory approval and makes no compliance claim, and it keeps no audit trail. Production use in a regulated field is outside the licence, and no commercial licence is offered for it. The exact terms are in [NOTICE](NOTICE) (Regulatory disclaimer and field of use) and the Additional Use Grant in [LICENSE](LICENSE).
+
 ## License
 
 Source-available under the Business Source License 1.1 (see [LICENSE](LICENSE) and [NOTICE](NOTICE)); non-production use is always free. Versions published before 2026-10-24 remain under MIT. Outside contributions: see [CONTRIBUTING.md](CONTRIBUTING.md).

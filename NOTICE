@@ -25,6 +25,67 @@ Dependencies keep their own licences (MIT, Apache-2.0, BSD, ISC, MPL-2.0 and
 similar). None is a strong-copyleft licence. The 2026-10 audit is recorded in
 docs/Claude-decision-2026-10-licensing.md in the ai-research-blog repository.
 
+Regulatory disclaimer and field of use
+--------------------------------------
+This section applies to every version released under the Business Source
+License, and it is part of the Additional Use Grant in LICENSE.
+
+1. Not for regulated use. The Software is a general-purpose blog, content and
+   collaboration starter kit. It is licensed for education, information,
+   evaluation, and general non-regulated purposes. It is not designed, tested,
+   validated, marketed or intended for any Regulated Use.
+
+   "Regulated Use" means any use, in any jurisdiction, in which the Software,
+   its source code, its outputs, or data it stores or processes is subject to,
+   or must satisfy, a law, regulation, standard, certification, licence or
+   oversight by a governmental, regulatory, accreditation, ethics-review or
+   professional body, or a regulated-industry quality system. Examples, which
+   are not a complete list:
+   - health care, life sciences and biomedical work: diagnosis, treatment or
+     prevention of disease, medical devices, pharmaceuticals, clinical trials
+     and any human-subjects research that needs ethics-board or regulator
+     oversight or is meant to support a regulatory submission;
+   - protected health information (for example HIPAA) and special-category
+     personal data (for example under the GDPR);
+   - financial services and payments: securities, banking, anti-money
+     laundering, card-data (PCI DSS) and financial-reporting controls;
+   - safety-critical, life-support, aviation, automotive, rail, energy,
+     nuclear and other critical-infrastructure systems, where a failure could
+     cause injury, death or serious harm;
+   - government, defence and export-controlled work (for example FedRAMP,
+     FISMA, CJIS, ITAR);
+   - education records and children's data (for example FERPA, COPPA);
+   - any use that requires a validated system, a tamper-evident audit trail,
+     electronic records or signatures (for example 21 CFR Part 11, EU Annex 11),
+     or a compliance certification.
+
+   Ordinary compliance with general-purpose law, such as privacy law for the
+   accounts of a normal website or tax and consumer-protection rules for a
+   shop, does not by itself make a use a Regulated Use.
+
+2. No approvals, no compliance claims. The Software has not been reviewed,
+   cleared, approved or certified by any governmental or regulatory body, and
+   it does not claim to meet any regulatory framework. In particular it
+   provides no audit trail, no validated electronic records or signatures, no
+   validation documentation and no regulated data-protection controls, and
+   nothing in the Software, its documentation or its messages should be read
+   as saying otherwise.
+
+3. Your responsibility. Using the Software in a Regulated Use is outside the
+   licence grant. If you do so, you act entirely at your own risk and you are
+   solely responsible for every legal, regulatory and financial consequence,
+   including any clearance, validation or certification that would be needed.
+   To the extent the law allows, you agree to indemnify, defend and hold
+   harmless the Licensor from claims, liabilities, damages and enforcement
+   actions arising from your use of the Software in a Regulated Use.
+
+4. No licence for it. The Licensor does not offer a commercial licence for
+   Regulated Use, and no one is authorised to say otherwise.
+
+This text is a statement of the Licensor's intent and terms. It is under review
+by an attorney and may be revised in later versions; a version already released
+keeps the terms it was released under.
+
 Trademarks
 ----------
 "Adventures On The Edge" and the product names are marks of the Licensor and are not
