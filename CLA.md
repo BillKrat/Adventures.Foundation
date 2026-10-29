@@ -1,7 +1,7 @@
 # Contributor License Agreement (CLA)
 
 **DRAFT: to be reviewed by an attorney before the first outside contribution is
-accepted.** No contribution is accepted until this is final and signed.
+accepted.** No contribution is accepted until this is final and signed. No contribution is accepted whose purpose is to enable or support Regulated Use as defined in NOTICE.
 
 "We" means Diane Kratochvil, doing business as Adventures On The Edge, the licensor of Adventures.Foundation (the "Project").
 "You" means the person, or the entity you are authorised to bind, making a

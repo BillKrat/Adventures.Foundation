@@ -9,6 +9,10 @@ unsolicited code contributions (pull requests) by default.
   should be reported privately to the maintainer, not in a public issue.
 - **Discussion**: questions about using the work under its licence.
 
+## What is never accepted
+
+We do **not** accept contributions, from anyone and on any terms, whose purpose is to make the work usable in a regulated environment: audit trails, validation or compliance documentation, electronic records or signatures, regulatory or certification claims, features for regulated fields, and the like. Production use in a regulated field is outside the licence (see the Regulatory disclaimer in [NOTICE](NOTICE)), so such work would not be merged, credited or paid for. Please do not spend time on it.
+
 ## If you want to contribute code
 
 Contributions are accepted only when all of these happen, in order:
