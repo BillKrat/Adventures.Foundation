@@ -13,6 +13,7 @@
     <Project Path="Adventures.Common.Tests/Adventures.Common.Tests.csproj" Id="4dbfa63c-a21c-44a0-b03a-a91d6e2c8861" />
     <Project Path="Adventures.Ioc.Tests/Adventures.Ioc.Tests.csproj" Id="1608b7d0-697c-4764-af29-9d9df5380493" />
     <Project Path="Adventures.Tests/Adventures.Tests.csproj" Id="4e60653f-b143-4ae7-8797-1233129c35e6" />
+    <Project Path="test/Adventures.Architecture.Tests/Adventures.Architecture.Tests.csproj" />
     <Project Path="test/Adventures.Data.NQuad.Tests/Adventures.Data.NQuad.Tests.csproj" />
     <Project Path="test/Adventures.Data.Tests/Adventures.Data.Tests.csproj" />
     <Project Path="test/Adventures.Entities.Tests/Adventures.Entities.Tests.csproj" />
