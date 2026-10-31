@@ -17,6 +17,8 @@ public class DependencyRulesTests
     [
         "Adventures.Blog -> Adventures.Collaboration",
         "Adventures.Blog -> Adventures.Entities",
+        "Adventures.Blog.Legacy -> Adventures.Blog",
+        "Adventures.Blog.Legacy -> Adventures.Data.Sql",
         "Adventures.Blog.Postgres -> Adventures.Blog",
         "Adventures.Blog.WebApi -> Adventures.Blog",
         "Adventures.Blog.WebApi -> Adventures.Security",
@@ -26,6 +28,8 @@ public class DependencyRulesTests
         "Adventures.Common -> Adventures.Ioc",
         "Adventures.Data.NQuad -> Adventures.Entities",
         "Adventures.Data.Postgres -> Adventures.Data",
+        "Adventures.Data.Sql -> Adventures.Common",
+        "Adventures.Data.Sql -> Adventures.Data",
         "Adventures.Entities -> Adventures.Common",
         "Adventures.Identity -> Adventures.Data",
         "Adventures.Identity -> Adventures.Security",
@@ -148,6 +152,7 @@ public class DependencyRulesTests
     {
         Assert.Equal(["Adventures.Collaboration", "Adventures.Entities"], Graph.Projects["Adventures.Blog"].ProjectReferences);
         Assert.Equal(["Adventures.Blog"], Graph.Projects["Adventures.Blog.Postgres"].ProjectReferences);
+        Assert.Equal(["Adventures.Blog", "Adventures.Data.Sql"], Graph.Projects["Adventures.Blog.Legacy"].ProjectReferences);
         Assert.Equal(["Adventures.Blog", "Adventures.Security", "Adventures.WebApi"], Graph.Projects["Adventures.Blog.WebApi"].ProjectReferences);
     }
 
@@ -159,7 +164,7 @@ public class DependencyRulesTests
             .Where(p => p.ProjectReferences.Contains("Adventures.Blog"))
             .Select(p => p.Name)
             .OrderBy(n => n, StringComparer.Ordinal);
-        Assert.Equal(["Adventures.Blog.Postgres", "Adventures.Blog.WebApi"], referrers);
+        Assert.Equal(["Adventures.Blog.Legacy", "Adventures.Blog.Postgres", "Adventures.Blog.WebApi"], referrers);
     }
 
     // S4: Collaboration builds on Entities and the plug-in seam only (no Blog, no store, no host); the plug-in seam builds on Entities only; only the Blog stack builds on Collaboration.
@@ -193,6 +198,14 @@ public class DependencyRulesTests
         Assert.Equal(["Adventures.Security"], alone.Descendants("ProjectReference").Select(e => Path.GetFileNameWithoutExtension(((string)e.Attribute("Include")!).Replace('\\', '/'))).ToList());
     }
 
+    // S7: the SQL Server executor builds on the contracts only (Data, Common); the legacy blog adapter on the Blog and that executor, never on another store.
+    [Fact]
+    public void Sql_store_projects_reference_only_contracts_and_the_blog()
+    {
+        Assert.Equal(["Adventures.Common", "Adventures.Data"], Graph.Projects["Adventures.Data.Sql"].ProjectReferences);
+        Assert.DoesNotContain(Graph.Projects["Adventures.Blog.Legacy"].ProjectReferences, r => r is "Adventures.Data.NQuad" or "Adventures.Data.Postgres");
+    }
+
     // Rule R16: one public type name per library (S1 renamed the Postgres-side IEntityRepository to IEntityRecordRepository).
     [Fact]
     public void Public_type_names_are_unique_across_libraries()
@@ -223,7 +236,7 @@ public class DependencyRulesTests
     }
 
     private static bool IsStore(string project) =>
-        project is "Adventures.Data.NQuad" or "Adventures.Data.Postgres" or "Adventures.Data.Sql" or "Adventures.Blog.Postgres" or "Adventures.Identity.Postgres";
+        project is "Adventures.Data.NQuad" or "Adventures.Data.Postgres" or "Adventures.Data.Sql" or "Adventures.Blog.Postgres" or "Adventures.Identity.Postgres" or "Adventures.Blog.Legacy";
 
     private static IEnumerable<(string From, string To)> Edges(params string[] from) =>
         from.Where(Graph.Projects.ContainsKey)

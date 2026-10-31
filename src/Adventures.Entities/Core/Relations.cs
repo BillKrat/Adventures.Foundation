@@ -62,3 +62,16 @@ public interface IEntityRelationWriter
 
 /// <summary>An entity of any schema, for code that reads entities generically (the relation provider) without a class per type.</summary>
 public sealed class DynamicRecord(EntitySchema schema) : DynamicEntity(schema);
+
+/// <summary>
+/// Supplies the display text of the entities of one schema when they are not in the N-Quad store (for example blog categories that live in
+/// a SQL Server table in Legacy mode). A relation provider asks a registered source for the schema before it reads its own store.
+/// </summary>
+public interface IRelationNameSource
+{
+    /// <summary>The schema whose entities this source names.</summary>
+    string SchemaIri { get; }
+
+    /// <summary>Entity id to display text, for every entity of the schema.</summary>
+    Task<IReadOnlyDictionary<string, string>> NamesAsync(CancellationToken cancellationToken = default);
+}

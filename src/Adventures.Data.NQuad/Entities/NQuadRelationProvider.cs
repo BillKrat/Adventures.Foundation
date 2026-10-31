@@ -13,8 +13,11 @@ public sealed record EntityTypeRegistration(EntitySchema Schema, string BaseIri,
 /// so a grid shows a name rather than an id. It needs no class per entity type: it reads every schema through
 /// <see cref="DynamicRecord"/> using the registrations the host already made.
 /// </summary>
-public sealed class NQuadRelationProvider(INQuadStore store, IEnumerable<EntityTypeRegistration> types) : IEntityRelationProvider
+public sealed class NQuadRelationProvider(INQuadStore store, IEnumerable<EntityTypeRegistration> types, IEnumerable<IRelationNameSource>? nameSources = null) : IEntityRelationProvider
 {
+    private readonly Dictionary<string, IRelationNameSource> _sources =
+        (nameSources ?? []).GroupBy(s => s.SchemaIri, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Last(), StringComparer.Ordinal);
+
     private readonly Dictionary<string, EntityTypeRegistration> _bySchema =
         types.GroupBy(t => t.Schema.SchemaIri, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
@@ -124,6 +127,11 @@ public sealed class NQuadRelationProvider(INQuadStore store, IEnumerable<EntityT
     /// <summary>Entity id to display text for every entity of <paramref name="schemaIri"/>; when the naming field is itself a pointer, the text of what it points at (one more level per <paramref name="depth"/>).</summary>
     private async Task<Dictionary<string, string>> LoadNamesAsync(string schemaIri, int depth, CancellationToken cancellationToken)
     {
+        if (_sources.TryGetValue(schemaIri, out var source))
+        {
+            return new Dictionary<string, string>(await source.NamesAsync(cancellationToken).ConfigureAwait(false), StringComparer.Ordinal);
+        }
+
         var registration = _bySchema[schemaIri];
         var repository = new NQuadEntityRepository<DynamicRecord>(
             store, registration.Schema, registration.BaseIri, registration.TypeIri, registration.Graph, s => new DynamicRecord(s));

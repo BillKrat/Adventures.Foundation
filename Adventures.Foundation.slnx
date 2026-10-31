@@ -6,10 +6,12 @@
     <Project Path="src/Adventures.MEF/Adventures.MEF.csproj" />
     <Project Path="src/Adventures.Blog/Adventures.Blog.csproj" />
     <Project Path="src/Adventures.Blog.Postgres/Adventures.Blog.Postgres.csproj" />
+    <Project Path="src/Adventures.Blog.Legacy/Adventures.Blog.Legacy.csproj" />
     <Project Path="src/Adventures.Blog.WebApi/Adventures.Blog.WebApi.csproj" />
     <Project Path="src/Adventures.Data.NQuad/Adventures.Data.NQuad.csproj" />
     <Project Path="src/Adventures.Data/Adventures.Data.csproj" />
     <Project Path="src/Adventures.Data.Postgres/Adventures.Data.Postgres.csproj" />
+    <Project Path="src/Adventures.Data.Sql/Adventures.Data.Sql.csproj" />
     <Project Path="src/Adventures.Entities/Adventures.Entities.csproj" />
     <Project Path="src/Adventures.Identity/Adventures.Identity.csproj" />
     <Project Path="src/Adventures.Identity.Postgres/Adventures.Identity.Postgres.csproj" />
@@ -19,6 +21,7 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/Adventures.Blog.Tests/Adventures.Blog.Tests.csproj" />
+    <Project Path="test/Adventures.Blog.Legacy.Tests/Adventures.Blog.Legacy.Tests.csproj" />
     <Project Path="test/Adventures.Collaboration.Tests/Adventures.Collaboration.Tests.csproj" />
     <Project Path="test/Adventures.Common.Tests/Adventures.Common.Tests.csproj" Id="4dbfa63c-a21c-44a0-b03a-a91d6e2c8861" />
     <Project Path="test/Adventures.Ioc.Tests/Adventures.Ioc.Tests.csproj" Id="1608b7d0-697c-4764-af29-9d9df5380493" />

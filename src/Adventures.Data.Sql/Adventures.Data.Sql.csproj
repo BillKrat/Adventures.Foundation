@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<TargetFramework>net10.0</TargetFramework>
+	<Nullable>enable</Nullable>
+	<ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+	<PackageId>Adventures.Data.Sql</PackageId>
+	<Version>0.1.0</Version>
+	<Authors>Adventures On The Edge</Authors>
+	<Description>SQL Server implementation of the Adventures.Data SQL executor contract (Microsoft.Data.SqlClient and Dapper), plus a reachability probe. Used to run on an existing SQL Server database such as a BlogEngine.NET installation.</Description>
+	<PackageLicenseExpression>BUSL-1.1</PackageLicenseExpression>
+	<RepositoryUrl>https://github.com/BillKrat/Adventures.Foundation</RepositoryUrl>
+	<PackageTags>sqlserver;data-access</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2" />
+	<PackageReference Include="Dapper" Version="2.1.35" />
+	<!-- Microsoft.Data.SqlClient 6.0.2 pulls System.Security.Cryptography.Pkcs 9.0.4, which has known advisories (GHSA-2fmv-rv2c-59x7, GHSA-846f-f764-76mx); pin the patched version. -->
+	<PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+	<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Adventures.Data\Adventures.Data.csproj" />
+    <ProjectReference Include="..\Adventures.Common\Adventures.Common.csproj" />
+  </ItemGroup>
+
+</Project>
