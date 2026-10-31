@@ -111,24 +111,27 @@ public class DependencyRulesTests
             ["Adventures.Security -> Microsoft.AspNetCore.Authentication.JwtBearer"]); // removed by S6 (Security.AspNetCore)
     }
 
-    // Rule R17: no source files at a project root. Recorded counts may only fall.
+    // Rule R17: no source files at a project root (reached 0 in S1; any new file at a root fails).
     [Fact]
-    public void Source_files_at_project_roots_only_fall()
+    public void No_source_files_at_project_roots()
     {
-        var recorded = new Dictionary<string, int>
-        {
-            ["Adventures.Common"] = 0,
-            ["Adventures.Data"] = 9,
-            ["Adventures.Data.NQuad"] = 14,
-            ["Adventures.Entities"] = 67,
-            ["Adventures.Identity"] = 10,
-            ["Adventures.Ioc"] = 0,
-            ["Adventures.Security"] = 17,
-            ["Adventures.WebApi"] = 15,
-        };
+        var offenders = Graph.Projects.Where(p => p.Value.SourceFilesAtProjectRoot > 0).Select(p => $"{p.Key}: {p.Value.SourceFilesAtProjectRoot}");
+        Assert.Empty(offenders);
+    }
 
-        var actual = Graph.Projects.ToDictionary(p => p.Key, p => p.Value.SourceFilesAtProjectRoot);
-        Assert.Equal(recorded.OrderBy(r => r.Key), actual.OrderBy(a => a.Key));
+    // Rule R16: one public type name per library (S1 renamed the Postgres-side IEntityRepository to IEntityRecordRepository).
+    [Fact]
+    public void Public_type_names_are_unique_across_libraries()
+    {
+        var pattern = new System.Text.RegularExpressions.Regex(@"^public\s+(?:(?:sealed|static|abstract|partial|readonly)\s+)*(?:class|interface|record(?:\s+struct)?|struct|enum)\s+(\w+)", System.Text.RegularExpressions.RegexOptions.Multiline);
+        var duplicates = Graph.Projects.Values
+            .SelectMany(p => Directory.GetFiles(p.Directory, "*.cs", SearchOption.AllDirectories)
+                .Where(f => !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar) && !f.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar))
+                .SelectMany(f => pattern.Matches(File.ReadAllText(f)).Select(m => (Name: m.Groups[1].Value, Project: p.Name))))
+            .GroupBy(t => t.Name)
+            .Where(g => g.Count() > 1)
+            .Select(g => $"{g.Key} in {string.Join(", ", g.Select(x => x.Project))}");
+        Assert.Empty(duplicates);
     }
 
     private static bool IsStore(string project) =>

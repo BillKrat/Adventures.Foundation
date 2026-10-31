@@ -31,7 +31,7 @@ public sealed record UserAccount(
     /// Parses the standard user fields out of an entity's <see cref="Entity.StandardFieldsJson"/>.
     /// Throws <see cref="FormatException"/> if <paramref name="entity"/> isn't <c>entity_type =
     /// "user"</c> or is missing the required <c>username</c> field - callers should only pass
-    /// entities already filtered to that type (e.g. via <see cref="IEntityRepository.FindByStandardFieldAsync"/>).
+    /// entities already filtered to that type (e.g. via <see cref="IEntityRecordRepository.FindByStandardFieldAsync"/>).
     /// </summary>
     public static UserAccount FromEntity(Entity entity)
     {

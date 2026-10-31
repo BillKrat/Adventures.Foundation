@@ -6,7 +6,7 @@ namespace Adventures.Data;
 /// side of the JSONB Hybrid + N-Quads storage model. See <see cref="ITripleStore"/> for the
 /// companion interface covering fully user-defined/extension fields.
 /// </summary>
-public interface IEntityRepository
+public interface IEntityRecordRepository
 {
     /// <summary>Inserts a new entity and returns the stored record (with server-assigned timestamps/row version).</summary>
     Task<Entity> CreateAsync(Entity entity, CancellationToken cancellationToken = default);

@@ -21,7 +21,7 @@ public interface IUserProvisioning
 }
 
 /// <summary>Default <see cref="IUserProvisioning"/> over the identity entity store, the credential store and the password hasher.</summary>
-public sealed class UserProvisioning(IEntityRepository entities, IUserCredentialStore credentials, IPasswordHasher hasher) : IUserProvisioning
+public sealed class UserProvisioning(IEntityRecordRepository entities, IUserCredentialStore credentials, IPasswordHasher hasher) : IUserProvisioning
 {
     public const string PasswordAlgorithm = "pbkdf2-sha256";
     public const int GeneratedLength = 20;

@@ -2,12 +2,12 @@
 namespace Adventures.Data;
 
 /// <summary>
-/// PostgreSQL-backed <see cref="IEntityRepository"/> implementation, operating against the
+/// PostgreSQL-backed <see cref="IEntityRecordRepository"/> implementation, operating against the
 /// "entities" table (JSONB "standard fields" side of the JSONB Hybrid + N-Quads storage model).
 /// All SQL execution goes through <see cref="ISqlExecutor"/> so this class can be unit tested
 /// with a mocked executor, without a live PostgreSQL instance.
 /// </summary>
-public sealed class PostgresEntityRepository(ISqlExecutor executor) : IEntityRepository
+public sealed class PostgresEntityRepository(ISqlExecutor executor) : IEntityRecordRepository
 {
     private readonly ISqlExecutor _executor = executor ?? throw new ArgumentNullException(nameof(executor));
 

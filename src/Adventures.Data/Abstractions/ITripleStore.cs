@@ -5,7 +5,7 @@ namespace Adventures.Data;
 /// Access to W3C N-Quad style <see cref="Triple"/> statements — the extension/custom-field side
 /// of the JSONB Hybrid + N-Quads storage model. Lets users design and populate arbitrary custom
 /// form fields/grid columns at whatever granularity (tenant, org, user) the graph value encodes,
-/// without requiring schema changes to the "standard fields" JSONB side (<see cref="IEntityRepository"/>).
+/// without requiring schema changes to the "standard fields" JSONB side (<see cref="IEntityRecordRepository"/>).
 /// </summary>
 public interface ITripleStore
 {

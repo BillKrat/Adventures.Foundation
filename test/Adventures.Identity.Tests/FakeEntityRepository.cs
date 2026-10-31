@@ -4,11 +4,11 @@ using Adventures.Data;
 namespace Adventures.Identity.Tests;
 
 /// <summary>
-/// Hand-rolled fake <see cref="IEntityRepository"/> for interaction-testing <see cref="UserAccountService"/>
+/// Hand-rolled fake <see cref="IEntityRecordRepository"/> for interaction-testing <see cref="UserAccountService"/>
 /// without a real Postgres-backed implementation. Only <see cref="FindByStandardFieldAsync"/> is
 /// exercised by these tests; everything else throws if accidentally called.
 /// </summary>
-internal sealed class FakeEntityRepository : IEntityRepository
+internal sealed class FakeEntityRepository : IEntityRecordRepository
 {
     public Entity? EntityToReturn { get; set; }
     public List<(string Tenant, string EntityType, string FieldName, string FieldValue)> FindCalls { get; } = [];

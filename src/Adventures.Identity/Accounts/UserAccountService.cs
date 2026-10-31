@@ -7,12 +7,12 @@ using Adventures.Security;
 namespace Adventures.Identity;
 
 /// <summary>
-/// Default <see cref="IUserAccountService"/> implementation, composing <see cref="IEntityRepository"/>
+/// Default <see cref="IUserAccountService"/> implementation, composing <see cref="IEntityRecordRepository"/>
 /// (find the user entity by tenant+username), <see cref="IUserCredentialStore"/> (the vault row),
 /// <see cref="IPasswordHasher"/> (verify), and <see cref="IJwtTokenService"/> (issue).
 /// </summary>
 public sealed class UserAccountService(
-    IEntityRepository entityRepository,
+    IEntityRecordRepository entityRepository,
     IUserCredentialStore credentialStore,
     IPasswordHasher passwordHasher,
     IJwtTokenService tokenService) : IUserAccountService
