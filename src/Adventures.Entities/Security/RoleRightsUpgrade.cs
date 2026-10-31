@@ -13,7 +13,7 @@ public static class RoleRightsUpgrade
     private const string ReviewerAfter = "admin.access,posts.read,pages.read,collaboration.read,collaboration.write,collaboration.review,decisions.read";
 
     /// <summary>Applies every default-rights upgrade; returns how many roles changed.</summary>
-    public static async Task<int> ApplyAsync(IEntityRepository<Role> roles, CancellationToken cancellationToken = default)
+    public static async Task<int> ApplyAsync(IEntityDal<Role> roles, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(roles);
         var changed = 0;

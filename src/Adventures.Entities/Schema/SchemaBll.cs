@@ -10,10 +10,10 @@ namespace Adventures.Entities;
 /// </summary>
 public sealed class SchemaBll : ISchemaBll
 {
-    private readonly IEntityRepository<SchemaEntity> _schemas;
-    private readonly IEntityRepository<SchemaFieldEntity> _fields;
+    private readonly IEntityDal<SchemaEntity> _schemas;
+    private readonly IEntityDal<SchemaFieldEntity> _fields;
 
-    public SchemaBll(IEntityRepository<SchemaEntity> schemas, IEntityRepository<SchemaFieldEntity> fields)
+    public SchemaBll(IEntityDal<SchemaEntity> schemas, IEntityDal<SchemaFieldEntity> fields)
     {
         _schemas = schemas ?? throw new ArgumentNullException(nameof(schemas));
         _fields = fields ?? throw new ArgumentNullException(nameof(fields));

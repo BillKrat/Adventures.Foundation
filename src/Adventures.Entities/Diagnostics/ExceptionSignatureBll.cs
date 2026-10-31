@@ -5,7 +5,7 @@ namespace Adventures.Entities;
 
 /// <summary>Implementation of <see cref="IExceptionSignatureBll"/> - see that interface for the contract.</summary>
 public sealed class ExceptionSignatureBll(
-    IEntityRepository<ExceptionSignatureEntry> repository,
+    IEntityDal<ExceptionSignatureEntry> repository,
     EntitySchemaOf<ExceptionSignatureEntry> schema)
     : EntityBll<ExceptionSignatureEntry>(repository), IExceptionSignatureBll
 {

@@ -3,8 +3,7 @@ namespace Adventures.Entities;
 
 /// <summary>
 /// The business-rules layer for <see cref="User"/> - storage-agnostic, depends only on
-/// <see cref="IEntityRepository{TEntity}"/> (the Dal; no separate wrapper class, same reasoning as
-/// <see cref="ISchemaBll"/>). Adds exactly two things to the generic <see cref="IEntityBll{TEntity}"/>: the UserName
+/// <see cref="IEntityDal{TEntity}"/> (the Dal; its default implementation uses a repository). Adds exactly two things to the generic <see cref="IEntityBll{TEntity}"/>: the UserName
 /// lookup, and the one business rule - a user can only be deleted by someone else, so the plain
 /// <see cref="IEntityBll{TEntity}.DeleteAsync"/> (which has no acting user) is refused. Kept separate from its
 /// implementation (<see cref="UserBll"/>) so a versioned or alternate implementation can be swapped in via DI

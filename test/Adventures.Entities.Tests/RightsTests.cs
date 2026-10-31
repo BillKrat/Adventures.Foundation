@@ -39,7 +39,7 @@ public sealed class RightsTests : IAsyncLifetime
         services.AddNQuadRelationWriter();
         services.AddScoped<IUserBll, UserBll>();
         services.AddScoped<IUserPresenter, UserPresenter>();
-        services.AddScoped<IEntityBll<Role>>(p => new EntityBll<Role>(p.GetRequiredService<IEntityRepository<Role>>()));
+        services.AddScoped<IEntityBll<Role>>(p => new EntityBll<Role>(new EntityDal<Role>(p.GetRequiredService<IEntityRepository<Role>>())));
         services.AddScoped<IRightsResolver, RightsResolver>();
         _services = services.BuildServiceProvider();
         _users = _services.GetRequiredService<IUserPresenter>();
@@ -130,7 +130,7 @@ public sealed class RightsTests : IAsyncLifetime
         var roles = _services.GetRequiredService<IEntityRepository<Role>>();
         Assert.DoesNotContain("collaboration.write", await RightsTextOfAsync("Reviewer"));
 
-        Assert.Equal(1, await RoleRightsUpgrade.ApplyAsync(roles));
+        Assert.Equal(1, await RoleRightsUpgrade.ApplyAsync(new EntityDal<Role>(roles)));
 
         var reviewer = Rights.Parse(await RightsTextOfAsync("Reviewer"));
         Assert.Contains(Rights.CollaborationReview, reviewer);
@@ -142,13 +142,13 @@ public sealed class RightsTests : IAsyncLifetime
     public async Task TheUpgradeIsRepeatable_AndNeverOverwritesRightsAnAdministratorHasEdited()
     {
         var roles = _services.GetRequiredService<IEntityRepository<Role>>();
-        Assert.Equal(1, await RoleRightsUpgrade.ApplyAsync(roles));
-        Assert.Equal(0, await RoleRightsUpgrade.ApplyAsync(roles)); // already done
+        Assert.Equal(1, await RoleRightsUpgrade.ApplyAsync(new EntityDal<Role>(roles)));
+        Assert.Equal(0, await RoleRightsUpgrade.ApplyAsync(new EntityDal<Role>(roles))); // already done
 
         var reviewer = (await roles.ListAsync()).Single(r => (string)r.GetValue("Name")! == "Reviewer");
         reviewer.Set("Rights", Guid.NewGuid().ToString(), "admin.access,posts.read");
         await roles.UpdateAsync(reviewer);
-        Assert.Equal(0, await RoleRightsUpgrade.ApplyAsync(roles));
+        Assert.Equal(0, await RoleRightsUpgrade.ApplyAsync(new EntityDal<Role>(roles)));
         Assert.Equal("admin.access,posts.read", await RightsTextOfAsync("Reviewer"));
     }
 

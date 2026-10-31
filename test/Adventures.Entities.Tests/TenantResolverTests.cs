@@ -25,7 +25,7 @@ public sealed class TenantResolverTests : IAsyncLifetime
         var services = new ServiceCollection();
         services.AddSingleton<INQuadStore>(store);
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.TenantSchemaIri), EntityConstants.Identity.TenantBaseIri, EntityConstants.Identity.TenantTypeIri, EntityConstants.Identity.DefaultGraph, s => new Tenant(s));
-        services.AddScoped<IEntityBll<Tenant>>(p => new EntityBll<Tenant>(p.GetRequiredService<IEntityRepository<Tenant>>()));
+        services.AddScoped<IEntityBll<Tenant>>(p => new EntityBll<Tenant>(new EntityDal<Tenant>(p.GetRequiredService<IEntityRepository<Tenant>>())));
         services.AddScoped<ITenantResolver, TenantResolver>();
         _resolver = services.BuildServiceProvider().GetRequiredService<ITenantResolver>();
     }

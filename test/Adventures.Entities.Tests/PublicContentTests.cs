@@ -37,8 +37,8 @@ public sealed class PublicContentTests : IAsyncLifetime
         services.AddScoped<IPageBll, PageBll>();
         services.AddScoped<IUserBll, UserBll>();
         services.AddScoped<IUserPresenter, UserPresenter>();
-        services.AddScoped<IEntityBll<Category>>(p => new EntityBll<Category>(p.GetRequiredService<IEntityRepository<Category>>()));
-        services.AddScoped<IEntityBll<Tag>>(p => new EntityBll<Tag>(p.GetRequiredService<IEntityRepository<Tag>>()));
+        services.AddScoped<IEntityBll<Category>>(p => new EntityBll<Category>(new EntityDal<Category>(p.GetRequiredService<IEntityRepository<Category>>())));
+        services.AddScoped<IEntityBll<Tag>>(p => new EntityBll<Tag>(new EntityDal<Tag>(p.GetRequiredService<IEntityRepository<Tag>>())));
         services.AddScoped<IEntityPresenter<Post>, PostPresenter>();
         services.AddScoped<IEntityPresenter<Page>>(p => new EntityPresenter<Page>(
             p.GetRequiredService<IPageBll>(), p.GetRequiredService<EntitySchemaOf<Page>>().Schema, s => new Page(s), p.GetService<IEntityRelationProvider>()));

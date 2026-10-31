@@ -56,7 +56,7 @@ public interface ICollaborationBll : IEntityBll<CollaborationItem>
 }
 
 /// <summary>The collaboration rules: a new item has a kind (Developer unless said otherwise), a creation date, and a Developer item starts as needing review.</summary>
-public sealed class CollaborationBll(IEntityRepository<CollaborationItem> items, IPlugins? plugins = null) : EntityBll<CollaborationItem>(items), ICollaborationBll
+public sealed class CollaborationBll(IEntityDal<CollaborationItem> items, IPlugins? plugins = null) : EntityBll<CollaborationItem>(items), ICollaborationBll
 {
     public override async Task<CollaborationItem> CreateAsync(CollaborationItem entity, CancellationToken cancellationToken = default)
     {
@@ -113,7 +113,7 @@ public sealed class CollaborationBll(IEntityRepository<CollaborationItem> items,
         }
 
         item.Set("Status", Guid.NewGuid().ToString(), status);
-        await Repository.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
+        await Dal.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
         return true;
     }
 
@@ -147,7 +147,7 @@ public sealed class CollaborationBll(IEntityRepository<CollaborationItem> items,
             item.Clear("ApprovedAt");
         }
 
-        await Repository.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
+        await Dal.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
         return true;
     }
 }

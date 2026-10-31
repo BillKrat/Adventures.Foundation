@@ -28,7 +28,7 @@ public sealed class ExceptionLogTests : IAsyncLifetime
             EntityConstants.ExceptionLog.DefaultGraph,
             s => new ExceptionLogEntry(s));
 
-        _bll = new ExceptionLogBll(repository, schema);
+        _bll = new ExceptionLogBll(new EntityDal<ExceptionLogEntry>(repository), schema);
         _presenter = new ExceptionLogPresenter(_bll, schema);
     }
 
@@ -89,7 +89,7 @@ public sealed class ExceptionLogTests : IAsyncLifetime
             EntityConstants.ExceptionLog.TypeIri,
             EntityConstants.ExceptionLog.DefaultGraph,
             s => new ExceptionLogEntry(s));
-        var bll = new ExceptionLogBll(failing, new EntitySchemaOf<ExceptionLogEntry>(
+        var bll = new ExceptionLogBll(new EntityDal<ExceptionLogEntry>(failing), new EntitySchemaOf<ExceptionLogEntry>(
             SchemaDal.Load(await _store.QueryAsync(), EntityConstants.ExceptionLog.SchemaIri)));
 
         var id = await bll.RecordAsync(Thrown("boom"), null, null);

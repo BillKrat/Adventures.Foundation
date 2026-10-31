@@ -35,7 +35,7 @@ public sealed class EntityControllerBaseTests : IAsyncLifetime
             EntityConstants.Schema.EntityTypeIri,
             Graph,
             schema => new SchemaEntity(schema));
-        var presenter = new EntityPresenter<SchemaEntity>(new EntityBll<SchemaEntity>(repository), schemaEntitySchema, schema => new SchemaEntity(schema));
+        var presenter = new EntityPresenter<SchemaEntity>(new EntityBll<SchemaEntity>(new EntityDal<SchemaEntity>(repository)), schemaEntitySchema, schema => new SchemaEntity(schema));
 
         _controller = new TestEntityController(presenter);
     }

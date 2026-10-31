@@ -27,7 +27,7 @@ public sealed class UserPresenterTests : IAsyncLifetime
 
         var repository = new NQuadEntityRepository<User>(
             store, schema, EntityConstants.User.BaseIri, EntityConstants.User.TypeIri, Graph, s => new User(s));
-        var userBll = new UserBll(repository);
+        var userBll = new UserBll(new EntityDal<User>(repository));
 
         _presenter = new UserPresenter(userBll, new EntitySchemaOf<User>(schema));
     }

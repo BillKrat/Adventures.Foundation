@@ -22,24 +22,24 @@ public sealed class ExceptionSignatureTests : IAsyncLifetime
 
         var signatureSchema = new EntitySchemaOf<ExceptionSignatureEntry>(SchemaDal.Load(quads, EntityConstants.ExceptionSignatureEntity.SchemaIri));
         _signatures = new ExceptionSignatureBll(
-            new NQuadEntityRepository<ExceptionSignatureEntry>(
+            new EntityDal<ExceptionSignatureEntry>(new NQuadEntityRepository<ExceptionSignatureEntry>(
                 _store,
                 signatureSchema.Schema,
                 EntityConstants.ExceptionSignatureEntity.BaseIri,
                 EntityConstants.ExceptionSignatureEntity.TypeIri,
                 EntityConstants.ExceptionSignatureEntity.DefaultGraph,
-                s => new ExceptionSignatureEntry(s)),
+                s => new ExceptionSignatureEntry(s))),
             signatureSchema);
 
         var logSchema = new EntitySchemaOf<ExceptionLogEntry>(SchemaDal.Load(quads, EntityConstants.ExceptionLog.SchemaIri));
         _log = new ExceptionLogBll(
-            new NQuadEntityRepository<ExceptionLogEntry>(
+            new EntityDal<ExceptionLogEntry>(new NQuadEntityRepository<ExceptionLogEntry>(
                 _store,
                 logSchema.Schema,
                 EntityConstants.ExceptionLog.BaseIri,
                 EntityConstants.ExceptionLog.TypeIri,
                 EntityConstants.ExceptionLog.DefaultGraph,
-                s => new ExceptionLogEntry(s)),
+                s => new ExceptionLogEntry(s))),
             logSchema,
             signatures: _signatures);
     }

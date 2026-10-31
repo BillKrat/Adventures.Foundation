@@ -145,6 +145,20 @@ public class DependencyRulesTests
         Assert.Empty(duplicates);
     }
 
+    // Rule R9 (S2): a Bll depends on the Dal, never on a repository. Only the default Dal (and the repository contract itself) names one.
+    [Fact]
+    public void Entities_code_other_than_the_Dal_names_no_repository()
+    {
+        var allowed = new[] { "Core/EntityDal.cs", "Core/IEntityRepository.cs" };
+        var offenders = Directory.GetFiles(Graph.Projects["Adventures.Entities"].Directory, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar) && !f.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar))
+            .Select(f => Path.GetRelativePath(Graph.Projects["Adventures.Entities"].Directory, f).Replace('/', '/').Replace(Path.DirectorySeparatorChar, '/'))
+            .Where(f => !allowed.Contains(f))
+            .Where(f => File.ReadAllText(Path.Combine(Graph.Projects["Adventures.Entities"].Directory, f)).Contains("IEntityRepository<", StringComparison.Ordinal))
+            .OrderBy(f => f, StringComparer.Ordinal);
+        Assert.Empty(offenders);
+    }
+
     private static bool IsStore(string project) =>
         project is "Adventures.Data" or "Adventures.Data.NQuad" or "Adventures.Data.Postgres" or "Adventures.Data.Sql";
 

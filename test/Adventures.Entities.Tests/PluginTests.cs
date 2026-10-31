@@ -26,7 +26,7 @@ public sealed class PluginTests : IAsyncLifetime
         services.AddSingleton<INQuadStore>(store);
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, PluginConstants.SchemaIri), PluginConstants.BaseIri, PluginConstants.TypeIri, CollaborationConstants.DefaultGraph, s => new Plugin(s));
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, CollaborationConstants.SchemaIri), CollaborationConstants.BaseIri, CollaborationConstants.TypeIri, CollaborationConstants.DefaultGraph, s => new CollaborationItem(s));
-        services.AddScoped<IEntityBll<Plugin>>(p => new EntityBll<Plugin>(p.GetRequiredService<IEntityRepository<Plugin>>()));
+        services.AddScoped<IEntityBll<Plugin>>(p => new EntityBll<Plugin>(new EntityDal<Plugin>(p.GetRequiredService<IEntityRepository<Plugin>>())));
         services.AddScoped<IPlugins, Plugins>();
         services.AddScoped<ICollaborationBll, CollaborationBll>();
         _services = services.BuildServiceProvider();

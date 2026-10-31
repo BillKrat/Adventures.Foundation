@@ -28,7 +28,7 @@ public sealed class ContentAuthoringTests : IAsyncLifetime
         services.AddSingleton<INQuadStore>(store);
         const string graph = EntityConstants.Content.DefaultGraph;
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Content.CommentSchemaIri), EntityConstants.Content.CommentBaseIri, EntityConstants.Content.CommentTypeIri, graph, s => new Comment(s));
-        services.AddScoped<IEntityBll<Comment>>(p => new EntityBll<Comment>(p.GetRequiredService<IEntityRepository<Comment>>()));
+        services.AddScoped<IEntityBll<Comment>>(p => new EntityBll<Comment>(new EntityDal<Comment>(p.GetRequiredService<IEntityRepository<Comment>>())));
         services.AddScoped<IConversation, Conversation>();
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Content.PostSchemaIri), EntityConstants.Content.PostBaseIri, EntityConstants.Content.PostTypeIri, graph, s => new Post(s));
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Content.CategorySchemaIri), EntityConstants.Content.CategoryBaseIri, EntityConstants.Content.CategoryTypeIri, graph, s => new Category(s));
@@ -38,8 +38,8 @@ public sealed class ContentAuthoringTests : IAsyncLifetime
         services.AddScoped<IPostBll, PostBll>();
         services.AddScoped<IUserBll, UserBll>();
         services.AddScoped<IUserPresenter, UserPresenter>();
-        services.AddScoped<IEntityBll<Category>>(p => new EntityBll<Category>(p.GetRequiredService<IEntityRepository<Category>>()));
-        services.AddScoped<IEntityBll<Tag>>(p => new EntityBll<Tag>(p.GetRequiredService<IEntityRepository<Tag>>()));
+        services.AddScoped<IEntityBll<Category>>(p => new EntityBll<Category>(new EntityDal<Category>(p.GetRequiredService<IEntityRepository<Category>>())));
+        services.AddScoped<IEntityBll<Tag>>(p => new EntityBll<Tag>(new EntityDal<Tag>(p.GetRequiredService<IEntityRepository<Tag>>())));
         services.AddScoped<IEntityPresenter<Post>, PostPresenter>();
         services.AddScoped<IEntityPresenter<Category>>(p => new EntityPresenter<Category>(
             p.GetRequiredService<IEntityBll<Category>>(), p.GetRequiredService<EntitySchemaOf<Category>>().Schema, s => new Category(s), p.GetService<IEntityRelationProvider>()));

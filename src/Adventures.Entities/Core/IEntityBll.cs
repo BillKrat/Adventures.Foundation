@@ -5,8 +5,8 @@ namespace Adventures.Entities;
 
 /// <summary>
 /// The generic business layer for any <see cref="DynamicEntity"/> type: CRUDL plus the rules every
-/// entity shares (required fields). Sits between a presenter and <see cref="IEntityRepository{TEntity}"/>
-/// (the Dal) so a presenter never reaches the Dal directly (AppArch 3/10/11; MVPVM: the Presenter's
+/// entity shares (required fields). Sits between a presenter and <see cref="IEntityDal{TEntity}"/>
+/// so a presenter never reaches the Dal directly (AppArch 3/10/11; MVPVM: the Presenter's
 /// dependencies are Bll interfaces). An entity with real rules of its own derives from
 /// <see cref="EntityBll{TEntity}"/> and exposes a narrower interface (e.g. <see cref="IUserBll"/>), which
 /// is also what lets a versioned or alternate implementation be swapped in by DI.

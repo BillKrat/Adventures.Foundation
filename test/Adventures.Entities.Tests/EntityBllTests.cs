@@ -22,7 +22,7 @@ public sealed class EntityBllTests
     ]);
 
     private static EntityBll<Widget> NewBll() =>
-        new(new NQuadEntityRepository<Widget>(new InMemoryNQuadStore(), Schema, BaseIri, TypeIri, Graph, s => new Widget(s)));
+        new(new EntityDal<Widget>(new NQuadEntityRepository<Widget>(new InMemoryNQuadStore(), Schema, BaseIri, TypeIri, Graph, s => new Widget(s))));
 
     private static Widget NewWidget(string id, string? name)
     {

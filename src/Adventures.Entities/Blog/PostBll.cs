@@ -8,7 +8,7 @@ namespace Adventures.Entities;
 /// from its title when it has none and a date; <see cref="PublishAsync"/> and <see cref="UnpublishAsync"/> are the only ways the
 /// published state changes; a draft can be marked as a revision of a published post and later applied or discarded.
 /// </summary>
-public sealed class PostBll(IEntityRepository<Post> posts) : EntityBll<Post>(posts), IPostBll
+public sealed class PostBll(IEntityDal<Post> posts) : EntityBll<Post>(posts), IPostBll
 {
     private static readonly string[] CopiedByRevision = ["Title", "Content", "Description", "EnableComments"];
 
@@ -57,7 +57,7 @@ public sealed class PostBll(IEntityRepository<Post> posts) : EntityBll<Post>(pos
             post.Clear("ApprovedAt");
         }
 
-        await Repository.UpdateAsync(post, cancellationToken).ConfigureAwait(false);
+        await Dal.UpdateAsync(post, cancellationToken).ConfigureAwait(false);
         return true;
     }
 
@@ -82,7 +82,7 @@ public sealed class PostBll(IEntityRepository<Post> posts) : EntityBll<Post>(pos
         }
 
         revision.Set("RevisionOf", Guid.NewGuid().ToString(), originalId);
-        await Repository.UpdateAsync(revision, cancellationToken).ConfigureAwait(false);
+        await Dal.UpdateAsync(revision, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> ApplyRevisionAsync(string revisionId, CancellationToken cancellationToken = default)
@@ -109,8 +109,8 @@ public sealed class PostBll(IEntityRepository<Post> posts) : EntityBll<Post>(pos
 
         CopyMany(revision, original, "Categories");
         CopyMany(revision, original, "Tags");
-        await Repository.UpdateAsync(original, cancellationToken).ConfigureAwait(false);
-        return await Repository.DeleteAsync(revisionId, cancellationToken).ConfigureAwait(false);
+        await Dal.UpdateAsync(original, cancellationToken).ConfigureAwait(false);
+        return await Dal.DeleteAsync(revisionId, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> DiscardRevisionAsync(string revisionId, CancellationToken cancellationToken = default)
@@ -126,7 +126,7 @@ public sealed class PostBll(IEntityRepository<Post> posts) : EntityBll<Post>(pos
             throw new BusinessRuleException("This post is not a revision; delete it from the list instead.");
         }
 
-        return await Repository.DeleteAsync(revisionId, cancellationToken).ConfigureAwait(false);
+        return await Dal.DeleteAsync(revisionId, cancellationToken).ConfigureAwait(false);
     }
 
     private static void Copy(Post from, Post to, string field)
@@ -180,7 +180,7 @@ public sealed class PostBll(IEntityRepository<Post> posts) : EntityBll<Post>(pos
             post.Set("DatePublished", Guid.NewGuid().ToString(), DateTimeOffset.UtcNow);
         }
 
-        await Repository.UpdateAsync(post, cancellationToken).ConfigureAwait(false);
+        await Dal.UpdateAsync(post, cancellationToken).ConfigureAwait(false);
         return true;
     }
 

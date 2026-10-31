@@ -8,7 +8,7 @@ namespace Adventures.Entities;
 /// page is the front page (setting it on one clears it on the others); an empty slug is made from the title; a new page gets
 /// a publication date; a slug is unique among pages (see <see cref="SlugRules"/>). Everything else is the generic Bll (required fields).
 /// </summary>
-public sealed class PageBll(IEntityRepository<Page> pages) : EntityBll<Page>(pages), IPageBll
+public sealed class PageBll(IEntityDal<Page> pages) : EntityBll<Page>(pages), IPageBll
 {
     public override async Task<Page> CreateAsync(Page entity, CancellationToken cancellationToken = default)
     {
@@ -105,7 +105,7 @@ public sealed class PageBll(IEntityRepository<Page> pages) : EntityBll<Page>(pag
                      .Where(p => p.EntityId?.Value != page.EntityId?.Value && p.GetValue("IsFrontPage") is true))
         {
             other.Set("IsFrontPage", Guid.NewGuid().ToString(), false);
-            await Repository.UpdateAsync(other, cancellationToken).ConfigureAwait(false);
+            await Dal.UpdateAsync(other, cancellationToken).ConfigureAwait(false);
         }
     }
 }

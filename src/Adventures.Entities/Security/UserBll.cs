@@ -4,7 +4,7 @@ using Adventures.Common.Exceptions;
 namespace Adventures.Entities;
 
 /// <summary>Implementation of <see cref="IUserBll"/> - see that interface for the contract and rationale.</summary>
-public sealed class UserBll(IEntityRepository<User> users) : EntityBll<User>(users), IUserBll
+public sealed class UserBll(IEntityDal<User> users) : EntityBll<User>(users), IUserBll
 {
     /// <summary>
     /// UserName is meant to be a system-wide unique lookup key, but nothing enforces that yet - this returns the
@@ -49,7 +49,7 @@ public sealed class UserBll(IEntityRepository<User> users) : EntityBll<User>(use
             throw new BusinessRuleException("You cannot delete your own account.");
         }
 
-        return Repository.DeleteAsync(userId, cancellationToken);
+        return Dal.DeleteAsync(userId, cancellationToken);
     }
 
     public override Task<int> DeleteManyAsync(IReadOnlyCollection<string> entityIds, CancellationToken cancellationToken = default) =>

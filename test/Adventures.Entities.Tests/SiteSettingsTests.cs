@@ -23,7 +23,7 @@ public sealed class SiteSettingsTests : IAsyncLifetime
         var services = new ServiceCollection();
         services.AddSingleton<INQuadStore>(store);
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Site.SettingSchemaIri), EntityConstants.Site.SettingBaseIri, EntityConstants.Site.SettingTypeIri, EntityConstants.Site.DefaultGraph, s => new SiteSetting(s));
-        services.AddScoped<IEntityBll<SiteSetting>>(p => new EntityBll<SiteSetting>(p.GetRequiredService<IEntityRepository<SiteSetting>>()));
+        services.AddScoped<IEntityBll<SiteSetting>>(p => new EntityBll<SiteSetting>(new EntityDal<SiteSetting>(p.GetRequiredService<IEntityRepository<SiteSetting>>())));
         services.AddScoped<IEntityPresenter<SiteSetting>, SiteSettingPresenter>();
         services.AddScoped<ISiteSettings, SiteSettings>();
         _services = services.BuildServiceProvider();

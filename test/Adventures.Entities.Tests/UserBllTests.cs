@@ -34,7 +34,7 @@ public sealed class UserBllTests : IAsyncLifetime
             Graph,
             s => new User(s));
 
-        _bll = new UserBll(repository);
+        _bll = new UserBll(new EntityDal<User>(repository));
     }
 
     public Task DisposeAsync() => Task.CompletedTask;

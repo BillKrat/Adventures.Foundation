@@ -5,8 +5,8 @@ namespace Adventures.Entities;
 
 /// <summary>
 /// The business-rules layer for <see cref="SchemaEntity"/>/<see cref="SchemaFieldEntity"/> -
-/// storage-agnostic, depends only on <see cref="IEntityRepository{TEntity}"/> (the Dal; no separate
-/// wrapper class needed, since <c>NQuadEntityRepository{SchemaEntity}</c> already is the Dal). Kept
+/// storage-agnostic, depends only on <see cref="IEntityDal{TEntity}"/> (the default Dal wraps
+/// <c>NQuadEntityRepository{SchemaEntity}</c>). Kept
 /// separate from its implementation (<see cref="SchemaBll"/>) so a versioned or alternate
 /// implementation can be swapped in via DI without touching callers - the same pattern
 /// <see cref="IUserBll"/> follows.

@@ -1,6 +1,7 @@
 // Assessed 2026-10-24 17:37 CT (Claude): automated scan for secrets, injection and unsafe patterns - no finding in this file. See docs/artifacts/Claude-2026-10-24-security-practices-patterns-review.md (ai-research-blog).
 using Adventures.Entities;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Adventures.Data.NQuad;
 
@@ -29,8 +30,12 @@ public static class NQuadEntityServiceCollectionExtensions
         services.AddSingleton(new EntitySchemaOf<TEntity>(schema));
         services.AddSingleton(new EntityTypeRegistration(schema, baseIri, typeIri, graph));
 
-        return services.AddScoped<IEntityRepository<TEntity>>(provider =>
+        services.AddScoped<IEntityRepository<TEntity>>(provider =>
             new NQuadEntityRepository<TEntity>(provider.GetRequiredService<INQuadStore>(), schema, baseIri, typeIri, graph, entityFactory));
+
+        // The Bll talks to the Dal; the default Dal uses the repository above. A host that registered its own Dal for this entity first wins.
+        services.TryAddScoped<IEntityDal<TEntity>, EntityDal<TEntity>>();
+        return services;
     }
 
     /// <summary>

@@ -4,39 +4,39 @@ using Adventures.Common.Exceptions;
 namespace Adventures.Entities;
 
 /// <summary>
-/// Default <see cref="IEntityBll{TEntity}"/>: delegates storage to <see cref="IEntityRepository{TEntity}"/> and
+/// Default <see cref="IEntityBll{TEntity}"/>: delegates storage to <see cref="IEntityDal{TEntity}"/> and
 /// enforces the one rule every entity shares - a field the schema marks required must hold a value on create and
 /// update. Derive to add entity-specific rules; override <see cref="Validate"/> or the CRUDL members and call base.
 /// </summary>
-public class EntityBll<TEntity>(IEntityRepository<TEntity> repository) : IEntityBll<TEntity>
+public class EntityBll<TEntity>(IEntityDal<TEntity> dal) : IEntityBll<TEntity>
     where TEntity : DynamicEntity
 {
-    protected IEntityRepository<TEntity> Repository { get; } =
-        repository ?? throw new ArgumentNullException(nameof(repository));
+    protected IEntityDal<TEntity> Dal { get; } =
+        dal ?? throw new ArgumentNullException(nameof(dal));
 
     public virtual Task<TEntity> CreateAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
         Validate(entity);
-        return Repository.CreateAsync(entity, cancellationToken);
+        return Dal.CreateAsync(entity, cancellationToken);
     }
 
     public virtual Task<TEntity?> GetAsync(string entityId, CancellationToken cancellationToken = default) =>
-        Repository.GetAsync(entityId, cancellationToken: cancellationToken);
+        Dal.GetAsync(entityId, cancellationToken: cancellationToken);
 
     public virtual Task<IReadOnlyList<TEntity>> ListAsync(CancellationToken cancellationToken = default) =>
-        Repository.ListAsync(cancellationToken: cancellationToken);
+        Dal.ListAsync(cancellationToken: cancellationToken);
 
     public virtual Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
         Validate(entity);
-        return Repository.UpdateAsync(entity, cancellationToken);
+        return Dal.UpdateAsync(entity, cancellationToken);
     }
 
     public virtual Task<bool> DeleteAsync(string entityId, CancellationToken cancellationToken = default) =>
-        Repository.DeleteAsync(entityId, cancellationToken);
+        Dal.DeleteAsync(entityId, cancellationToken);
 
     public virtual Task<int> DeleteManyAsync(IReadOnlyCollection<string> entityIds, CancellationToken cancellationToken = default) =>
-        Repository.DeleteManyAsync(entityIds, cancellationToken);
+        Dal.DeleteManyAsync(entityIds, cancellationToken);
 
     /// <summary>Throws <see cref="InputValidationException"/> listing every required field that has no value.</summary>
     protected virtual void Validate(TEntity entity)

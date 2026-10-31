@@ -36,7 +36,7 @@ public sealed class CollaborationTests : IAsyncLifetime
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Content.PostSchemaIri), EntityConstants.Content.PostBaseIri, EntityConstants.Content.PostTypeIri, graph, s => new Post(s));
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Content.CategorySchemaIri), EntityConstants.Content.CategoryBaseIri, EntityConstants.Content.CategoryTypeIri, graph, s => new Category(s));
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Content.CommentSchemaIri), EntityConstants.Content.CommentBaseIri, EntityConstants.Content.CommentTypeIri, graph, s => new Comment(s));
-        services.AddScoped<IEntityBll<Comment>>(p => new EntityBll<Comment>(p.GetRequiredService<IEntityRepository<Comment>>()));
+        services.AddScoped<IEntityBll<Comment>>(p => new EntityBll<Comment>(new EntityDal<Comment>(p.GetRequiredService<IEntityRepository<Comment>>())));
         services.AddScoped<IConversation, Conversation>();
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Schema.UserIri), EntityConstants.User.BaseIri, EntityConstants.User.TypeIri, EntityConstants.User.DefaultGraph, s => new User(s));
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, CollaborationConstants.SchemaIri), CollaborationConstants.BaseIri, CollaborationConstants.TypeIri, CollaborationConstants.DefaultGraph, s => new CollaborationItem(s));
@@ -47,7 +47,7 @@ public sealed class CollaborationTests : IAsyncLifetime
         services.AddScoped<IUserPresenter, UserPresenter>();
         services.AddScoped<ICollaborationAuthoring, CollaborationAuthoring>();
         services.AddScoped<CollaborationMigration>();
-        services.AddScoped<IEntityBll<Category>>(p => new EntityBll<Category>(p.GetRequiredService<IEntityRepository<Category>>()));
+        services.AddScoped<IEntityBll<Category>>(p => new EntityBll<Category>(new EntityDal<Category>(p.GetRequiredService<IEntityRepository<Category>>())));
         _services = services.BuildServiceProvider();
         _bll = _services.GetRequiredService<ICollaborationBll>();
         _authoring = _services.GetRequiredService<ICollaborationAuthoring>();

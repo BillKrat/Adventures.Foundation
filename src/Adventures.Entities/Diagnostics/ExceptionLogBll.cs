@@ -6,7 +6,7 @@ namespace Adventures.Entities;
 
 /// <summary>Implementation of <see cref="IExceptionLogBll"/> - see that interface for the contract and rationale.</summary>
 public sealed class ExceptionLogBll(
-    IEntityRepository<ExceptionLogEntry> repository,
+    IEntityDal<ExceptionLogEntry> repository,
     EntitySchemaOf<ExceptionLogEntry> schema,
     ILogger<ExceptionLogBll>? logger = null,
     IExceptionSignatureBll? signatures = null)
@@ -99,13 +99,13 @@ public sealed class ExceptionLogBll(
     }
 
     public Task<IReadOnlyList<ExceptionLogEntry>> ListIncludingPurgedAsync(CancellationToken cancellationToken = default) =>
-        Repository.ListAsync(includeDeleted: true, cancellationToken);
+        Dal.ListAsync(includeDeleted: true, cancellationToken);
 
     public Task<int> CountActiveAsync(CancellationToken cancellationToken = default) =>
-        Repository.CountAsync(includeDeleted: false, cancellationToken);
+        Dal.CountAsync(includeDeleted: false, cancellationToken);
 
     public Task<int> CountIncludingPurgedAsync(CancellationToken cancellationToken = default) =>
-        Repository.CountAsync(includeDeleted: true, cancellationToken);
+        Dal.CountAsync(includeDeleted: true, cancellationToken);
 
     public async Task<int> PurgeAsync(CancellationToken cancellationToken = default)
     {

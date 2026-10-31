@@ -35,8 +35,8 @@ public sealed class PostBllTests : IAsyncLifetime
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Schema.UserIri), EntityConstants.User.BaseIri, EntityConstants.User.TypeIri, EntityConstants.User.DefaultGraph, s => new User(s));
         services.AddNQuadRelations();
         services.AddScoped<IPostBll, PostBll>();
-        services.AddScoped<IEntityBll<Category>>(p => new EntityBll<Category>(p.GetRequiredService<IEntityRepository<Category>>()));
-        services.AddScoped<IEntityBll<Tag>>(p => new EntityBll<Tag>(p.GetRequiredService<IEntityRepository<Tag>>()));
+        services.AddScoped<IEntityBll<Category>>(p => new EntityBll<Category>(new EntityDal<Category>(p.GetRequiredService<IEntityRepository<Category>>())));
+        services.AddScoped<IEntityBll<Tag>>(p => new EntityBll<Tag>(new EntityDal<Tag>(p.GetRequiredService<IEntityRepository<Tag>>())));
         services.AddScoped<IEntityPresenter<Post>, PostPresenter>();
         services.AddScoped<IEntityPresenter<Category>>(p => new EntityPresenter<Category>(
             p.GetRequiredService<IEntityBll<Category>>(), p.GetRequiredService<EntitySchemaOf<Category>>().Schema, s => new Category(s), p.GetService<IEntityRelationProvider>()));
