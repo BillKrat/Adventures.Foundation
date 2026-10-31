@@ -32,6 +32,7 @@ public class DependencyRulesTests
         "Adventures.Identity.Postgres -> Adventures.Data",
         "Adventures.Identity.Postgres -> Adventures.Identity",
         "Adventures.MEF -> Adventures.Entities",
+        "Adventures.Security.AspNetCore -> Adventures.Security",
         "Adventures.WebApi -> Adventures.Entities",
         "Adventures.WebApi -> Adventures.Security",
     ];
@@ -119,7 +120,7 @@ public class DependencyRulesTests
         AssertRatchet(
             "Security must not reference ASP.NET Core packages",
             offenders,
-            ["Adventures.Security -> Microsoft.AspNetCore.Authentication.JwtBearer"]); // removed by S6 (Security.AspNetCore)
+            []); // S6: the JwtBearer wiring moved to Adventures.Security.AspNetCore
     }
 
     // Rule R17: no source files at a project root (reached 0 in S1; any new file at a root fails).
@@ -177,6 +178,19 @@ public class DependencyRulesTests
     {
         Assert.Empty(Graph.Projects["Adventures.Data"].PackageReferences);
         Assert.Empty(Graph.Projects["Adventures.Data"].ProjectReferences);
+    }
+
+    // S6: the security core is framework-free and a plain console-style project can use it alone - the Security tests reference nothing but the core.
+    [Fact]
+    public void Security_core_has_no_web_framework_and_is_usable_alone()
+    {
+        var core = System.Xml.Linq.XDocument.Load(Path.Combine(ProjectGraph.Root, "src", "Adventures.Security", "Adventures.Security.csproj"));
+        Assert.Empty(core.Descendants("FrameworkReference"));
+        Assert.Empty(core.Descendants("ProjectReference"));
+
+        var alone = System.Xml.Linq.XDocument.Load(Path.Combine(ProjectGraph.Root, "test", "Adventures.Security.Tests", "Adventures.Security.Tests.csproj"));
+        Assert.Empty(alone.Descendants("FrameworkReference"));
+        Assert.Equal(["Adventures.Security"], alone.Descendants("ProjectReference").Select(e => Path.GetFileNameWithoutExtension(((string)e.Attribute("Include")!).Replace('\\', '/'))).ToList());
     }
 
     // Rule R16: one public type name per library (S1 renamed the Postgres-side IEntityRepository to IEntityRecordRepository).

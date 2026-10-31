@@ -4,7 +4,7 @@ using Adventures.Security;
 using Microsoft.AspNetCore.Authorization;
 using Xunit;
 
-namespace Adventures.Security.Tests;
+namespace Adventures.Security.AspNetCore.Tests;
 
 public class ScopeAuthorizationHandlerTests
 {

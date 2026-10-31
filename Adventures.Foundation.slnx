@@ -14,6 +14,7 @@
     <Project Path="src/Adventures.Identity/Adventures.Identity.csproj" />
     <Project Path="src/Adventures.Identity.Postgres/Adventures.Identity.Postgres.csproj" />
     <Project Path="src/Adventures.Security/Adventures.Security.csproj" />
+    <Project Path="src/Adventures.Security.AspNetCore/Adventures.Security.AspNetCore.csproj" />
     <Project Path="src/Adventures.WebApi/Adventures.WebApi.csproj" />
   </Folder>
   <Folder Name="/test/">
@@ -28,6 +29,7 @@
     <Project Path="test/Adventures.Entities.Tests/Adventures.Entities.Tests.csproj" />
     <Project Path="test/Adventures.Identity.Tests/Adventures.Identity.Tests.csproj" />
     <Project Path="test/Adventures.Security.Tests/Adventures.Security.Tests.csproj" />
+    <Project Path="test/Adventures.Security.AspNetCore.Tests/Adventures.Security.AspNetCore.Tests.csproj" />
     <Project Path="test/Adventures.WebApi.Tests/Adventures.WebApi.Tests.csproj" />
   </Folder>
 </Solution>

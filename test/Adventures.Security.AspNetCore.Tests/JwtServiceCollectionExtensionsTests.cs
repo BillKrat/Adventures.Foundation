@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Xunit;
 
-namespace Adventures.Security.Tests;
+namespace Adventures.Security.AspNetCore.Tests;
 
 public class JwtServiceCollectionExtensionsTests
 {

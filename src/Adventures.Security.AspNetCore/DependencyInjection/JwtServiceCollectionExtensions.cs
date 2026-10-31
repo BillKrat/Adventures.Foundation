@@ -52,6 +52,14 @@ public static class JwtServiceCollectionExtensions
     }
 
     /// <summary>The naming convention for a scope-based authorization policy, e.g. "Scope:mcp.postgres.query".</summary>
+    /// <summary>Registers <see cref="ICurrentPrincipal"/> as the request user.</summary>
+    public static IServiceCollection AddCurrentPrincipal(this IServiceCollection services)
+    {
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentPrincipal, HttpContextPrincipal>();
+        return services;
+    }
+
     public static string ScopePolicyName(string scope) => $"Scope:{scope}";
 
     /// <summary>The naming convention for a role-based authorization policy, e.g. "Role:TenantAdmin".</summary>

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Adventures.Security.Tests;
+namespace Adventures.Security.AspNetCore.Tests;
 
 public class RoleAuthorizationHandlerTests
 {
