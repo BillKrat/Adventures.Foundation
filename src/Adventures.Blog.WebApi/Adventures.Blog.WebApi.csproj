@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<TargetFramework>net10.0</TargetFramework>
+	<Nullable>enable</Nullable>
+	<ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+	<PackageId>Adventures.Blog.WebApi</PackageId>
+	<Version>0.1.0</Version>
+	<Authors>Adventures On The Edge</Authors>
+	<Description>ASP.NET Core controllers for Adventures.Blog: posts, pages, categories, tags, media, site settings, the public read side and the drafts-only authoring surface. Any host that references this and calls AddBlog() serves a blog.</Description>
+	<PackageLicenseExpression>BUSL-1.1</PackageLicenseExpression>
+	<RepositoryUrl>https://github.com/BillKrat/Adventures.Foundation</RepositoryUrl>
+	<PackageTags>blog;webapi;controllers</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Adventures.Blog\Adventures.Blog.csproj" />
+    <ProjectReference Include="..\Adventures.WebApi\Adventures.WebApi.csproj" />
+    <ProjectReference Include="..\Adventures.Security\Adventures.Security.csproj" />
+  </ItemGroup>
+
+</Project>

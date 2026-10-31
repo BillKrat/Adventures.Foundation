@@ -35,8 +35,27 @@ public interface IConversation
     Task<IReadOnlyList<DecisionEntry>> ListDecisionsAsync(CancellationToken cancellationToken = default);
 }
 
+/// <summary>Something a conversation can hang under (a post, a collaboration item). Each feature registers its own, so the conversation knows no feature.</summary>
+public interface IConversationTarget
+{
+    /// <summary>The target with this id, or null when this feature has none.</summary>
+    Task<ConversationTarget?> FindAsync(string id, CancellationToken cancellationToken = default);
+}
+
+/// <summary>What the conversation shows about its target; <paramref name="Source"/> says which feature owns it ("post", "collaboration").</summary>
+public sealed record ConversationTarget(string Title, string Slug, string Source);
+
+/// <summary>The collaboration item side of <see cref="IConversationTarget"/>.</summary>
+public sealed class CollaborationConversationTarget(ICollaborationBll items) : IConversationTarget
+{
+    public async Task<ConversationTarget?> FindAsync(string id, CancellationToken cancellationToken = default) =>
+        await items.GetAsync(id, cancellationToken).ConfigureAwait(false) is { } item
+            ? new ConversationTarget(item.GetValue("Title") as string ?? string.Empty, string.Empty, "collaboration")
+            : null;
+}
+
 /// <summary>Implementation over the comment repository and the post rules.</summary>
-public sealed class Conversation(IEntityBll<Comment> comments, IPostBll posts, EntitySchemaOf<Comment> schema, ICollaborationBll? collaboration = null) : IConversation
+public sealed class Conversation(IEntityBll<Comment> comments, IEnumerable<IConversationTarget> targets, EntitySchemaOf<Comment> schema) : IConversation
 {
     public const int MaxBodyLength = 8000;
 
@@ -96,17 +115,15 @@ public sealed class Conversation(IEntityBll<Comment> comments, IPostBll posts, E
         return result.OrderByDescending(d => d.Created, StringComparer.Ordinal).ToList();
     }
 
-    /// <summary>What a conversation hangs under: a post, or a collaboration item (its id is looked up in both). Null when it exists in neither.</summary>
+    /// <summary>What a conversation hangs under: the first registered target that knows the id (a post, a collaboration item). Null when none does.</summary>
     private async Task<(string Title, string Slug, string Source)?> TargetAsync(string id, CancellationToken cancellationToken)
     {
-        if (await posts.GetAsync(id, cancellationToken).ConfigureAwait(false) is { } post)
+        foreach (var target in targets)
         {
-            return (post.GetValue("Title") as string ?? string.Empty, post.GetValue("Slug") as string ?? string.Empty, "post");
-        }
-
-        if (collaboration is not null && await collaboration.GetAsync(id, cancellationToken).ConfigureAwait(false) is { } item)
-        {
-            return (item.GetValue("Title") as string ?? string.Empty, string.Empty, "collaboration");
+            if (await target.FindAsync(id, cancellationToken).ConfigureAwait(false) is { } found)
+            {
+                return (found.Title, found.Slug, found.Source);
+            }
         }
 
         return null;

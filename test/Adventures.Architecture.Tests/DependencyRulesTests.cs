@@ -15,6 +15,11 @@ public class DependencyRulesTests
     /// <summary>The project-reference graph as it stands. Strict: adding or removing an edge must update this list.</summary>
     private static readonly string[] RecordedEdges =
     [
+        "Adventures.Blog -> Adventures.Entities",
+        "Adventures.Blog.Postgres -> Adventures.Blog",
+        "Adventures.Blog.WebApi -> Adventures.Blog",
+        "Adventures.Blog.WebApi -> Adventures.Security",
+        "Adventures.Blog.WebApi -> Adventures.WebApi",
         "Adventures.Common -> Adventures.Ioc",
         "Adventures.Data.NQuad -> Adventures.Entities",
         "Adventures.Entities -> Adventures.Common",
@@ -128,6 +133,26 @@ public class DependencyRulesTests
             .Where(f => !f.StartsWith("src/", StringComparison.Ordinal) && !f.StartsWith("test/", StringComparison.Ordinal))
             .Where(f => !f.Contains("/obj/") && !f.Contains("/bin/"));
         Assert.Empty(stray);
+    }
+
+    // S3: the blog feature builds on the Entities model only. It names no store, no security project and no host (the NQuad browser must not pull it in, and it must not pull a store).
+    [Fact]
+    public void Blog_projects_reference_only_their_layer()
+    {
+        Assert.Equal(["Adventures.Entities"], Graph.Projects["Adventures.Blog"].ProjectReferences);
+        Assert.Equal(["Adventures.Blog"], Graph.Projects["Adventures.Blog.Postgres"].ProjectReferences);
+        Assert.Equal(["Adventures.Blog", "Adventures.Security", "Adventures.WebApi"], Graph.Projects["Adventures.Blog.WebApi"].ProjectReferences);
+    }
+
+    // S3: nothing below the Blog (Entities and the other libraries) references it, so Entities holds no blog types.
+    [Fact]
+    public void Nothing_but_the_Blog_stack_references_Blog()
+    {
+        var referrers = Graph.Projects.Values
+            .Where(p => p.ProjectReferences.Contains("Adventures.Blog"))
+            .Select(p => p.Name)
+            .OrderBy(n => n, StringComparer.Ordinal);
+        Assert.Equal(["Adventures.Blog.Postgres", "Adventures.Blog.WebApi"], referrers);
     }
 
     // Rule R16: one public type name per library (S1 renamed the Postgres-side IEntityRepository to IEntityRecordRepository).
