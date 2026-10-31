@@ -1,10 +1,12 @@
 // Assessed 2026-10-24 17:37 CT (Claude): automated scan for secrets, injection and unsafe patterns - no finding in this file. See docs/artifacts/Claude-2026-10-24-security-practices-patterns-review.md (ai-research-blog).
 using Adventures.Common.Exceptions;
 
-namespace Adventures.Entities;
+using Adventures.Entities;
+
+namespace Adventures.MEF;
 
 /// <summary>
-/// The stored on/off state of one built-in plug-in (see <see cref="PluginCatalog"/>). A plug-in with no stored state is enabled, so a
+/// The stored on/off state of one built-in plug-in (see <see cref="PluginDefinition"/>). A plug-in with no stored state is enabled, so a
 /// system that has never opened the Plugins page behaves exactly as before. Its schema ships in Sql/seed/seed-016-plugins.nq.
 /// </summary>
 public sealed class Plugin(EntitySchema schema) : DynamicEntity(schema);
@@ -20,33 +22,6 @@ public static class PluginConstants
 
 /// <summary>One built-in plug-in as the code declares it: what it is, and what it contributes to the admin.</summary>
 public sealed record PluginDefinition(string Key, string Title, string Description, string Version, int Priority);
-
-/// <summary>
-/// The built-in plug-ins. A plug-in is a bundle of contributions (an admin menu entry, a schema, endpoints, MCP tools); switching one off
-/// hides its menu entry and makes its endpoints refuse, and keeps its data. Plug-ins loaded from outside the app (MEF) are a later step; the
-/// stored state and the Plugins page do not change when they arrive.
-/// </summary>
-public static class PluginCatalog
-{
-    public const string DeveloperCollaboration = "developer-collaboration";
-    public const string ResearchCollaboration = "research-collaboration";
-    public const string Decisions = "decisions";
-
-    public static readonly IReadOnlyList<PluginDefinition> BuiltIn =
-    [
-        new(DeveloperCollaboration, "Developer Collaboration", "Review requests between the people and AIs building the project: branch, repositories, test steps, Approve and Request changes.", "1.0", 0),
-        new(ResearchCollaboration, "Research Collaboration", "Research questions and findings: a conversation with sources, accepted into a post when settled. No approval.", "1.0", 1),
-        new(Decisions, "Decisions", "The page listing every decision recorded in a conversation, across posts and collaboration items.", "1.0", 2),
-    ];
-
-    /// <summary>The plug-in that allows items of this collaboration kind.</summary>
-    public static string? ForKind(string kind) => kind switch
-    {
-        CollaborationKinds.Developer => DeveloperCollaboration,
-        CollaborationKinds.Research => ResearchCollaboration,
-        _ => null,
-    };
-}
 
 /// <summary>A built-in plug-in with its current state, as the Plugins page shows it.</summary>
 public sealed record PluginState(string Key, string Title, string Description, string Version, int Priority, bool Enabled);
@@ -66,13 +41,13 @@ public interface IPlugins
     Task SetEnabledAsync(string key, bool enabled, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Implementation of <see cref="IPlugins"/> over the stored states and the catalog.</summary>
-public sealed class Plugins(IEntityBll<Plugin> states, EntitySchemaOf<Plugin> schema) : IPlugins
+/// <summary>Implementation of <see cref="IPlugins"/> over the stored states and the plug-in definitions the features register (see AddPlugins).</summary>
+public sealed class Plugins(IEntityBll<Plugin> states, EntitySchemaOf<Plugin> schema, IEnumerable<PluginDefinition> definitions) : IPlugins
 {
     public async Task<IReadOnlyList<PluginState>> ListAsync(CancellationToken cancellationToken = default)
     {
         var stored = await StoredAsync(cancellationToken).ConfigureAwait(false);
-        return PluginCatalog.BuiltIn
+        return definitions
             .Select(p => new PluginState(p.Key, p.Title, p.Description, p.Version, p.Priority, !stored.TryGetValue(p.Key, out var state) || IsOn(state)))
             .OrderBy(p => p.Priority)
             .ToList();
@@ -86,7 +61,7 @@ public sealed class Plugins(IEntityBll<Plugin> states, EntitySchemaOf<Plugin> sc
 
     public async Task SetEnabledAsync(string key, bool enabled, CancellationToken cancellationToken = default)
     {
-        var definition = PluginCatalog.BuiltIn.FirstOrDefault(p => string.Equals(p.Key, key, StringComparison.Ordinal))
+        var definition = definitions.FirstOrDefault(p => string.Equals(p.Key, key, StringComparison.Ordinal))
             ?? throw new BusinessRuleException($"There is no plug-in '{key}'.");
         var stored = await StoredAsync(cancellationToken).ConfigureAwait(false);
         if (stored.TryGetValue(definition.Key, out var existing))

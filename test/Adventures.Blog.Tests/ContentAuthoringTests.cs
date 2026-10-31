@@ -4,6 +4,7 @@ using Adventures.Data.NQuad;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Adventures.Blog;
+using Adventures.Collaboration;
 
 using Adventures.Entities;
 

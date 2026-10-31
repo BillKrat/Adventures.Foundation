@@ -1,5 +1,7 @@
 // Assessed 2026-10-24 17:37 CT (Claude): automated scan for secrets, injection and unsafe patterns - no finding in this file. See docs/artifacts/Claude-2026-10-24-security-practices-patterns-review.md (ai-research-blog).
-namespace Adventures.Entities;
+using Adventures.Entities;
+using Adventures.MEF;
+namespace Adventures.Collaboration;
 
 /// <summary>One entry of the conversation under a post (see <see cref="IConversation"/>); its schema ships in Sql/seed/seed-014-comments.nq.</summary>
 public sealed class Comment(EntitySchema schema) : DynamicEntity(schema);

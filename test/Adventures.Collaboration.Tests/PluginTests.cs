@@ -3,8 +3,12 @@ using Adventures.Common.Exceptions;
 using Adventures.Data.NQuad;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using Adventures.Collaboration;
+using Adventures.MEF;
 
-namespace Adventures.Entities.Tests;
+using Adventures.Entities;
+
+namespace Adventures.Collaboration.Tests;
 
 /// <summary>The built-in plug-ins: on until switched off, state kept, a switched-off collaboration kind refuses new items.</summary>
 public sealed class PluginTests : IAsyncLifetime
@@ -27,6 +31,7 @@ public sealed class PluginTests : IAsyncLifetime
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, PluginConstants.SchemaIri), PluginConstants.BaseIri, PluginConstants.TypeIri, CollaborationConstants.DefaultGraph, s => new Plugin(s));
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, CollaborationConstants.SchemaIri), CollaborationConstants.BaseIri, CollaborationConstants.TypeIri, CollaborationConstants.DefaultGraph, s => new CollaborationItem(s));
         services.AddScoped<IEntityBll<Plugin>>(p => new EntityBll<Plugin>(new EntityDal<Plugin>(p.GetRequiredService<IEntityRepository<Plugin>>())));
+        foreach (var definition in CollaborationPlugins.Definitions) services.AddSingleton(definition);
         services.AddScoped<IPlugins, Plugins>();
         services.AddScoped<ICollaborationBll, CollaborationBll>();
         _services = services.BuildServiceProvider();

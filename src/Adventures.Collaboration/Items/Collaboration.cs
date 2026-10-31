@@ -1,7 +1,9 @@
 // Assessed 2026-10-24 17:37 CT (Claude): automated scan for secrets, injection and unsafe patterns - no finding in this file. See docs/artifacts/Claude-2026-10-24-security-practices-patterns-review.md (ai-research-blog).
+using Adventures.Entities;
+using Adventures.MEF;
 using Adventures.Common.Exceptions;
 
-namespace Adventures.Entities;
+namespace Adventures.Collaboration;
 
 /// <summary>
 /// One item of the collaboration channel: a review request or a research question between the people and AIs working on the
@@ -79,9 +81,9 @@ public sealed class CollaborationBll(IEntityDal<CollaborationItem> items, IPlugi
             throw new BusinessRuleException($"The kind must be one of: {string.Join(", ", CollaborationKinds.All)}.");
         }
 
-        if (plugins is not null && PluginCatalog.ForKind(kind) is { } pluginKey && !await plugins.IsEnabledAsync(pluginKey, cancellationToken).ConfigureAwait(false))
+        if (plugins is not null && CollaborationPlugins.ForKind(kind) is { } pluginKey && !await plugins.IsEnabledAsync(pluginKey, cancellationToken).ConfigureAwait(false))
         {
-            var title = PluginCatalog.BuiltIn.First(p => p.Key == pluginKey).Title;
+            var title = CollaborationPlugins.Definitions.First(p => p.Key == pluginKey).Title;
             throw new BusinessRuleException($"The {title} plug-in is switched off; switch it on in Admin > Plugins to add items of this kind.");
         }
 

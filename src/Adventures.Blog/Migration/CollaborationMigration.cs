@@ -1,4 +1,5 @@
 using Adventures.Entities;
+using Adventures.Collaboration;
 
 namespace Adventures.Blog;
 

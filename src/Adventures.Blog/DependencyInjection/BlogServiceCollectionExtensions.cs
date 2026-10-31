@@ -1,6 +1,7 @@
 using Adventures.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Adventures.Collaboration;
 
 namespace Adventures.Blog;
 

@@ -5,6 +5,7 @@ using Adventures.WebApi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Adventures.Blog;
+using Adventures.Collaboration;
 
 namespace Adventures.Blog.WebApi;
 

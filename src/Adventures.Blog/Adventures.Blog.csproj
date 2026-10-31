@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Adventures.Entities\Adventures.Entities.csproj" />
+    <ProjectReference Include="..\Adventures.Collaboration\Adventures.Collaboration.csproj" />
   </ItemGroup>
 
 </Project>

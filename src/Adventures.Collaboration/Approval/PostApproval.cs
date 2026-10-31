@@ -1,4 +1,6 @@
-namespace Adventures.Entities;
+using Adventures.Entities;
+using Adventures.MEF;
+namespace Adventures.Collaboration;
 
 /// <summary>The review states of a collaboration post (a post under review, and a collaboration item). Empty means the post is not under review.</summary>
 public static class PostApproval

@@ -15,16 +15,20 @@ public class DependencyRulesTests
     /// <summary>The project-reference graph as it stands. Strict: adding or removing an edge must update this list.</summary>
     private static readonly string[] RecordedEdges =
     [
+        "Adventures.Blog -> Adventures.Collaboration",
         "Adventures.Blog -> Adventures.Entities",
         "Adventures.Blog.Postgres -> Adventures.Blog",
         "Adventures.Blog.WebApi -> Adventures.Blog",
         "Adventures.Blog.WebApi -> Adventures.Security",
         "Adventures.Blog.WebApi -> Adventures.WebApi",
+        "Adventures.Collaboration -> Adventures.Entities",
+        "Adventures.Collaboration -> Adventures.MEF",
         "Adventures.Common -> Adventures.Ioc",
         "Adventures.Data.NQuad -> Adventures.Entities",
         "Adventures.Entities -> Adventures.Common",
         "Adventures.Identity -> Adventures.Data",
         "Adventures.Identity -> Adventures.Security",
+        "Adventures.MEF -> Adventures.Entities",
         "Adventures.WebApi -> Adventures.Data.NQuad",
         "Adventures.WebApi -> Adventures.Entities",
         "Adventures.WebApi -> Adventures.Security",
@@ -139,7 +143,7 @@ public class DependencyRulesTests
     [Fact]
     public void Blog_projects_reference_only_their_layer()
     {
-        Assert.Equal(["Adventures.Entities"], Graph.Projects["Adventures.Blog"].ProjectReferences);
+        Assert.Equal(["Adventures.Collaboration", "Adventures.Entities"], Graph.Projects["Adventures.Blog"].ProjectReferences);
         Assert.Equal(["Adventures.Blog"], Graph.Projects["Adventures.Blog.Postgres"].ProjectReferences);
         Assert.Equal(["Adventures.Blog", "Adventures.Security", "Adventures.WebApi"], Graph.Projects["Adventures.Blog.WebApi"].ProjectReferences);
     }
@@ -153,6 +157,16 @@ public class DependencyRulesTests
             .Select(p => p.Name)
             .OrderBy(n => n, StringComparer.Ordinal);
         Assert.Equal(["Adventures.Blog.Postgres", "Adventures.Blog.WebApi"], referrers);
+    }
+
+    // S4: Collaboration builds on Entities and the plug-in seam only (no Blog, no store, no host); the plug-in seam builds on Entities only; only the Blog stack builds on Collaboration.
+    [Fact]
+    public void Collaboration_and_the_plugin_seam_reference_only_their_layer()
+    {
+        Assert.Equal(["Adventures.Entities", "Adventures.MEF"], Graph.Projects["Adventures.Collaboration"].ProjectReferences);
+        Assert.Equal(["Adventures.Entities"], Graph.Projects["Adventures.MEF"].ProjectReferences);
+        var referrers = Graph.Projects.Values.Where(p => p.ProjectReferences.Contains("Adventures.Collaboration")).Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal);
+        Assert.Equal(["Adventures.Blog"], referrers);
     }
 
     // Rule R16: one public type name per library (S1 renamed the Postgres-side IEntityRepository to IEntityRecordRepository).

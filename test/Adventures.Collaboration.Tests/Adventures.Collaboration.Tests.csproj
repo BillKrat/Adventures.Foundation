@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Adventures.Entities\Adventures.Entities.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Collaboration\Adventures.Collaboration.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.MEF\Adventures.MEF.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Data.NQuad\Adventures.Data.NQuad.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed.nq" Link="Sql\seed\seed.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-002-exception-log.nq" Link="Sql\seed\seed-002-exception-log.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-003-exception-signature.nq" Link="Sql\seed\seed-003-exception-signature.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-004-identity.nq" Link="Sql\seed\seed-004-identity.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-005-identity-required.nq" Link="Sql\seed\seed-005-identity-required.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-006-content.nq" Link="Sql\seed\seed-006-content.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-011-site-settings.nq" Link="Sql\seed\seed-011-site-settings.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-007-post-taxonomy.nq" Link="Sql\seed\seed-007-post-taxonomy.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-008-post-revision.nq" Link="Sql\seed\seed-008-post-revision.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-013-post-approval.nq" Link="Sql\seed\seed-013-post-approval.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed-014-comments.nq" Link="Sql\seed\seed-014-comments.nq" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

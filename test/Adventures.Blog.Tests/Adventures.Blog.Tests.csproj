@@ -17,6 +17,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Adventures.Entities\Adventures.Entities.csproj" />
     <ProjectReference Include="..\..\src\Adventures.Blog\Adventures.Blog.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Collaboration\Adventures.Collaboration.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.MEF\Adventures.MEF.csproj" />
     <ProjectReference Include="..\..\src\Adventures.Data.NQuad\Adventures.Data.NQuad.csproj" />
   </ItemGroup>
 
