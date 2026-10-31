@@ -1,11 +1,13 @@
 // Assessed 2026-10-24 17:37 CT (Claude): automated scan for secrets, injection and unsafe patterns - no finding in this file. See docs/artifacts/Claude-2026-10-24-security-practices-patterns-review.md (ai-research-blog).
 using Adventures.Data;
 
-namespace Adventures.Identity;
+using Adventures.Identity;
+
+namespace Adventures.Identity.Postgres;
 
 /// <summary>
 /// PostgreSQL-backed <see cref="IUserCredentialStore"/>, operating against the "user_credentials"
-/// vault table (Sql/schema-users.sql in Adventures.Data). Routes all SQL through
+/// vault table (Sql/schema-users.sql in Adventures.Data.Postgres). Routes all SQL through
 /// <see cref="ISqlExecutor"/>, matching the rest of this codebase's convention, so it's
 /// unit-testable without a live PostgreSQL instance.
 /// </summary>

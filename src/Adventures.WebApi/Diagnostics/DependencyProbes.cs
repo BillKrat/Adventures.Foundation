@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Adventures.Common.Diagnostics;
-using Adventures.Data.NQuad;
 using Adventures.Security;
 using Microsoft.Extensions.Logging;
 
@@ -11,13 +10,13 @@ namespace Adventures.WebApi;
 
 /// <summary>
 /// The real live checks, used by the health endpoint and the triage alike: mcp's <c>api/hello</c> over a token this app
-/// mints for itself, and a count against the N-Quad store (the database). Each probe fails soft - an exception becomes a
+/// mints for itself, and a check of the data store (the database). Each probe fails soft - an exception becomes a
 /// result with a short code, never a thrown error - so a dependency that is down cannot take the caller down with it.
 /// </summary>
 public sealed class DependencyProbes(
     IJwtTokenService tokenService,
     IHttpClientFactory httpClientFactory,
-    INQuadStore? store = null,
+    IStoreProbe? store = null,
     ILogger? logger = null) : IDependencyProbes
 {
     /// <summary>How long the database check may take before it counts as failed.</summary>
@@ -66,7 +65,7 @@ public sealed class DependencyProbes(
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(DatabaseTimeout);
-            await store.CountAsync(timeout.Token);
+            await store.CheckAsync(timeout.Token);
             return new ProbeResult(true, watch.ElapsedMilliseconds, "ok");
         }
         catch (Exception ex)

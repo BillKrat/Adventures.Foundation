@@ -3,7 +3,9 @@ using System.Data;
 using Dapper;
 using Npgsql;
 
-namespace Adventures.Data;
+using Adventures.Data;
+
+namespace Adventures.Data.Postgres;
 
 /// <summary>
 /// Real PostgreSQL-backed implementation of <see cref="ISqlExecutor"/>, using Npgsql for

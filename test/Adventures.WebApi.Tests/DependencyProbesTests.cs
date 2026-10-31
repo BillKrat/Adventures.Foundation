@@ -33,7 +33,7 @@ public sealed class DependencyProbesTests
             Audience = "a",
             SigningKey = "0123456789abcdef0123456789abcdef",
             AccessTokenLifetime = TimeSpan.FromMinutes(5),
-        })), new Factory(handler), store);
+        })), new Factory(handler), store is null ? null : new NQuadStoreProbe(store));
 
     [Fact]
     public async Task Mcp_Success_ReturnsTheHelloMessage_AndSendsABearerToken()

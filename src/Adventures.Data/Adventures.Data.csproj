@@ -10,28 +10,10 @@
 	<PackageId>Adventures.Data</PackageId>
 	<Version>0.2.2</Version>
 	<Authors>Adventures On The Edge</Authors>
-	<Description>Generic, tenant/org-scoped entity data access (JSONB Hybrid + W3C N-Quads storage model) over PostgreSQL - shared data foundation for Adventures.* projects.</Description>
+	<Description>Storage-neutral data contracts for Adventures.* projects: the entity record, the triple, and the repository and SQL-executor interfaces that a store (Adventures.Data.Postgres, Adventures.Data.NQuad) implements. Holds no database driver.</Description>
 	<PackageLicenseExpression>BUSL-1.1</PackageLicenseExpression>
 	<RepositoryUrl>https://github.com/BillKrat/Adventures.Foundation</RepositoryUrl>
-	<PackageTags>postgres;jsonb;multi-tenant;data-access</PackageTags>
+	<PackageTags>data-access;abstractions</PackageTags>
   </PropertyGroup>
-
-  <ItemGroup>
-	<PackageReference Include="Npgsql" Version="9.0.3" />
-	<PackageReference Include="Dapper" Version="2.1.35" />
-  </ItemGroup>
-
-  <ItemGroup>
-	<!-- PackagePath must not end in a trailing separator here: combined with the implicit
-	     %(RecursiveDir) NuGet appends for a glob Include, a trailing separator produces a
-	     doubled "//" in the nuspec's generated <files include> glob (e.g. "Sql//schema.sql"
-	     instead of "Sql/schema.sql"), which then fails to match the actual packed path and
-	     silently drops the buildAction="None" contentFiles metadata - the consuming project's
-	     compiler then falls back to inferring a build action for the unrecognized ".sql"
-	     extension, which defaults to Compile, and tries to build the SQL files as C# source. -->
-	<None Include="Sql\**\*.sql" Pack="true" PackagePath="contentFiles\any\any\Sql\%(RecursiveDir)%(Filename)%(Extension)">
-	  <PackageBuildAction>None</PackageBuildAction>
-	</None>
-  </ItemGroup>
 
 </Project>

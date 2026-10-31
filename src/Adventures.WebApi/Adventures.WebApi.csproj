@@ -23,7 +23,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Adventures.Entities\Adventures.Entities.csproj" />
     <ProjectReference Include="..\Adventures.Security\Adventures.Security.csproj" />
-    <ProjectReference Include="..\Adventures.Data.NQuad\Adventures.Data.NQuad.csproj" />
   </ItemGroup>
 
 </Project>

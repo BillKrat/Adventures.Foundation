@@ -35,6 +35,7 @@ public static class NQuadEntityServiceCollectionExtensions
 
         // The Bll talks to the Dal; the default Dal uses the repository above. A host that registered its own Dal for this entity first wins.
         services.TryAddScoped<IEntityDal<TEntity>, EntityDal<TEntity>>();
+        services.TryAddScoped<Adventures.Common.Diagnostics.IStoreProbe>(provider => new NQuadStoreProbe(provider.GetRequiredService<INQuadStore>()));
         return services;
     }
 

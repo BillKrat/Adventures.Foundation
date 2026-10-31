@@ -25,11 +25,13 @@ public class DependencyRulesTests
         "Adventures.Collaboration -> Adventures.MEF",
         "Adventures.Common -> Adventures.Ioc",
         "Adventures.Data.NQuad -> Adventures.Entities",
+        "Adventures.Data.Postgres -> Adventures.Data",
         "Adventures.Entities -> Adventures.Common",
         "Adventures.Identity -> Adventures.Data",
         "Adventures.Identity -> Adventures.Security",
+        "Adventures.Identity.Postgres -> Adventures.Data",
+        "Adventures.Identity.Postgres -> Adventures.Identity",
         "Adventures.MEF -> Adventures.Entities",
-        "Adventures.WebApi -> Adventures.Data.NQuad",
         "Adventures.WebApi -> Adventures.Entities",
         "Adventures.WebApi -> Adventures.Security",
     ];
@@ -81,20 +83,20 @@ public class DependencyRulesTests
         AssertRatchet(
             "Security/Identity must not reference a store project",
             Edges("Adventures.Security", "Adventures.Identity").Where(e => IsStore(e.To)),
-            ["Adventures.Identity -> Adventures.Data"]); // removed by S5: the Postgres credential store moves to Data.Postgres
+            []); // S5: the Postgres credential store moved to Adventures.Identity.Postgres; Adventures.Data is now contracts only
     }
 
     // Rule 3: each store project references the Data abstractions, not Entities alone.
     [Fact]
     public void Store_projects_build_on_Adventures_Data()
     {
-        var missing = new[] { "Adventures.Data.NQuad" }
+        var missing = new[] { "Adventures.Data.Postgres", "Adventures.Identity.Postgres" }
             .Where(store => !Graph.Projects[store].ProjectReferences.Contains("Adventures.Data"))
             .Select(store => $"{store} -> Adventures.Data (missing)");
         AssertRatchet(
-            "Store projects must reference Adventures.Data",
+            "Postgres store projects must reference the Adventures.Data contracts",
             missing.Select(m => (From: m, To: string.Empty)),
-            ["Adventures.Data.NQuad -> Adventures.Data (missing)"]); // fixed by S5 (Data split)
+            []);
     }
 
     // Rule 5: WebApi references no store project.
@@ -104,7 +106,7 @@ public class DependencyRulesTests
         AssertRatchet(
             "WebApi must not reference a store project",
             Edges("Adventures.WebApi").Where(e => IsStore(e.To)),
-            ["Adventures.WebApi -> Adventures.Data.NQuad"]); // removed by S5: probes by interface
+            []); // S5: the store probe is an IStoreProbe the store registers
     }
 
     // Rule 6: Security core carries no ASP.NET Core package.
@@ -169,6 +171,14 @@ public class DependencyRulesTests
         Assert.Equal(["Adventures.Blog"], referrers);
     }
 
+    // S5: Adventures.Data is contracts only - no database driver, no ASP.NET package; the implementations live in the store projects.
+    [Fact]
+    public void Data_contracts_project_carries_no_driver()
+    {
+        Assert.Empty(Graph.Projects["Adventures.Data"].PackageReferences);
+        Assert.Empty(Graph.Projects["Adventures.Data"].ProjectReferences);
+    }
+
     // Rule R16: one public type name per library (S1 renamed the Postgres-side IEntityRepository to IEntityRecordRepository).
     [Fact]
     public void Public_type_names_are_unique_across_libraries()
@@ -199,7 +209,7 @@ public class DependencyRulesTests
     }
 
     private static bool IsStore(string project) =>
-        project is "Adventures.Data" or "Adventures.Data.NQuad" or "Adventures.Data.Postgres" or "Adventures.Data.Sql";
+        project is "Adventures.Data.NQuad" or "Adventures.Data.Postgres" or "Adventures.Data.Sql" or "Adventures.Blog.Postgres" or "Adventures.Identity.Postgres";
 
     private static IEnumerable<(string From, string To)> Edges(params string[] from) =>
         from.Where(Graph.Projects.ContainsKey)
