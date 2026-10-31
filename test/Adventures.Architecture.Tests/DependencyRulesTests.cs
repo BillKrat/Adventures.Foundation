@@ -119,6 +119,17 @@ public class DependencyRulesTests
         Assert.Empty(offenders);
     }
 
+    // Layout (S1): every project lives under src or test; none sits beside the solution file.
+    [Fact]
+    public void Every_project_lives_under_src_or_test()
+    {
+        var stray = Directory.GetFiles(ProjectGraph.Root, "*.csproj", SearchOption.AllDirectories)
+            .Select(f => Path.GetRelativePath(ProjectGraph.Root, f).Replace('\\', '/'))
+            .Where(f => !f.StartsWith("src/", StringComparison.Ordinal) && !f.StartsWith("test/", StringComparison.Ordinal))
+            .Where(f => !f.Contains("/obj/") && !f.Contains("/bin/"));
+        Assert.Empty(stray);
+    }
+
     // Rule R16: one public type name per library (S1 renamed the Postgres-side IEntityRepository to IEntityRecordRepository).
     [Fact]
     public void Public_type_names_are_unique_across_libraries()

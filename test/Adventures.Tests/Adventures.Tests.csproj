@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Adventures.Ioc\Adventures.Ioc.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Ioc\Adventures.Ioc.csproj" />
   </ItemGroup>
 
   <ItemGroup>

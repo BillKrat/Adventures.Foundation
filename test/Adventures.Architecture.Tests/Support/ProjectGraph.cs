@@ -27,9 +27,7 @@ public sealed class ProjectGraph
     private static ProjectGraph Load()
     {
         var root = FindRepositoryRoot();
-        var projectFiles = new[] { "Adventures.Common", "Adventures.Ioc" }
-            .Select(name => Path.Combine(root, name, name + ".csproj"))
-            .Concat(Directory.GetFiles(Path.Combine(root, "src"), "*.csproj", SearchOption.AllDirectories));
+        var projectFiles = Directory.GetFiles(Path.Combine(root, "src"), "*.csproj", SearchOption.AllDirectories);
 
         var projects = new Dictionary<string, ProjectInfo>(StringComparer.Ordinal);
         foreach (var file in projectFiles)
@@ -53,6 +51,9 @@ public sealed class ProjectGraph
 
         return new ProjectGraph(projects);
     }
+
+    /// <summary>The repository root, for the layout rule (every project lives under src or test).</summary>
+    public static string Root => FindRepositoryRoot();
 
     private static string FindRepositoryRoot()
     {

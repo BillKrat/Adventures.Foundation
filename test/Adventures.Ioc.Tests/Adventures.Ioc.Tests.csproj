@@ -9,7 +9,6 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -17,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Adventures.Common\Adventures.Common.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Ioc\Adventures.Ioc.csproj" />
     <ProjectReference Include="..\Adventures.Tests\Adventures.Tests.csproj" />
   </ItemGroup>
 
