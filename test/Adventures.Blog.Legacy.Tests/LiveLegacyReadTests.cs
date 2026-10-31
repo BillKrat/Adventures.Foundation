@@ -1,6 +1,6 @@
-using Adventures.Data.Sql;
-using Adventures.Entities;
 using Adventures.Data.NQuad;
+using Adventures.Entities;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -9,13 +9,16 @@ namespace Adventures.Blog.Legacy.Tests;
 /// <summary>Runs only when <c>LEGACY_SQL_CONNECTION</c> names a real BlogEngine database; otherwise it is reported as skipped. SELECT-only: it never writes.</summary>
 public sealed class LiveFactAttribute : FactAttribute
 {
-    public const string Variable = "LEGACY_SQL_CONNECTION";
+    public static string? ConnectionString { get; } = new ConfigurationBuilder()
+        .AddUserSecrets<LiveFactAttribute>(optional: true)
+        .Build()
+        .GetConnectionString("BlogEngine");
 
     public LiveFactAttribute()
     {
-        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(Variable)))
+        if (string.IsNullOrWhiteSpace(ConnectionString))
         {
-            Skip = $"Set {Variable} to a BlogEngine.NET SQL Server connection string to run the live read check.";
+            Skip = "Set ConnectionStrings:BlogEngine in user-secrets to run the live read check.";
         }
     }
 }
@@ -25,7 +28,7 @@ public class LiveLegacyReadTests
     [LiveFact]
     public async Task The_primary_blog_resolves_and_its_posts_pages_categories_and_tags_read_without_error()
     {
-        var connection = Environment.GetEnvironmentVariable(LiveFactAttribute.Variable)!;
+        var connection = LiveFactAttribute.ConnectionString!;
         var store = new InMemoryNQuadStore();
         var seeds = Path.Combine(AppContext.BaseDirectory, "Sql", "seed");
         foreach (var seed in new[] { "seed.nq", "seed-006-content.nq", "seed-007-post-taxonomy.nq", "seed-008-post-revision.nq", "seed-013-post-approval.nq" })
