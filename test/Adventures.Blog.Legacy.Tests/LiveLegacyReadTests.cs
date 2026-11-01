@@ -6,19 +6,19 @@ using Xunit;
 
 namespace Adventures.Blog.Legacy.Tests;
 
-/// <summary>Runs only when <c>LEGACY_SQL_CONNECTION</c> names a real BlogEngine database; otherwise it is reported as skipped. SELECT-only: it never writes.</summary>
+/// <summary>Runs only when the shared user-secrets store holds <c>ConnectionStrings:BlogAi</c>, the SELECT-only <c>blogai_reader</c> login on the legacy BlogEngine database (never the admin login); otherwise it is reported as skipped. SELECT-only: it never writes.</summary>
 public sealed class LiveFactAttribute : FactAttribute
 {
     public static string? ConnectionString { get; } = new ConfigurationBuilder()
         .AddUserSecrets<LiveFactAttribute>(optional: true)
         .Build()
-        .GetConnectionString("BlogEngine");
+        .GetConnectionString("BlogAi");
 
     public LiveFactAttribute()
     {
         if (string.IsNullOrWhiteSpace(ConnectionString))
         {
-            Skip = "Set ConnectionStrings:BlogEngine in user-secrets to run the live read check.";
+            Skip = "Set ConnectionStrings:BlogAi (the SELECT-only blogai_reader login) in the shared user-secrets store to run the live read check.";
         }
     }
 }
