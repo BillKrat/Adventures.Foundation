@@ -31,7 +31,7 @@ public class DevLoginTests
         Assert.False(result.MustChangePassword);
         var call = Assert.Single(tokens.IssueTokenCalls);
         Assert.Equal(DevLoginOptions.SubjectId.ToString(), call.Subject);
-        Assert.Contains(call.Claims, c => c.Type == WellKnownClaims.Roles && c.Value == "Admin");
+        Assert.Contains(call.Claims, c => c.Type == WellKnownClaims.Roles && c.Value == "Admin TenantAdmin");
     }
 
     [Fact]

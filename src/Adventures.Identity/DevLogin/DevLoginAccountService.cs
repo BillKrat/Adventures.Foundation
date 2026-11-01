@@ -16,7 +16,7 @@ public sealed record DevLoginOptions(bool Enabled, bool IsDevelopment)
     /// <summary>Deliberately weak and public: that is why the gates exist.</summary>
     public const string Password = "Password";
 
-    public const string Roles = "Admin";
+    public const string Roles = "Admin TenantAdmin";
 
     /// <summary>The configuration key that turns it on; user-secrets or the Development settings file only, never a deployed setting.</summary>
     public const string SettingName = "Legacy:DevLogin";
