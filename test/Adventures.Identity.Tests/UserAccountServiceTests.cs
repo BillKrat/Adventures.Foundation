@@ -148,6 +148,23 @@ public class UserAccountServiceTests
         Assert.Empty(credentials.FailedLoginCalls);
     }
 
+    /// <summary>
+    /// T1 (threat: token reuse): a token signed in on one tenant's domain must say so, so a host can refuse it on another tenant's domain.
+    /// </summary>
+    [Fact]
+    public async Task LoginAsync_IssuesTokenCarryingTheTenantItWasSignedInFor()
+    {
+        var (service, entities, credentials, hasher, tokens) = CreateSut();
+        entities.EntityToReturn = SampleUserEntity();
+        credentials.CredentialToReturn = SampleCredential();
+        hasher.VerifyResult = true;
+
+        await service.LoginAsync("Acme.com", "admin", "Password");
+
+        var claims = Assert.Single(tokens.IssueTokenCalls).Claims;
+        Assert.Equal("Acme.com", Assert.Single(claims, c => c.Type == Adventures.Security.WellKnownClaims.Tenant).Value);
+    }
+
     [Fact]
     public async Task LoginAsync_IssuesTokenWithUserEntityIdAsSubject_NeverThePassword()
     {

@@ -62,7 +62,12 @@ public sealed class UserAccountService(
 
         await credentialStore.RecordSuccessfulLoginAsync(account.Id, cancellationToken);
 
-        var claims = new[] { new Claim(ClaimTypes.Name, account.Username), new Claim(WellKnownClaims.Roles, string.Join(' ', account.Roles)) };
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.Name, account.Username),
+            new Claim(WellKnownClaims.Roles, string.Join(' ', account.Roles)),
+            new Claim(WellKnownClaims.Tenant, tenant),
+        };
         var issued = tokenService.IssueToken(account.Id.ToString(), claims);
 
         var mustChangePassword = credential.MustChangePassword || account.Status == UserStatus.MustChangePassword;

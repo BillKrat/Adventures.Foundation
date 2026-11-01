@@ -7,6 +7,12 @@ public static class WellKnownClaims
     /// <summary>Space-delimited list of the caller's role names.</summary>
     public const string Roles = "roles";
 
+    /// <summary>
+    /// The tenant (its domain, as the Tenant entity names it) the token was signed in for. A host refuses a token on another tenant's domain.
+    /// Machine tokens carry none.
+    /// </summary>
+    public const string Tenant = "tenant";
+
     /// <summary>Tenant-wide administrator: full user management (seed account "Admin").</summary>
     public const string TenantAdminRole = "TenantAdmin";
 
