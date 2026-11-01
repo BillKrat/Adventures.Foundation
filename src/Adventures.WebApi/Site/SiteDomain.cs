@@ -48,6 +48,13 @@ public static partial class SiteDomain
     /// <summary>The tenant sign-in uses: the domain, otherwise <c>Auth:Tenant</c>, otherwise <paramref name="fallback"/>.</summary>
     public static string Tenant(IConfiguration configuration, string fallback) => Domain(configuration) ?? configuration["Auth:Tenant"] ?? fallback;
 
+    /// <summary>
+    /// The tenant sign-in and set-password use for one request: the tenant the server resolved from the request's host (T1, lower case), otherwise the
+    /// configured one exactly as before. A host that matched no tenant therefore changes nothing for an installation that has no tenant record for its domain.
+    /// </summary>
+    public static string Tenant(IRequestTenant request, IConfiguration configuration, string fallback) =>
+        request.Current is { Match: not Adventures.Entities.TenantMatch.None, Domain: { Length: > 0 } domain } ? domain.Trim().Trim('.').ToLowerInvariant() : Tenant(configuration, fallback);
+
     /// <summary>The MCP site address (<c>McpServer:BaseUrl</c> unless the domain is set); null when neither is set.</summary>
     public static string? McpBaseUrl(IConfiguration configuration) => Domain(configuration) is { } domain ? $"https://mcp.{domain}/" : configuration["McpServer:BaseUrl"];
 

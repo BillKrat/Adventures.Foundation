@@ -69,4 +69,31 @@ public sealed class SiteDomainTests
         Assert.Equal("fallback.example", SiteDomain.Tenant(Config(), "fallback.example"));
         Assert.Equal("https://api.fallback.example/", SiteDomain.ApiBaseUrl(Config(), "https://api.fallback.example/"));
     }
+
+    // T1: sign-in and set-password use the tenant the server resolved for the request host; a host that matched no tenant changes nothing (the configured tenant, as before).
+    private sealed class FixedTenant(Adventures.Entities.CurrentTenant current) : IRequestTenant
+    {
+        public Adventures.Entities.CurrentTenant Current { get; } = current;
+    }
+
+    private static IRequestTenant Resolved(string? domain, Adventures.Entities.TenantMatch match) =>
+        new FixedTenant(new Adventures.Entities.CurrentTenant(domain is null ? null : "id", domain, domain, "api.host", match));
+
+    [Fact]
+    public void TheRequestTenantWinsWhenTheHostMatchedOne_LowerCased()
+    {
+        var config = Config(("Site:Domain", "configured.example"));
+
+        Assert.Equal("acme.example", SiteDomain.Tenant(Resolved(" Acme.Example ", Adventures.Entities.TenantMatch.Domain), config, "fallback.example"));
+        Assert.Equal("acme.example", SiteDomain.Tenant(Resolved("acme.example", Adventures.Entities.TenantMatch.Fallback), config, "fallback.example"));
+    }
+
+    [Fact]
+    public void AHostThatMatchedNoTenantKeepsTheConfiguredTenant_SoNothingChangesForAnExistingInstall()
+    {
+        var none = Resolved(null, Adventures.Entities.TenantMatch.None);
+
+        Assert.Equal("configured.example", SiteDomain.Tenant(none, Config(("Site:Domain", "configured.example")), "fallback.example"));
+        Assert.Equal("fallback.example", SiteDomain.Tenant(none, Config(), "fallback.example"));
+    }
 }
