@@ -37,10 +37,13 @@ public sealed class PublicController(IPublicContent content, IRightsAuthorizer r
     public async Task<ActionResult<PublicPage>> Page(string slug, CancellationToken cancellationToken) =>
         await content.GetPageAsync(slug, cancellationToken, await SeesDraftsAsync()) is { } page ? Ok(page) : NotFound();
 
-    /// <summary>The page marked as the front page; 404 when there is none (the site then shows the post list). A draft page is never the front page.</summary>
+    /// <summary>
+    /// The page marked as the front page; 204 No Content when there is none (the site then shows the post list). A site without a front page is normal, not an
+    /// error, and the client asks on every navigation: a 404 would show as a failed request each time. A draft page is never the front page.
+    /// </summary>
     [HttpGet("home")]
     public async Task<ActionResult<PublicPage>> Home(CancellationToken cancellationToken) =>
-        await content.GetFrontPageAsync(cancellationToken) is { } page ? Ok(page) : NotFound();
+        await content.GetFrontPageAsync(cancellationToken) is { } page ? Ok(page) : NoContent();
 
     [HttpGet("menu")]
     public async Task<ActionResult<IReadOnlyList<PublicMenuItem>>> Menu(CancellationToken cancellationToken) =>
