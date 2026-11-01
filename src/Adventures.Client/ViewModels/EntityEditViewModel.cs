@@ -19,6 +19,10 @@ public sealed class FieldViewModel(string name, string label, string value, bool
     /// <summary>The allowed values when the schema fixes them; null for free text.</summary>
     public IReadOnlyList<string>? Choices { get; } = choices;
 
+    public bool HasChoices => Choices is { Count: > 0 };
+
+    public bool IsEditable => !IsReadOnly;
+
     public string Value
     {
         get => _value;
