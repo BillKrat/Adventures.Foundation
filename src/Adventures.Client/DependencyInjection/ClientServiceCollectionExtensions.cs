@@ -14,6 +14,12 @@ public static class ClientServiceCollectionExtensions
     public static IServiceCollection AddAdventuresClient(this IServiceCollection services, Uri apiBaseAddress)
     {
         ArgumentNullException.ThrowIfNull(apiBaseAddress);
+        // The sign-in sends a password: plain http is allowed only to this machine (development), never across a network.
+        if (apiBaseAddress.Scheme != Uri.UriSchemeHttps && !(apiBaseAddress.Scheme == Uri.UriSchemeHttp && apiBaseAddress.IsLoopback))
+        {
+            throw new ArgumentException("The API address must use https (plain http is allowed only for localhost).", nameof(apiBaseAddress));
+        }
+
         services.AddSingleton(_ => new HttpClient { BaseAddress = apiBaseAddress, Timeout = TimeSpan.FromSeconds(30) });
         services.AddSingleton<AmbientPrincipal>();
         services.AddSingleton<ICurrentPrincipal>(sp => sp.GetRequiredService<AmbientPrincipal>());

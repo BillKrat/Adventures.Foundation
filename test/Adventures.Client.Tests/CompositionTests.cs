@@ -34,3 +34,26 @@ public class CompositionTests
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = false });
     }
 }
+
+public class ApiAddressTests
+{
+    [Theory]
+    [InlineData("https://api.example.com/")]
+    [InlineData("http://localhost:5000/")]
+    [InlineData("http://127.0.0.1:5000/")]
+    [InlineData("https://localhost:7001/")]
+    public void Accepts_https_and_loopback(string address)
+    {
+        Assert.NotNull(new ServiceCollection().AddAdventuresClient(new Uri(address)));
+    }
+
+    [Theory]
+    [InlineData("http://api.example.com/")]
+    [InlineData("http://192.168.1.10:5000/")]
+    [InlineData("ftp://api.example.com/")]
+    public void Refuses_a_plain_http_or_unknown_scheme_to_a_remote_host(string address)
+    {
+        var error = Assert.Throws<ArgumentException>(() => new ServiceCollection().AddAdventuresClient(new Uri(address)));
+        Assert.Contains("https", error.Message);
+    }
+}
