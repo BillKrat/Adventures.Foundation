@@ -23,6 +23,8 @@ public class DependencyRulesTests
         "Adventures.Blog.WebApi -> Adventures.Blog",
         "Adventures.Blog.WebApi -> Adventures.Security",
         "Adventures.Blog.WebApi -> Adventures.WebApi",
+        "Adventures.Client -> Adventures.Entities",
+        "Adventures.Client -> Adventures.Security",
         "Adventures.Collaboration -> Adventures.Entities",
         "Adventures.Collaboration -> Adventures.MEF",
         "Adventures.Common -> Adventures.Ioc",
@@ -175,6 +177,19 @@ public class DependencyRulesTests
         Assert.Equal(["Adventures.Entities"], Graph.Projects["Adventures.MEF"].ProjectReferences);
         var referrers = Graph.Projects.Values.Where(p => p.ProjectReferences.Contains("Adventures.Collaboration")).Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal);
         Assert.Equal(["Adventures.Blog"], referrers);
+    }
+
+    // S9: the desktop client library talks to the API through the Entities contract and the Security core only. No host framework, no store, no UI
+    // toolkit (so it runs in a console test and in any desktop shell), and nothing server-side references it.
+    [Fact]
+    public void Client_library_is_a_plain_consumer_of_the_contract()
+    {
+        Assert.Equal(["Adventures.Entities", "Adventures.Security"], Graph.Projects["Adventures.Client"].ProjectReferences);
+        Assert.Empty(Graph.Projects["Adventures.Client"].PackageReferences.Where(p => p.StartsWith("Microsoft.AspNetCore", StringComparison.Ordinal)));
+        var project = System.Xml.Linq.XDocument.Load(Path.Combine(ProjectGraph.Root, "src", "Adventures.Client", "Adventures.Client.csproj"));
+        Assert.Empty(project.Descendants("FrameworkReference"));
+        Assert.Equal("net10.0", (string?)project.Descendants("TargetFramework").Single());
+        Assert.Empty(Graph.Projects.Values.Where(p => p.ProjectReferences.Contains("Adventures.Client")));
     }
 
     // S5: Adventures.Data is contracts only - no database driver, no ASP.NET package; the implementations live in the store projects.
