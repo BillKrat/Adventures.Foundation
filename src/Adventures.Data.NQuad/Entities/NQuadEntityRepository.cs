@@ -43,7 +43,6 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
         IGraphScope? scope = null)
     {
         _scope = scope;
-        GraphScopes.Validate(scope?.TenantKey);
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _schema = schema ?? throw new ArgumentNullException(nameof(schema));
         _baseIri = string.IsNullOrWhiteSpace(baseIri)
@@ -62,10 +61,8 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
 
     private static string IdPropertyName => DynamicEntity.EntityIdPropertyName;
 
-    private string? TenantKey => GraphScopes.Validate(_scope?.TenantKey);
-
-    /// <summary>The graph every write of this request goes to.</summary>
-    private string WriteGraph => GraphScopes.GraphFor(_graph, TenantKey);
+    /// <summary>The graph every write of this request goes to: the registered graph itself for a shared type, the tenant's graph for a scoped one.</summary>
+    private string WriteGraph => _scope is null ? _graph : GraphScopes.GraphFor(_graph, _scope.TenantKey);
 
     /// <summary>Drops what the current tenant may not see. Every store read in this class passes through here.</summary>
     private IReadOnlyList<NQuad> Visible(IReadOnlyList<NQuad> quads)
@@ -75,8 +72,9 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
             return quads;
         }
 
-        var key = TenantKey;
-        return quads.Where(q => GraphScopes.Visible(q, _graph, key)).ToList();
+        // Worked out before the filter so a missing tenant or a bad key fails even when there is nothing to filter.
+        var target = GraphScopes.GraphFor(_graph, _scope.TenantKey);
+        return quads.Where(q => string.Equals(q.Graph, target, StringComparison.Ordinal)).ToList();
     }
 
     public async Task<TEntity> CreateAsync(TEntity entity, CancellationToken cancellationToken = default)

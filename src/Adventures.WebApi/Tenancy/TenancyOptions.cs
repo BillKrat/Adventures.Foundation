@@ -21,12 +21,6 @@ public sealed class TenancyOptions
     /// <summary>Default <see cref="TenancyEnforcement.Report"/>: nothing that works today stops working until the host sets <c>Tenancy:Enforcement</c> to <c>Enforce</c>.</summary>
     public TenancyEnforcement Enforcement { get; set; } = TenancyEnforcement.Report;
 
-    /// <summary>
-    /// The id of the primary tenant: the one whose content stays in today's graphs. Every other tenant gets its own graph (T2). Unset means tenant
-    /// scoping is off and all content is shared, which is today's single-tenant behaviour; set it before a second tenant holds any content.
-    /// </summary>
-    public string? PrimaryTenantId { get; set; }
-
     /// <summary>A development stand-in domain for a host that matches no tenant (for example localhost). Used only when <see cref="AllowFallback"/> is true.</summary>
     public string? FallbackDomain { get; set; }
 

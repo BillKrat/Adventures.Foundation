@@ -24,13 +24,27 @@ public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptio
 
         if (current.Match == TenantMatch.None && settings.Enforcement == TenancyEnforcement.Enforce && !IsExempt(settings, context.Request.Path))
         {
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            context.Response.ContentType = "application/problem+json";
-            await context.Response.WriteAsJsonAsync(new { title = "No site is set up for this address.", status = StatusCodes.Status404NotFound }, context.RequestAborted).ConfigureAwait(false);
+            await RefuseAsync(context).ConfigureAwait(false);
             return;
         }
 
-        await next(context).ConfigureAwait(false);
+        try
+        {
+            await next(context).ConfigureAwait(false);
+        }
+        catch (TenantRequiredException) when (!context.Response.HasStarted)
+        {
+            // Content is stored per tenant and there is no shared graph, so an address with no tenant has nothing to show (a 404, not a server error).
+            context.Response.Clear();
+            await RefuseAsync(context).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task RefuseAsync(HttpContext context)
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        context.Response.ContentType = "application/problem+json";
+        await context.Response.WriteAsJsonAsync(new { title = "No site is set up for this address.", status = StatusCodes.Status404NotFound }, context.RequestAborted).ConfigureAwait(false);
     }
 
     private async Task<CurrentTenant> ResolveAsync(TenancyOptions settings, string host, ITenantResolver resolver, CancellationToken cancellationToken)

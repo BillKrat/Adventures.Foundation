@@ -5,8 +5,8 @@ using Xunit;
 namespace Adventures.Data.NQuad.Tests;
 
 /// <summary>
-/// T2 (tenant data scoping, decision 2026-10 option C: a graph per tenant). Threats: cross-tenant read, cross-tenant write, a silent
-/// default. The wall lives in <see cref="NQuadEntityRepository{TEntity}"/>, so these tests drive the repository, not a controller.
+/// T2 (tenant data scoping, decision 2026-10 option C: a graph per tenant; every tenant is equal, none keeps the shared graphs). Threats: cross-tenant read,
+/// cross-tenant write, a silent default. The wall lives in <see cref="NQuadEntityRepository{TEntity}"/>, so these tests drive the repository, not a controller.
 /// </summary>
 public sealed class TenantScopedRepositoryTests
 {
@@ -22,12 +22,17 @@ public sealed class TenantScopedRepositoryTests
         new EntitySchemaField(SchemaIri, "f-name", "Name", "string", "urn:p:name"),
     ]);
 
-    private static NQuadEntityRepository<Widget> Repo(InMemoryNQuadStore store, string? tenantKey) =>
+    private static NQuadEntityRepository<Widget> Repo(InMemoryNQuadStore store, string tenantKey) =>
         new(store, Schema, Base, SchemaIri, Graph, s => new Widget(s), scope: new FixedScope(tenantKey));
 
-    private sealed class FixedScope(string? key) : IGraphScope
+    private sealed class FixedScope(string key) : IGraphScope
     {
-        public string? TenantKey { get; } = key;
+        public string TenantKey { get; } = key;
+    }
+
+    private sealed class NoTenantScope : IGraphScope
+    {
+        public string TenantKey => throw new TenantRequiredException();
     }
 
     private static Widget NewWidget(string id, string name)
@@ -42,15 +47,14 @@ public sealed class TenantScopedRepositoryTests
     public async Task Each_tenant_lists_only_its_own_entities()
     {
         var store = new InMemoryNQuadStore();
-        await Repo(store, null).CreateAsync(NewWidget("p1", "primary"));
         await Repo(store, "tenant-a").CreateAsync(NewWidget("a1", "tenant a"));
         await Repo(store, "tenant-b").CreateAsync(NewWidget("b1", "tenant b"));
+        await Repo(store, "tenant-c").CreateAsync(NewWidget("c1", "tenant c"));
 
-        Assert.Equal(["p1"], (await Repo(store, null).ListAsync()).Select(w => w.EntityId!.Value.ToString()).Order());
         Assert.Equal(["a1"], (await Repo(store, "tenant-a").ListAsync()).Select(w => w.EntityId!.Value.ToString()).Order());
         Assert.Equal(["b1"], (await Repo(store, "tenant-b").ListAsync()).Select(w => w.EntityId!.Value.ToString()).Order());
         Assert.Equal(1, await Repo(store, "tenant-a").CountAsync());
-        Assert.Equal(1, await Repo(store, null).CountAsync());
+        Assert.Equal(1, await Repo(store, "tenant-c").CountAsync());
     }
 
     [Fact]
@@ -60,7 +64,6 @@ public sealed class TenantScopedRepositoryTests
         await Repo(store, "tenant-b").CreateAsync(NewWidget("b1", "tenant b"));
 
         Assert.Null(await Repo(store, "tenant-a").GetAsync("b1"));
-        Assert.Null(await Repo(store, null).GetAsync("b1"));
         Assert.NotNull(await Repo(store, "tenant-b").GetAsync("b1"));
     }
 
@@ -69,10 +72,8 @@ public sealed class TenantScopedRepositoryTests
     {
         var store = new InMemoryNQuadStore();
         await Repo(store, "tenant-a").CreateAsync(NewWidget("a1", "tenant a"));
-        await Repo(store, null).CreateAsync(NewWidget("p1", "primary"));
 
         Assert.All(await store.QueryAsync(subject: Base + "a1"), q => Assert.Equal(Graph + "/tenant/tenant-a", q.Graph));
-        Assert.All(await store.QueryAsync(subject: Base + "p1"), q => Assert.Equal(Graph, q.Graph));
     }
 
     [Fact]
@@ -104,26 +105,37 @@ public sealed class TenantScopedRepositoryTests
     }
 
     [Fact]
-    public async Task The_primary_tenant_still_reads_data_in_whatever_graph_it_was_stored()
+    public async Task Data_left_in_the_shared_graph_is_visible_to_no_tenant()
     {
-        // Live data was seeded and imported into graphs the registration may not name exactly; "untouched" means the primary tenant sees all of it.
+        // There is no primary tenant: content that has not been moved into a tenant's graph (the one-time relabel) is invisible, never shown to the wrong site.
         var store = new InMemoryNQuadStore();
-        var id = Guid.NewGuid();
-        await store.InsertAsync(new NQuad(Guid.NewGuid(), Base + "old", "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", SchemaIri, "urn:some:other:graph"));
-        await store.InsertAsync(new NQuad(id, Base + "old", "urn:p:name", "legacy", "urn:some:other:graph"));
+        await store.InsertAsync(new NQuad(Guid.NewGuid(), Base + "old", "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", SchemaIri, Graph));
+        await store.InsertAsync(new NQuad(Guid.NewGuid(), Base + "old", "urn:p:name", "unmoved", Graph));
 
-        Assert.Single(await Repo(store, null).ListAsync());
         Assert.Empty(await Repo(store, "tenant-a").ListAsync());
+        Assert.Null(await Repo(store, "tenant-a").GetAsync("old"));
     }
 
     [Fact]
-    public void A_tenant_key_that_could_escape_the_graph_is_refused()
+    public async Task A_request_with_no_tenant_cannot_read_or_write()
+    {
+        var store = new InMemoryNQuadStore();
+        var repository = new NQuadEntityRepository<Widget>(store, Schema, Base, SchemaIri, Graph, s => new Widget(s), scope: new NoTenantScope());
+
+        await Assert.ThrowsAsync<TenantRequiredException>(() => repository.ListAsync());
+        await Assert.ThrowsAsync<TenantRequiredException>(() => repository.GetAsync("a"));
+        await Assert.ThrowsAsync<TenantRequiredException>(() => repository.CreateAsync(NewWidget("a", "x")));
+        Assert.Equal(0, await store.CountAsync());
+    }
+
+    [Fact]
+    public async Task A_tenant_key_that_could_escape_the_graph_is_refused()
     {
         var store = new InMemoryNQuadStore();
 
-        Assert.Throws<ArgumentException>(() => Repo(store, "../system"));
-        Assert.Throws<ArgumentException>(() => Repo(store, "a/b"));
-        Assert.Throws<ArgumentException>(() => Repo(store, " "));
+        await Assert.ThrowsAsync<ArgumentException>(() => Repo(store, "../system").ListAsync());
+        await Assert.ThrowsAsync<ArgumentException>(() => Repo(store, "a/b").ListAsync());
+        await Assert.ThrowsAsync<ArgumentException>(() => Repo(store, " ").ListAsync());
     }
 
     [Fact]
@@ -159,7 +171,7 @@ public sealed class TenantScopedRepositoryTests
     }
 
     [Fact]
-    public async Task A_scoped_type_with_no_scope_registered_fails_closed()
+    public void A_scoped_type_with_no_scope_registered_fails_closed()
     {
         var store = new InMemoryNQuadStore();
         var services = new ServiceCollection();

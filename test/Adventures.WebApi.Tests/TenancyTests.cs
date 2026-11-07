@@ -90,6 +90,23 @@ public class TenancyTests
         return (context, reached, seen, resolver, log);
     }
 
+    // ---- no tenant, no content (T2: there is no shared graph to fall back to) ----
+
+    [Fact]
+    public async Task ARequestForTenantContentWithNoTenantAnswers404_NotA500()
+    {
+        var context = Request("unknown.example.org");
+        var middleware = new TenantMiddleware(
+            _ => throw new TenantRequiredException(),
+            Microsoft.Extensions.Options.Options.Create(Options(TenancyEnforcement.Report)),
+            new MemoryCache(new MemoryCacheOptions()),
+            new CapturingLogger());
+
+        await middleware.InvokeAsync(context, new FakeResolver(Acme), new RequestTenant());
+
+        Assert.Equal(StatusCodes.Status404NotFound, context.Response.StatusCode);
+    }
+
     // ---- the tenant comes from the host the server saw, and nothing else ----
 
     [Fact]

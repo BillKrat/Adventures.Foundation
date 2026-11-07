@@ -85,7 +85,7 @@ public sealed class NQuadRelationWriter(
         {
             await store.InsertAsync(
                 new NQuad(Guid.NewGuid(), parent.BaseIri + parentId, relation.ViaPredicate, child.BaseIri + childId,
-                    child.TenantScoped ? GraphScopes.GraphFor(child.Graph, GraphScopes.Validate(scope?.TenantKey)) : child.Graph),
+                    child.TenantScoped ? GraphScopes.GraphFor(child.Graph, scope!.TenantKey) : child.Graph),
                 cancellationToken).ConfigureAwait(false);
         }
 
