@@ -243,4 +243,20 @@ public sealed class RightsTests : IAsyncLifetime
         Assert.Contains(Rights.PlatformManage, await resolver.ResolveAsync("test-platform", [], DevMain));
         Assert.DoesNotContain(Rights.PlatformManage, await resolver.ResolveAsync("test-platform", [], OtherTenant));
     }
+
+    [Fact]
+    public async Task TheLegacyAdministratorWhoIsAlsoAssignedThePlatformRoleHoldsEveryTenantRightAndThePlatformRight()
+    {
+        // Review of 2026-11-07: the shortcut for the legacy sign-in role returned early, so a Platform assignment never showed in What you can do and role edits stayed 403.
+        var resolver = _services.GetRequiredService<IRightsResolver>();
+        var admin = (await _users.GetFormByUserNameAsync("Admin"))!.Entity.EntityId;
+        Assert.DoesNotContain(Rights.PlatformManage, await resolver.ResolveAsync("Admin", ["TenantAdmin"], DevMain));
+
+        await _writer.AddAsync(_userSchema, admin, "TenantRoles", Assignment(DevMain, await RoleIdAsync("Platform")));
+
+        var rights = await resolver.ResolveAsync("Admin", ["TenantAdmin"], DevMain);
+        Assert.Contains(Rights.PlatformManage, rights);
+        Assert.True(Rights.AllNames.IsSubsetOf(rights));
+        Assert.DoesNotContain(Rights.PlatformManage, await resolver.ResolveAsync("Admin", ["TenantAdmin"], OtherTenant));
+    }
 }

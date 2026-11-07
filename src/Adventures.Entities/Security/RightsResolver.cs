@@ -42,17 +42,14 @@ public sealed class RightsResolver(
     private async Task<IReadOnlySet<string>> ResolveCoreAsync(
         string userName, IEnumerable<string> signInRoles, string? tenantId, string? overrideRoleId, string? overrideRights, CancellationToken cancellationToken)
     {
-        if (signInRoles.Contains(LegacyAdministratorRole, StringComparer.Ordinal))
-        {
-            return Rights.AllNames;
-        }
-
+        // The legacy sign-in role means every tenant right, and what the person's own assignments add on top (the platform right is never part of "every"): not a shortcut that skips them.
+        var legacyAdministrator = signInRoles.Contains(LegacyAdministratorRole, StringComparer.Ordinal);
+        var granted = legacyAdministrator ? new HashSet<string>(Rights.AllNames, StringComparer.Ordinal) : new HashSet<string>(StringComparer.Ordinal);
         if (string.IsNullOrWhiteSpace(userName) || await users.FindByUserNameAsync(userName, cancellationToken).ConfigureAwait(false) is not { EntityId: { } id })
         {
-            return new HashSet<string>(StringComparer.Ordinal);
+            return granted;
         }
 
-        var granted = new HashSet<string>(StringComparer.Ordinal);
         var assignments = await relations.GetRelationsAsync(userSchema.Schema, id.Value, editable: false, cancellationToken).ConfigureAwait(false);
         var rows = assignments.SelectMany(relation => relation.Grid.Rows).ToList();
         var organisationTenants = tenantId is null || !rows.Any(row => row.Values.ContainsKey("Organization"))
