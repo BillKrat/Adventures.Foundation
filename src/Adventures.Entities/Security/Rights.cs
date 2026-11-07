@@ -38,6 +38,9 @@ public static class Rights
     public const string DiagnosticsRead = "diagnostics.read";
     public const string DiagnosticsAi = "diagnostics.ai";
 
+    /// <summary>The platform administrator: edits what the roles allow for every tenant. Never part of <c>*</c> or <see cref="AllNames"/>, held only by the Platform role, and resolved per tenant like any right.</summary>
+    public const string PlatformManage = "platform.manage";
+
     public static readonly IReadOnlyList<Right> Catalog =
     [
         new(AdminAccess, "See the admin area at all."),
@@ -63,12 +66,15 @@ public static class Rights
         new(SettingsManage, "Change the site settings."),
         new(DiagnosticsRead, "See the exception log and request diagnostics."),
         new(DiagnosticsAi, "Use Ask Claude on an exception (it costs money and sends a scrubbed report out)."),
+        new(PlatformManage, "Platform administrator: change what the roles allow, for every tenant. Not part of any tenant administrator role."),
     ];
 
     private static readonly HashSet<string> Known = Catalog.Select(r => r.Name).ToHashSet(StringComparer.Ordinal);
 
-    /// <summary>The name of every right.</summary>
-    public static IReadOnlySet<string> AllNames => Known;
+    private static readonly HashSet<string> TenantRights = Known.Where(name => name != PlatformManage).ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>Every right a tenant role may hold with <c>*</c>: all of them except the platform right, which must be named.</summary>
+    public static IReadOnlySet<string> AllNames => TenantRights;
 
     public static bool IsKnown(string name) => Known.Contains(name);
 
@@ -78,7 +84,7 @@ public static class Rights
         var names = (stored ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (names.Contains(All, StringComparer.Ordinal))
         {
-            return Known;
+            return TenantRights;
         }
 
         var unknown = names.Where(name => !Known.Contains(name)).ToList();

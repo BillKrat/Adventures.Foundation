@@ -29,7 +29,7 @@ public interface IRightsAuthorizer
 }
 
 /// <summary>Resolves the caller rights through <see cref="IRightsResolver"/> (register it scoped: the answer is kept for the request).</summary>
-public sealed class RightsAuthorizer(IRightsResolver resolver, IEnumerable<IRightCondition> conditions) : IRightsAuthorizer
+public sealed class RightsAuthorizer(IRightsResolver resolver, IEnumerable<IRightCondition> conditions, IRequestTenant requestTenant) : IRightsAuthorizer
 {
     private IReadOnlySet<string>? _rights;
     private string? _forUser;
@@ -47,11 +47,22 @@ public sealed class RightsAuthorizer(IRightsResolver resolver, IEnumerable<IRigh
         {
             var roles = user.FindAll(claim => claim.Type is WellKnownClaims.Roles or ClaimTypes.Role)
                 .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-            _rights = await resolver.ResolveAsync(name, roles, cancellationToken).ConfigureAwait(false);
+            _rights = await resolver.ResolveAsync(name, SignInRolesHere(user, roles), requestTenant.Current.Id ?? string.Empty, cancellationToken).ConfigureAwait(false);
             _forUser = name;
         }
 
         return _rights;
+    }
+
+    /// <summary>
+    /// The legacy TenantAdmin sign-in role means every right, but only in the tenant the token was signed in for: a token with a tenant claim for another tenant keeps the
+    /// role out of this request (the rights then come from this tenant's assignments alone). A token with no tenant claim (the development sign-in) is not tenant-bound.
+    /// </summary>
+    private IEnumerable<string> SignInRolesHere(ClaimsPrincipal user, IEnumerable<string> roles)
+    {
+        var claim = user.FindFirst(WellKnownClaims.Tenant)?.Value;
+        var boundElsewhere = !string.IsNullOrWhiteSpace(claim) && !string.Equals(claim, requestTenant.Current.Domain, StringComparison.OrdinalIgnoreCase);
+        return boundElsewhere ? roles.Where(role => role != RightsResolver.LegacyAdministratorRole) : roles;
     }
 
     public async Task<bool> IsAllowedAsync(ClaimsPrincipal user, string right, CancellationToken cancellationToken = default)

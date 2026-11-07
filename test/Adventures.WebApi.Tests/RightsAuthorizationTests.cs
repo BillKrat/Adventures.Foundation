@@ -27,9 +27,15 @@ public sealed class RightsAuthorizationTests
         public Task<IReadOnlySet<string>> ResolveIfRoleAsync(string userName, string roleId, string roleRights, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<IReadOnlySet<string>> ResolveAsync(string userName, IEnumerable<string> signInRoles, CancellationToken cancellationToken = default)
+        public Task<IReadOnlySet<string>> ResolveAcrossTenantsAsync(string userName, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public string? LastTenantId { get; private set; }
+
+        public Task<IReadOnlySet<string>> ResolveAsync(string userName, IEnumerable<string> signInRoles, string tenantId, CancellationToken cancellationToken = default)
         {
             Calls++;
+            LastTenantId = tenantId;
             if (signInRoles.Contains("TenantAdmin"))
             {
                 return Task.FromResult(Rights.AllNames);
@@ -38,6 +44,14 @@ public sealed class RightsAuthorizationTests
             return Task.FromResult<IReadOnlySet<string>>(byUser.TryGetValue(userName, out var rights) ? Rights.Expand(rights) : new HashSet<string>());
         }
     }
+
+    private sealed class FixedTenant(Adventures.Entities.CurrentTenant current) : IRequestTenant
+    {
+        public Adventures.Entities.CurrentTenant Current { get; } = current;
+    }
+
+    private static IRequestTenant InTenant(string domain) =>
+        new FixedTenant(new Adventures.Entities.CurrentTenant(domain + "-id", domain, domain, "api." + domain, Adventures.Entities.TenantMatch.Domain));
 
     private sealed class Veto(string right) : IRightCondition
     {
@@ -69,7 +83,7 @@ public sealed class RightsAuthorizationTests
     private static (RightsAuthorizer Authorizer, FakeResolver Resolver) Authorizer(params IRightCondition[] conditions)
     {
         var resolver = new FakeResolver(People);
-        return (new RightsAuthorizer(resolver, conditions), resolver);
+        return (new RightsAuthorizer(resolver, conditions, InTenant("acme.test")), resolver);
     }
 
     private static AuthorizationFilterContext ContextFor(ClaimsPrincipal user, string method, IRightsAuthorizer authorizer, MethodInfo? action = null)
@@ -158,7 +172,7 @@ public sealed class RightsAuthorizationTests
         var filter = new AdminRightsAttribute { Read = Rights.PostsRead, Create = Rights.PostsCreate, Update = Rights.PostsEditAny, Delete = Rights.PostsDeleteAny };
         var holder = Person("holder");
         var people = new Dictionary<string, string[]> { ["holder"] = [right] };
-        var scoped = new RightsAuthorizer(new FakeResolver(people), []);
+        var scoped = new RightsAuthorizer(new FakeResolver(people), [], InTenant("acme.test"));
 
         var allowed = ContextFor(holder, method, scoped);
         await filter.OnAuthorizationAsync(allowed);
@@ -184,7 +198,7 @@ public sealed class RightsAuthorizationTests
     [Fact]
     public async Task AnActionsOwnRightReplacesTheControllersVerbRights_SoPublishNeedsPublishAndNotEditing()
     {
-        var holder = new RightsAuthorizer(new FakeResolver(new() { ["publisher"] = [Rights.PostsPublish] }), []);
+        var holder = new RightsAuthorizer(new FakeResolver(new() { ["publisher"] = [Rights.PostsPublish] }), [], InTenant("acme.test"));
         var controllerLevel = new AdminRightsAttribute { Read = Rights.PostsRead, Create = Rights.PostsCreate, Update = Rights.PostsEditAny, Delete = Rights.PostsDeleteAny };
         var publishAction = typeof(RightsAuthorizationTests).GetMethod(nameof(PublishAction), BindingFlags.NonPublic | BindingFlags.Static);
 
@@ -214,5 +228,65 @@ public sealed class RightsAuthorizationTests
         Assert.True(AdminMenuBuilder.Build(Items, Person("editor"), badges: null, rights: noAdminAccess).IsEmpty);
 
         Assert.True(AdminMenuBuilder.Build(Items, Person("editor"), badges: null, rights: new HashSet<string>()).IsEmpty);
+    }
+
+    // ---- T3: the tenant of the request decides, and the legacy administrator role is bound to the token's tenant ----
+
+    private static ClaimsPrincipal PersonWithTenantClaim(string name, string roles, string tenantClaim) =>
+        new(new ClaimsIdentity(
+            [new Claim(ClaimTypes.Name, name), new Claim(WellKnownClaims.Roles, roles), new Claim(WellKnownClaims.Tenant, tenantClaim)], "Test"));
+
+    [Fact]
+    public async Task TheRightsAreResolvedForTheTenantOfTheRequest()
+    {
+        var (authorizer, resolver) = Authorizer();
+
+        await authorizer.RightsOfAsync(Person("editor"));
+
+        Assert.Equal("acme.test-id", resolver.LastTenantId);
+    }
+
+    [Fact]
+    public async Task TheLegacyAdministratorRoleHoldsOnlyInTheTenantTheTokenWasSignedInFor()
+    {
+        var (here, _) = Authorizer();
+        var (elsewhere, _) = Authorizer();
+
+        var inOwnTenant = await here.RightsOfAsync(PersonWithTenantClaim("boss", "TenantAdmin", "ACME.test"));
+        var inAnotherTenant = await elsewhere.RightsOfAsync(PersonWithTenantClaim("boss", "TenantAdmin", "other.test"));
+
+        Assert.Equal(Rights.AllNames, inOwnTenant);
+        Assert.Empty(inAnotherTenant);
+    }
+
+    [Fact]
+    public async Task ATokenWithNoTenantClaim_TheDevelopmentSignIn_IsNotBoundToATenant()
+    {
+        var (authorizer, _) = Authorizer();
+
+        Assert.Equal(Rights.AllNames, await authorizer.RightsOfAsync(Person("dev", "Admin TenantAdmin")));
+    }
+
+    [Fact]
+    public async Task ARequestWithNoTenantHasNoRights_EvenForTheLegacyAdministrator()
+    {
+        var resolver = new FakeResolver(People);
+        var noTenant = new FixedTenant(new Adventures.Entities.CurrentTenant(null, null, null, "x", Adventures.Entities.TenantMatch.None));
+        var authorizer = new RightsAuthorizer(new TenantAwareResolver(resolver), [], noTenant);
+
+        Assert.Empty(await authorizer.RightsOfAsync(Person("boss", "TenantAdmin")));
+    }
+
+    /// <summary>The real resolver gives nothing for a blank tenant; this wrapper makes the fake do the same so the pipeline's fail-closed rule is what is asserted.</summary>
+    private sealed class TenantAwareResolver(FakeResolver inner) : IRightsResolver
+    {
+        public Task<IReadOnlySet<string>> ResolveAsync(string userName, IEnumerable<string> signInRoles, string tenantId, CancellationToken cancellationToken = default) =>
+            string.IsNullOrWhiteSpace(tenantId)
+                ? Task.FromResult<IReadOnlySet<string>>(new HashSet<string>())
+                : inner.ResolveAsync(userName, signInRoles, tenantId, cancellationToken);
+
+        public Task<IReadOnlySet<string>> ResolveIfRoleAsync(string userName, string roleId, string roleRights, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlySet<string>> ResolveAcrossTenantsAsync(string userName, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

@@ -46,7 +46,7 @@ public sealed class RoleRightsEditor(IEntityBll<Role> roles, IUserBll users, IRi
     {
         static bool Manages(IReadOnlySet<string> held) => held.Contains(Rights.UsersManage) && held.Contains(Rights.RolesManage);
 
-        var holdsNow = Manages(await resolver.ResolveAsync(actingUserName, [], cancellationToken).ConfigureAwait(false));
+        var holdsNow = Manages(await resolver.ResolveAcrossTenantsAsync(actingUserName, cancellationToken).ConfigureAwait(false));
         var holdsAfter = Manages(await resolver.ResolveIfRoleAsync(actingUserName, roleId, stored, cancellationToken).ConfigureAwait(false));
         if (holdsNow && !holdsAfter)
         {
@@ -61,7 +61,7 @@ public sealed class RoleRightsEditor(IEntityBll<Role> roles, IUserBll users, IRi
                 continue;
             }
 
-            anyoneNow |= Manages(await resolver.ResolveAsync(name, [], cancellationToken).ConfigureAwait(false));
+            anyoneNow |= Manages(await resolver.ResolveAcrossTenantsAsync(name, cancellationToken).ConfigureAwait(false));
             if (Manages(await resolver.ResolveIfRoleAsync(name, roleId, stored, cancellationToken).ConfigureAwait(false)))
             {
                 return;

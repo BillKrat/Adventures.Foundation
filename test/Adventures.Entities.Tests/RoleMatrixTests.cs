@@ -11,10 +11,11 @@ namespace Adventures.Entities.Tests;
 /// </summary>
 public sealed class RoleMatrixTests : IAsyncLifetime
 {
-    /// <summary>The shipped roles and every right each holds, once the startup upgrade has run. Admin is "*" (every right).</summary>
+    /// <summary>The shipped roles and every right each holds, once the startup upgrade has run. Admin is "*" (every tenant right); only the Platform role holds the platform right.</summary>
     public static readonly IReadOnlyDictionary<string, string[]> Expected = new Dictionary<string, string[]>
     {
-        ["Admin"] = [.. Rights.Catalog.Select(r => r.Name)],
+        ["Admin"] = [.. Rights.AllNames],
+        ["Platform"] = [Rights.PlatformManage],
         ["Editor"] =
         [
             Rights.AdminAccess, Rights.PostsRead, Rights.PostsCreate, Rights.PostsEditAny, Rights.PostsDeleteOwn, Rights.PostsPublish,
@@ -37,6 +38,7 @@ public sealed class RoleMatrixTests : IAsyncLifetime
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-004-identity.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-005-identity-required.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-018-role-rights.nq"));
+        await store.SeedFromFileAsync(Path.Combine(seeds, "seed-019-platform-role.nq"));
         var quads = await store.QueryAsync();
         var services = new ServiceCollection();
         services.AddSingleton<INQuadStore>(store);

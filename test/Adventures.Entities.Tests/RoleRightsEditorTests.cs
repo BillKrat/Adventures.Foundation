@@ -42,6 +42,7 @@ public sealed class RoleRightsEditorTests : IAsyncLifetime
         services.AddScoped<IUserBll, UserBll>();
         services.AddScoped<IUserPresenter, UserPresenter>();
         services.AddScoped<IEntityBll<Role>>(p => new EntityBll<Role>(new EntityDal<Role>(p.GetRequiredService<IEntityRepository<Role>>())));
+        services.AddScoped<IEntityBll<Organization>>(p => new EntityBll<Organization>(new EntityDal<Organization>(p.GetRequiredService<IEntityRepository<Organization>>())));
         services.AddScoped<IRightsResolver, RightsResolver>();
         services.AddScoped<IRoleRightsEditor, RoleRightsEditor>();
         _services = services.BuildServiceProvider();
