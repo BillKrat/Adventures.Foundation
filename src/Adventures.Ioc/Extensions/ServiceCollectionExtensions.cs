@@ -74,7 +74,7 @@ namespace Adventures.Ioc.Extensions
                         return ex.Types.Where(t => t is not null)!;
                     }
                 })
-                .Where(type => type is { IsClass: true, IsAbstract: false })
+                .Where(type => type is { IsClass: true, IsAbstract: false } && !Attribute.IsDefined(type, typeof(Adventures.Ioc.Interfaces.ExcludeFromLifetimeScanAttribute), inherit: false))
                 .Select(type => type!);
 
             var registrations = new List<(Type ImplementationType, Type InterfaceType, ServiceLifetime Lifetime)>();
