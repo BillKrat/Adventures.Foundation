@@ -25,7 +25,12 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
     private readonly Func<EntitySchema, TEntity> _entityFactory;
     private readonly Func<Guid> _quadIdFactory;
     private readonly Func<DateTimeOffset> _clock;
+    private readonly IGraphScope? _scope;
 
+    /// <param name="scope">
+    /// Null for a type shared by every tenant. When given, this repository reads and writes only the current tenant's graph (see
+    /// <see cref="GraphScopes"/>): the one place the wall between tenants is enforced.
+    /// </param>
     public NQuadEntityRepository(
         INQuadStore store,
         EntitySchema schema,
@@ -34,8 +39,11 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
         string graph,
         Func<EntitySchema, TEntity> entityFactory,
         Func<Guid>? quadIdFactory = null,
-        Func<DateTimeOffset>? clock = null)
+        Func<DateTimeOffset>? clock = null,
+        IGraphScope? scope = null)
     {
+        _scope = scope;
+        GraphScopes.Validate(scope?.TenantKey);
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _schema = schema ?? throw new ArgumentNullException(nameof(schema));
         _baseIri = string.IsNullOrWhiteSpace(baseIri)
@@ -53,6 +61,23 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
     }
 
     private static string IdPropertyName => DynamicEntity.EntityIdPropertyName;
+
+    private string? TenantKey => GraphScopes.Validate(_scope?.TenantKey);
+
+    /// <summary>The graph every write of this request goes to.</summary>
+    private string WriteGraph => GraphScopes.GraphFor(_graph, TenantKey);
+
+    /// <summary>Drops what the current tenant may not see. Every store read in this class passes through here.</summary>
+    private IReadOnlyList<NQuad> Visible(IReadOnlyList<NQuad> quads)
+    {
+        if (_scope is null)
+        {
+            return quads;
+        }
+
+        var key = TenantKey;
+        return quads.Where(q => GraphScopes.Visible(q, _graph, key)).ToList();
+    }
 
     public async Task<TEntity> CreateAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
@@ -106,7 +131,7 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
         foreach (var value in values)
         {
             var quadId = _quadIdFactory();
-            quads.Add(new NQuad(quadId, subject, field.Predicate, ApplyPrefix(field, FormatValue(value.Value)), _graph));
+            quads.Add(new NQuad(quadId, subject, field.Predicate, ApplyPrefix(field, FormatValue(value.Value)), WriteGraph));
             persisted.Add(new FieldValue(new EntityId(quadId.ToString()), value.Value));
         }
 
@@ -123,7 +148,7 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
     {
         ValidateEntityId(entityId);
         var subject = ToSubject(entityId);
-        var quads = await _store.QueryAsync(subject: subject, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var quads = Visible(await _store.QueryAsync(subject: subject, cancellationToken: cancellationToken).ConfigureAwait(false));
         if (quads.Count == 0)
         {
             return null;
@@ -140,7 +165,7 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
 
     public async Task<IReadOnlyList<TEntity>> ListAsync(bool includeDeleted = false, CancellationToken cancellationToken = default)
     {
-        var typeQuads = await _store.QueryAsync(predicate: RdfTypePredicate, @object: _typeIri, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var typeQuads = Visible(await _store.QueryAsync(predicate: RdfTypePredicate, @object: _typeIri, cancellationToken: cancellationToken).ConfigureAwait(false));
         var entityIds = typeQuads
             .Where(q => q.Subject.StartsWith(_baseIri, StringComparison.Ordinal))
             .Select(q => q.Subject[_baseIri.Length..])
@@ -152,7 +177,7 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
 
     public async Task<int> CountAsync(bool includeDeleted = false, CancellationToken cancellationToken = default)
     {
-        var typeQuads = await _store.QueryAsync(predicate: RdfTypePredicate, @object: _typeIri, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var typeQuads = Visible(await _store.QueryAsync(predicate: RdfTypePredicate, @object: _typeIri, cancellationToken: cancellationToken).ConfigureAwait(false));
         var subjects = typeQuads
             .Select(q => q.Subject)
             .Where(subject => subject.StartsWith(_baseIri, StringComparison.Ordinal))
@@ -162,7 +187,7 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
             return subjects.Count;
         }
 
-        var tombstones = await _store.QueryAsync(predicate: EntityConstants.Lifecycle.DeletedAtPredicate, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var tombstones = Visible(await _store.QueryAsync(predicate: EntityConstants.Lifecycle.DeletedAtPredicate, cancellationToken: cancellationToken).ConfigureAwait(false));
         subjects.ExceptWith(tombstones.Select(q => q.Subject));
         return subjects.Count;
     }
@@ -174,7 +199,7 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
         // those subjects, then the superseded markers for exactly those quads. One GetAsync per entity (the obvious
         // loop) is N+1 and, against a remote database, the difference between milliseconds and seconds.
         var subjects = entityIds.Select(ToSubject).ToArray();
-        var allQuads = await _store.QueryBySubjectsAsync(subjects, cancellationToken).ConfigureAwait(false);
+        var allQuads = Visible(await _store.QueryBySubjectsAsync(subjects, cancellationToken).ConfigureAwait(false));
         var supersededIds = await LoadSupersededIdsAsync(allQuads, cancellationToken).ConfigureAwait(false);
         var bySubject = allQuads.GroupBy(q => q.Subject, StringComparer.Ordinal).ToDictionary(g => g.Key, g => (IReadOnlyList<NQuad>)g.ToList(), StringComparer.Ordinal);
 
@@ -291,7 +316,7 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
     /// <summary>The ids (as strings) of those quads that a SupersededAt marker retires - read for exactly these quads, never the whole store.</summary>
     private async Task<HashSet<string>> LoadSupersededIdsAsync(IReadOnlyCollection<NQuad> quads, CancellationToken cancellationToken)
     {
-        var markers = await _store.QueryBySubjectsAsync(quads.Select(q => q.Id.ToString()).ToArray(), cancellationToken).ConfigureAwait(false);
+        var markers = Visible(await _store.QueryBySubjectsAsync(quads.Select(q => q.Id.ToString()).ToArray(), cancellationToken).ConfigureAwait(false));
         return markers
             .Where(m => m.Predicate == EntityConstants.Lifecycle.SupersededAtPredicate)
             .Select(m => m.Subject)
@@ -345,7 +370,7 @@ public sealed class NQuadEntityRepository<TEntity> : IEntityRepository<TEntity>
     private string ToSubject(string entityId) => _baseIri + entityId;
 
     private NQuad NewQuad(string subject, string predicate, string @object) =>
-        new(_quadIdFactory(), subject, predicate, @object, _graph);
+        new(_quadIdFactory(), subject, predicate, @object, WriteGraph);
 
     private Task InsertIfAnyAsync(IReadOnlyCollection<NQuad> quads, CancellationToken cancellationToken) =>
         quads.Count == 0 ? Task.CompletedTask : _store.InsertManyAsync(quads, cancellationToken);

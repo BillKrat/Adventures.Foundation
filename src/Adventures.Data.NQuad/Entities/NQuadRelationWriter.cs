@@ -15,7 +15,8 @@ namespace Adventures.Data.NQuad;
 public sealed class NQuadRelationWriter(
     INQuadStore store,
     IEnumerable<EntityTypeRegistration> types,
-    IEnumerable<IRelationChangeGuard> guards) : IEntityRelationWriter
+    IEnumerable<IRelationChangeGuard> guards,
+    IGraphScope? scope = null) : IEntityRelationWriter
 {
     private readonly Dictionary<string, EntityTypeRegistration> _bySchema =
         types.GroupBy(t => t.Schema.SchemaIri, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
@@ -83,7 +84,8 @@ public sealed class NQuadRelationWriter(
         if (!relation.Reverse)
         {
             await store.InsertAsync(
-                new NQuad(Guid.NewGuid(), parent.BaseIri + parentId, relation.ViaPredicate, child.BaseIri + childId, child.Graph),
+                new NQuad(Guid.NewGuid(), parent.BaseIri + parentId, relation.ViaPredicate, child.BaseIri + childId,
+                    child.TenantScoped ? GraphScopes.GraphFor(child.Graph, GraphScopes.Validate(scope?.TenantKey)) : child.Graph),
                 cancellationToken).ConfigureAwait(false);
         }
 
@@ -126,8 +128,7 @@ public sealed class NQuadRelationWriter(
         return (relation, parent, child);
     }
 
-    private NQuadEntityRepository<DynamicRecord> Repository(EntityTypeRegistration type) =>
-        new(store, type.Schema, type.BaseIri, type.TypeIri, type.Graph, schema => new DynamicRecord(schema));
+    private NQuadEntityRepository<DynamicRecord> Repository(EntityTypeRegistration type) => type.CreateRepository(store, scope);
 
     /// <summary>The current children of one parent (the same indexed lookup the provider uses), tombstoned ones excluded.</summary>
     private async Task<IReadOnlyList<DynamicRecord>> ChildrenAsync(
@@ -157,7 +158,7 @@ public sealed class NQuadRelationWriter(
 /// tenant is refused. This guards the role DATA; what an administrator may do on the API is still decided by the identity
 /// roles in the token until the identity store moves onto these assignments.
 /// </summary>
-public sealed class LastTenantAdministratorGuard(INQuadStore store, IEnumerable<EntityTypeRegistration> types) : IRelationChangeGuard
+public sealed class LastTenantAdministratorGuard(INQuadStore store, IEnumerable<EntityTypeRegistration> types, IGraphScope? scope = null) : IRelationChangeGuard
 {
     public const string AdminRoleName = "Admin";
 
@@ -178,16 +179,14 @@ public sealed class LastTenantAdministratorGuard(INQuadStore store, IEnumerable<
             return;
         }
 
-        var role = await new NQuadEntityRepository<DynamicRecord>(
-                store, roleType.Schema, roleType.BaseIri, roleType.TypeIri, roleType.Graph, s => new DynamicRecord(s))
+        var role = await roleType.CreateRepository(store, scope)
             .GetAsync(roleId, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (role?.GetValue("Name") as string != AdminRoleName)
         {
             return;
         }
 
-        var others = (await new NQuadEntityRepository<DynamicRecord>(
-                store, assignmentType.Schema, assignmentType.BaseIri, assignmentType.TypeIri, assignmentType.Graph, s => new DynamicRecord(s))
+        var others = (await assignmentType.CreateRepository(store, scope)
             .ListAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
             .Count(a => a.EntityId?.Value != change.ChildId
                 && string.Equals(a.GetValue("Role") as string, roleId, StringComparison.Ordinal)
@@ -204,7 +203,7 @@ public sealed class LastTenantAdministratorGuard(INQuadStore store, IEnumerable<
 /// are using, and a mistaken click is hard to undo without another administrator. Another administrator can still remove it, and the
 /// last-administrator guard still protects the tenant. Threat addressed: accidental self-lockout from role administration.
 /// </summary>
-public sealed class SelfLockoutGuard(INQuadStore store, IEnumerable<EntityTypeRegistration> types) : IRelationChangeGuard
+public sealed class SelfLockoutGuard(INQuadStore store, IEnumerable<EntityTypeRegistration> types, IGraphScope? scope = null) : IRelationChangeGuard
 {
     public Task CheckAddAsync(RelationChange change, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
@@ -237,8 +236,7 @@ public sealed class SelfLockoutGuard(INQuadStore store, IEnumerable<EntityTypeRe
         }
     }
 
-    private NQuadEntityRepository<DynamicRecord> Repository(EntityTypeRegistration type) =>
-        new(store, type.Schema, type.BaseIri, type.TypeIri, type.Graph, s => new DynamicRecord(s));
+    private NQuadEntityRepository<DynamicRecord> Repository(EntityTypeRegistration type) => type.CreateRepository(store, scope);
 }
 
 public static class NQuadRelationWriterServiceCollectionExtensions

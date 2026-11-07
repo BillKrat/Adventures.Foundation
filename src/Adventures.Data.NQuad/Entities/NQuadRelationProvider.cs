@@ -5,7 +5,14 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Adventures.Data.NQuad;
 
 /// <summary>Where one entity type lives in the store: its schema, the IRI its ids hang under, its type IRI and graph. One is registered per entity type by <see cref="NQuadEntityServiceCollectionExtensions.AddNQuadEntityRepository{TEntity}"/>.</summary>
-public sealed record EntityTypeRegistration(EntitySchema Schema, string BaseIri, string TypeIri, string Graph);
+public sealed record EntityTypeRegistration(EntitySchema Schema, string BaseIri, string TypeIri, string Graph, bool TenantScoped = false)
+{
+    /// <summary>A repository over this type for code that works from registrations (relations, guards, the browser), honouring the tenant scope so none of them can step round the wall.</summary>
+    public NQuadEntityRepository<DynamicRecord> CreateRepository(INQuadStore store, IGraphScope? scope) =>
+        TenantScoped && scope is null
+            ? throw new InvalidOperationException($"'{Schema.SchemaIri}' is tenant-scoped but no IGraphScope was supplied.")
+            : new(store, Schema, BaseIri, TypeIri, Graph, s => new DynamicRecord(s), scope: TenantScoped ? scope : null);
+}
 
 /// <summary>
 /// Reads the child collections a schema declares, straight from the N-Quad store: one indexed lookup for the links
@@ -13,7 +20,7 @@ public sealed record EntityTypeRegistration(EntitySchema Schema, string BaseIri,
 /// so a grid shows a name rather than an id. It needs no class per entity type: it reads every schema through
 /// <see cref="DynamicRecord"/> using the registrations the host already made.
 /// </summary>
-public sealed class NQuadRelationProvider(INQuadStore store, IEnumerable<EntityTypeRegistration> types, IEnumerable<IRelationNameSource>? nameSources = null) : IEntityRelationProvider
+public sealed class NQuadRelationProvider(INQuadStore store, IEnumerable<EntityTypeRegistration> types, IEnumerable<IRelationNameSource>? nameSources = null, IGraphScope? scope = null) : IEntityRelationProvider
 {
     private readonly Dictionary<string, IRelationNameSource> _sources =
         (nameSources ?? []).GroupBy(s => s.SchemaIri, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Last(), StringComparer.Ordinal);
@@ -47,8 +54,7 @@ public sealed class NQuadRelationProvider(INQuadStore store, IEnumerable<EntityT
                 .Select(iri => iri[child.BaseIri.Length..])
                 .ToHashSet(StringComparer.Ordinal);
 
-            var repository = new NQuadEntityRepository<DynamicRecord>(
-                store, child.Schema, child.BaseIri, child.TypeIri, child.Graph, schema => new DynamicRecord(schema));
+            var repository = child.CreateRepository(store, scope);
             var entities = childIds.Count == 0
                 ? []
                 : (await repository.ListAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
@@ -133,8 +139,7 @@ public sealed class NQuadRelationProvider(INQuadStore store, IEnumerable<EntityT
         }
 
         var registration = _bySchema[schemaIri];
-        var repository = new NQuadEntityRepository<DynamicRecord>(
-            store, registration.Schema, registration.BaseIri, registration.TypeIri, registration.Graph, s => new DynamicRecord(s));
+        var repository = registration.CreateRepository(store, scope);
         var displayField = DisplayFieldOf(registration.Schema);
         var pointsAt = registration.Schema.Fields.TryGetValue(displayField, out var field) ? EntityFieldSchema.RefSchemaOf(field.Type) : null;
         var inner = pointsAt is not null && depth > 0 && _bySchema.ContainsKey(pointsAt)

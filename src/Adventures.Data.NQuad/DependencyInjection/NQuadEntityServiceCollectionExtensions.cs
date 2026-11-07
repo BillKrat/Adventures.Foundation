@@ -19,7 +19,8 @@ public static class NQuadEntityServiceCollectionExtensions
         string baseIri,
         string typeIri,
         string graph,
-        Func<EntitySchema, TEntity> entityFactory)
+        Func<EntitySchema, TEntity> entityFactory,
+        bool tenantScoped = false)
         where TEntity : DynamicEntity
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -28,10 +29,13 @@ public static class NQuadEntityServiceCollectionExtensions
 
         // The typed schema holder is what presenters and Blls take; a bare EntitySchema could only ever mean one schema.
         services.AddSingleton(new EntitySchemaOf<TEntity>(schema));
-        services.AddSingleton(new EntityTypeRegistration(schema, baseIri, typeIri, graph));
+        services.AddSingleton(new EntityTypeRegistration(schema, baseIri, typeIri, graph, tenantScoped));
 
+        // A tenant-scoped type requires the request's IGraphScope: with none registered resolving the repository throws, so data never falls into a shared graph by omission.
         services.AddScoped<IEntityRepository<TEntity>>(provider =>
-            new NQuadEntityRepository<TEntity>(provider.GetRequiredService<INQuadStore>(), schema, baseIri, typeIri, graph, entityFactory));
+            new NQuadEntityRepository<TEntity>(
+                provider.GetRequiredService<INQuadStore>(), schema, baseIri, typeIri, graph, entityFactory,
+                scope: tenantScoped ? provider.GetRequiredService<IGraphScope>() : null));
 
         // The Bll talks to the Dal; the default Dal uses the repository above. A host that registered its own Dal for this entity first wins.
         services.TryAddScoped<IEntityDal<TEntity>, EntityDal<TEntity>>();
