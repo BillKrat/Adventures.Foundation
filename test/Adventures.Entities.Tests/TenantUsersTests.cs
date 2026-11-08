@@ -31,7 +31,7 @@ public sealed class TenantUsersTests : IAsyncLifetime
     {
         var store = new InMemoryNQuadStore();
         var seeds = Path.Combine(AppContext.BaseDirectory, "Sql", "seed");
-        foreach (var file in new[] { "seed.nq", "seed-004-identity.nq", "seed-005-identity-required.nq", "seed-018-role-rights.nq", "seed-019-platform-role.nq" })
+        foreach (var file in new[] { "seed.nq", "seed-004-identity.nq", "seed-005-identity-required.nq", "seed-018-role-rights.nq" })
         {
             await store.SeedFromFileAsync(Path.Combine(seeds, file));
         }
@@ -54,6 +54,7 @@ public sealed class TenantUsersTests : IAsyncLifetime
         services.AddScoped<IEntityBll<Role>>(p => new EntityBll<Role>(new EntityDal<Role>(p.GetRequiredService<IEntityRepository<Role>>())));
         services.AddScoped<IEntityBll<Organization>>(p => new EntityBll<Organization>(new EntityDal<Organization>(p.GetRequiredService<IEntityRepository<Organization>>())));
         services.AddScoped<IRightsResolver, RightsResolver>();
+        services.AddNQuadPlatformAdministrators();
         _services = services.BuildServiceProvider();
     }
 

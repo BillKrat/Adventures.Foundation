@@ -25,7 +25,6 @@ public sealed class RightsTests : IAsyncLifetime
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-004-identity.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-005-identity-required.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-018-role-rights.nq"));
-        await store.SeedFromFileAsync(Path.Combine(seeds, "seed-019-platform-role.nq"));
         var quads = await store.QueryAsync();
 
         var services = new ServiceCollection();
@@ -45,6 +44,7 @@ public sealed class RightsTests : IAsyncLifetime
         services.AddScoped<IEntityBll<Role>>(p => new EntityBll<Role>(new EntityDal<Role>(p.GetRequiredService<IEntityRepository<Role>>())));
         services.AddScoped<IEntityBll<Organization>>(p => new EntityBll<Organization>(new EntityDal<Organization>(p.GetRequiredService<IEntityRepository<Organization>>())));
         services.AddScoped<IRightsResolver, RightsResolver>();
+        services.AddNQuadPlatformAdministrators();
         _services = services.BuildServiceProvider();
         _users = _services.GetRequiredService<IUserPresenter>();
         _writer = _services.GetRequiredService<IEntityRelationWriter>();
@@ -218,45 +218,5 @@ public sealed class RightsTests : IAsyncLifetime
 
         Assert.Empty(await resolver.ResolveAsync("Admin", [], string.Empty));
         Assert.Empty(await resolver.ResolveAsync("Admin", ["TenantAdmin"], string.Empty));
-    }
-
-    [Fact]
-    public async Task ThePlatformRightIsNotPartOfEverything_NoTenantRoleHoldsIt_AndOnlyThePlatformRoleDoes()
-    {
-        Assert.DoesNotContain(Rights.PlatformManage, Rights.AllNames);
-        Assert.DoesNotContain(Rights.PlatformManage, Rights.Parse("*"));
-        Assert.True(Rights.IsKnown(Rights.PlatformManage));
-        Assert.Contains(Rights.PlatformManage, Rights.Parse(Rights.PlatformManage));
-        Assert.Contains(Rights.Catalog, r => r.Name == Rights.PlatformManage);
-        foreach (var name in new[] { "Admin", "Editor", "Reviewer", "Developer" })
-        {
-            Assert.DoesNotContain(Rights.PlatformManage, Rights.Parse(await RightsTextOfAsync(name)));
-        }
-
-        Assert.Equal(Rights.PlatformManage, await RightsTextOfAsync("Platform"));
-        var resolver = _services.GetRequiredService<IRightsResolver>();
-        Assert.DoesNotContain(Rights.PlatformManage, await resolver.ResolveAsync("Admin", ["TenantAdmin"], DevMain));
-        Assert.DoesNotContain(Rights.PlatformManage, await resolver.ResolveAsync("Admin", [], DevMain));
-
-        var personId = await NewPersonAsync("test-platform");
-        await _writer.AddAsync(_userSchema, personId, "TenantRoles", Assignment(DevMain, await RoleIdAsync("Platform")));
-        Assert.Contains(Rights.PlatformManage, await resolver.ResolveAsync("test-platform", [], DevMain));
-        Assert.DoesNotContain(Rights.PlatformManage, await resolver.ResolveAsync("test-platform", [], OtherTenant));
-    }
-
-    [Fact]
-    public async Task TheLegacyAdministratorWhoIsAlsoAssignedThePlatformRoleHoldsEveryTenantRightAndThePlatformRight()
-    {
-        // Review of 2026-11-07: the shortcut for the legacy sign-in role returned early, so a Platform assignment never showed in What you can do and role edits stayed 403.
-        var resolver = _services.GetRequiredService<IRightsResolver>();
-        var admin = (await _users.GetFormByUserNameAsync("Admin"))!.Entity.EntityId;
-        Assert.DoesNotContain(Rights.PlatformManage, await resolver.ResolveAsync("Admin", ["TenantAdmin"], DevMain));
-
-        await _writer.AddAsync(_userSchema, admin, "TenantRoles", Assignment(DevMain, await RoleIdAsync("Platform")));
-
-        var rights = await resolver.ResolveAsync("Admin", ["TenantAdmin"], DevMain);
-        Assert.Contains(Rights.PlatformManage, rights);
-        Assert.True(Rights.AllNames.IsSubsetOf(rights));
-        Assert.DoesNotContain(Rights.PlatformManage, await resolver.ResolveAsync("Admin", ["TenantAdmin"], OtherTenant));
     }
 }

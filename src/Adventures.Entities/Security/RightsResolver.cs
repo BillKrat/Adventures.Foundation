@@ -23,7 +23,8 @@ public interface IRightsResolver
 
 /// <summary>Resolves rights from the role assignments edited on Admin > Users and the <c>Rights</c> of each role.</summary>
 public sealed class RightsResolver(
-    IUserBll users, IEntityBll<Role> roles, IEntityBll<Organization> organizations, IEntityRelationProvider relations, EntitySchemaOf<User> userSchema) : IRightsResolver
+    IUserBll users, IEntityBll<Role> roles, IEntityBll<Organization> organizations, IEntityRelationProvider relations, EntitySchemaOf<User> userSchema,
+    IPlatformAdministrators platformAdministrators) : IRightsResolver
 {
     public const string LegacyAdministratorRole = "TenantAdmin";
 
@@ -48,6 +49,12 @@ public sealed class RightsResolver(
         if (string.IsNullOrWhiteSpace(userName) || await users.FindByUserNameAsync(userName, cancellationToken).ConfigureAwait(false) is not { EntityId: { } id })
         {
             return granted;
+        }
+
+        // The platform right comes from the person's switch alone and counts in every tenant (never from a role: Rights.Parse drops it).
+        if (await platformAdministrators.IsAsync(id.Value, cancellationToken).ConfigureAwait(false))
+        {
+            granted.Add(Rights.PlatformManage);
         }
 
         var assignments = await relations.GetRelationsAsync(userSchema.Schema, id.Value, editable: false, cancellationToken).ConfigureAwait(false);

@@ -1,3 +1,0 @@
-<https://global-webnet.com/id/role/5d0b1b1e-6a3c-4f7e-9d3a-7c1f0a2b9e44> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://global-webnet.com/ontology/tenant#Role> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
-<https://global-webnet.com/id/role/5d0b1b1e-6a3c-4f7e-9d3a-7c1f0a2b9e44> <https://global-webnet.com/ontology/tenant#name> "Platform" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
-<https://global-webnet.com/id/role/5d0b1b1e-6a3c-4f7e-9d3a-7c1f0a2b9e44> <https://global-webnet.com/ontology/tenant#rights> "platform.manage" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .

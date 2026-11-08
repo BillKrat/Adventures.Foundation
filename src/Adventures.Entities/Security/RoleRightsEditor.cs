@@ -23,6 +23,11 @@ public sealed class RoleRightsEditor(IEntityBll<Role> roles, IUserBll users, IRi
             return null;
         }
 
+        if (rights.Contains(Rights.PlatformManage, StringComparer.Ordinal))
+        {
+            throw new BusinessRuleException("Platform administrator is a switch on the person (Admin > Users), not a right a role can hold.");
+        }
+
         var unknown = rights.Where(name => !Rights.IsKnown(name)).Distinct(StringComparer.Ordinal).ToList();
         if (unknown.Count > 0)
         {

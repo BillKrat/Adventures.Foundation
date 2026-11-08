@@ -38,7 +38,7 @@ public static class Rights
     public const string DiagnosticsRead = "diagnostics.read";
     public const string DiagnosticsAi = "diagnostics.ai";
 
-    /// <summary>The platform administrator: edits what the roles allow for every tenant. Never part of <c>*</c> or <see cref="AllNames"/>, held only by the Platform role, and resolved per tenant like any right.</summary>
+    /// <summary>The platform administrator: edits what the roles allow for every tenant. Never part of <c>*</c> or <see cref="AllNames"/> and never held by a role: it comes from the platform administrator switch on the person (<see cref="IPlatformAdministrators"/>) and counts in every tenant.</summary>
     public const string PlatformManage = "platform.manage";
 
     public static readonly IReadOnlyList<Right> Catalog =
@@ -93,7 +93,10 @@ public static class Rights
             throw new BusinessRuleException($"Unknown right: {string.Join(", ", unknown)}.");
         }
 
-        return Expand(names);
+        // The platform right belongs to a person's switch (IPlatformAdministrators), never to a role: a role that still names it (the retired Platform role) grants nothing.
+        var expanded = Expand(names).ToHashSet(StringComparer.Ordinal);
+        expanded.Remove(PlatformManage);
+        return expanded;
     }
 
     /// <summary>Adds what a right implies: an <c>.any</c> right carries its <c>.own</c> twin.</summary>
