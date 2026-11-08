@@ -1,0 +1,6 @@
+<https://schema.global-webnet.com/identity/Tenant> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/identity/Tenant/Aliases> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://schema.global-webnet.com/identity/Tenant/Aliases> <https://global-webnet.com/ontology/schema#name> "Aliases" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://schema.global-webnet.com/identity/Tenant/Aliases> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://schema.global-webnet.com/identity/Tenant/Aliases> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/tenant#aliases> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://schema.global-webnet.com/identity/Tenant/Aliases> <https://global-webnet.com/ontology/schema#order> "4" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://schema.global-webnet.com/identity/Tenant/Aliases> <https://global-webnet.com/ontology/schema#label> "Aliases" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
