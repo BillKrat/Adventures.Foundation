@@ -219,4 +219,25 @@ public sealed class RightsTests : IAsyncLifetime
         Assert.Empty(await resolver.ResolveAsync("Admin", [], string.Empty));
         Assert.Empty(await resolver.ResolveAsync("Admin", ["TenantAdmin"], string.Empty));
     }
+
+    [Fact]
+    public async Task AnAssignmentWrittenByTheNquadToolsGrantCommandIsReadLikeAnyOther()
+    {
+        // docs/Claude-nquad-tool "grant" writes these four quads straight into the store (type, tenant, role, and the user's hasTenantRole link); this pins the shape to what the app reads.
+        const string identityGraph = EntityConstants.Identity.DefaultGraph;
+        var store = _services.GetRequiredService<INQuadStore>();
+        var user = EntityConstants.User.BaseIri + (await _users.GetFormByUserNameAsync("Claude"))!.Entity.EntityId;
+        var assignment = "https://global-webnet.com/id/tenant-role/" + Guid.NewGuid();
+        await store.InsertManyAsync(
+        [
+            new NQuad(Guid.NewGuid(), assignment, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "https://global-webnet.com/ontology/tenant#TenantRoleAssignment", identityGraph),
+            new NQuad(Guid.NewGuid(), assignment, "https://global-webnet.com/ontology/tenant#tenant", EntityConstants.Identity.TenantBaseIri + DevMain, identityGraph),
+            new NQuad(Guid.NewGuid(), assignment, "https://global-webnet.com/ontology/tenant#role", EntityConstants.Identity.RoleBaseIri + await RoleIdAsync("Developer"), identityGraph),
+            new NQuad(Guid.NewGuid(), user, "https://global-webnet.com/ontology/tenant#hasTenantRole", assignment, identityGraph),
+        ]);
+        var resolver = _services.GetRequiredService<IRightsResolver>();
+
+        Assert.Contains(Rights.DiagnosticsRead, await resolver.ResolveAsync("Claude", [], DevMain));
+        Assert.DoesNotContain(Rights.DiagnosticsRead, await resolver.ResolveAsync("Claude", [], OtherTenant));
+    }
 }
