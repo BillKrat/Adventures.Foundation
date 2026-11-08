@@ -27,4 +27,7 @@ public static class TenancyExtensions
 
     /// <summary>Refuses a token signed in for another tenant. Straight after <c>UseAuthentication</c>.</summary>
     public static IApplicationBuilder UseTenantTokenCheck(this IApplicationBuilder app) => app.UseMiddleware<TenantTokenMiddleware>();
+
+    /// <summary>Lets a signed-in person act in another tenant they may work in (the <c>X-Acting-Tenant</c> header). Straight after <c>UseTenantTokenCheck</c>.</summary>
+    public static IApplicationBuilder UseActingTenant(this IApplicationBuilder app) => app.UseMiddleware<ActingTenantMiddleware>();
 }

@@ -6,6 +6,9 @@ public enum TenantMatch
     None,
     Domain,
     Fallback,
+
+    /// <summary>An authenticated person chose to act in this tenant (a tenant they belong to, or any tenant for a platform administrator); the host did not decide it.</summary>
+    Acting,
 }
 
 /// <summary>The tenant a request belongs to (when one was found) and the host it was read from.</summary>
