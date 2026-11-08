@@ -34,12 +34,17 @@ public interface IUserMembership
 /// Threat addressed: cross-tenant read and write of people.
 /// </summary>
 [Adventures.Ioc.Interfaces.ExcludeFromLifetimeScan]
-public sealed class TenantScopedUserBll(IUserBll inner, IUserMembership membership, ITenantContext tenant) : IUserBll
+public sealed class TenantScopedUserBll(IUserBll inner, IUserMembership membership, ITenantContext tenant, UserVisibility? visibility = null) : IUserBll
 {
     public Task<User?> FindByUserNameAsync(string userName, CancellationToken cancellationToken = default) => inner.FindByUserNameAsync(userName, cancellationToken);
 
     public async Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default)
     {
+        if (visibility?.SeeEveryone == true)
+        {
+            return await inner.ListAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         var members = await membership.MemberIdsAsync(tenant.TenantId, cancellationToken).ConfigureAwait(false);
         return (await inner.ListAsync(cancellationToken).ConfigureAwait(false))
             .Where(user => user.EntityId is { } id && members.Contains(id.Value))
@@ -87,6 +92,7 @@ public sealed class TenantScopedUserBll(IUserBll inner, IUserMembership membersh
     public Task<int> DeleteManyAsync(IReadOnlyCollection<string> entityIds, CancellationToken cancellationToken = default) => inner.DeleteManyAsync(entityIds, cancellationToken);
 
     private async Task<bool> IsMemberAsync(string userId, CancellationToken cancellationToken) =>
+        visibility?.SeeEveryone == true ||
         (await membership.MemberIdsAsync(tenant.TenantId, cancellationToken).ConfigureAwait(false)).Contains(userId);
 }
 
@@ -96,3 +102,13 @@ public interface ITenantUserPresenter : IUserPresenter;
 [Adventures.Ioc.Interfaces.ExcludeFromLifetimeScan]
 public sealed class TenantUserPresenter(TenantScopedUserBll bll, EntitySchemaOf<User> userSchema, IEntityRelationProvider? relations = null)
     : UserPresenter(bll, userSchema, relations), ITenantUserPresenter;
+
+/// <summary>
+/// Set by the host for one request when the caller is a platform administrator who may see people of every tenant (to find someone, such as a service account, and
+/// give them a role in the tenant being worked in). Nothing else changes: a role can still only be assigned inside the tenant being worked in, and the delete rule for a
+/// person of several tenants stands. Register it scoped. Threat addressed: cross-tenant reads stay limited to the platform right.
+/// </summary>
+public sealed class UserVisibility
+{
+    public bool SeeEveryone { get; set; }
+}

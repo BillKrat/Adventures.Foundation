@@ -140,6 +140,22 @@ public sealed class TenantUsersTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task APlatformAdministratorWhoAsksSeesEveryoneAndCanOpenAnyPerson_ButEveryoneElseStillSeesOnlyTheirTenant()
+    {
+        using var scope = _services.CreateScope();
+        var everyone = new UserVisibility { SeeEveryone = true };
+        var platform = new TenantScopedUserBll(
+            scope.ServiceProvider.GetRequiredService<IUserBll>(), scope.ServiceProvider.GetRequiredService<IUserMembership>(), new Fixed(OtherTenant), everyone);
+        var ordinary = For(OtherTenant, scope);
+        var admin = (await For(DevMain, scope).ListAsync()).First(u => (string)u.GetValue("UserName")! == "Admin");
+
+        Assert.Contains("Admin", await NamesAsync(platform));
+        Assert.NotNull(await platform.GetAsync(admin.EntityId!.Value));
+        Assert.DoesNotContain("Admin", await NamesAsync(ordinary));
+        Assert.Null(await ordinary.GetAsync(admin.EntityId!.Value));
+    }
+
+    [Fact]
     public async Task WithNoTenantNothingIsListedOrCreated()
     {
         using var scope = _services.CreateScope();
