@@ -4,6 +4,7 @@
     <Project Path="src/Adventures.Ioc/Adventures.Ioc.csproj" Id="4afade36-f01d-4eb6-a0e5-f6b57884849e" />
     <Project Path="src/Adventures.Collaboration/Adventures.Collaboration.csproj" />
     <Project Path="src/Adventures.Collaboration.WebApi/Adventures.Collaboration.WebApi.csproj" />
+    <Project Path="src/Adventures.Diagnostics.WebApi/Adventures.Diagnostics.WebApi.csproj" />
     <Project Path="src/Adventures.MEF/Adventures.MEF.csproj" />
     <Project Path="src/Adventures.Blog/Adventures.Blog.csproj" />
     <Project Path="src/Adventures.Blog.Postgres/Adventures.Blog.Postgres.csproj" />
