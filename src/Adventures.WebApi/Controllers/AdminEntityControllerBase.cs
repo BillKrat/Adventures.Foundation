@@ -1,5 +1,6 @@
 // Assessed 2026-10-24 17:37 CT (Claude): automated scan for secrets, injection and unsafe patterns - no finding in this file. See docs/artifacts/Claude-2026-10-24-security-practices-patterns-review.md (ai-research-blog).
 using Adventures.Entities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Adventures.WebApi;
@@ -77,14 +78,27 @@ public abstract class AdminEntityControllerBase<TEntity>(IEntityPresenter<TEntit
             : result;
     }
 
+    /// <summary>
+    /// A decision the route right cannot make: may this caller change (<paramref name="request"/> given) or delete (null) this particular entry? A derived
+    /// controller answers false for an entry the caller's right does not reach (own-versus-any, publishing); the base answers 403. Allowed by default.
+    /// </summary>
+    protected virtual Task<bool> MayChangeAsync(string id, EntityDataModel? request, CancellationToken cancellationToken) => Task.FromResult(true);
+
     [HttpPut("{id}")]
     public async Task<ActionResult<EntityFormModel>> Update(string id, [FromBody] EntityDataModel request, CancellationToken cancellationToken)
     {
+        if (!await MayChangeAsync(id, request, cancellationToken))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
         var result = await UpdateAsync(presenter, id, request, cancellationToken);
         return result.Result is OkObjectResult { Value: EntityFormModel updated } ? Ok(await DecorateAsync(updated, CollectionPath(id), cancellationToken)) : result;
     }
 
     [HttpDelete("{id}")]
-    public Task<IActionResult> Delete(string id, CancellationToken cancellationToken) =>
-        DeleteEntityAsync(presenter, id, cancellationToken);
+    public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken) =>
+        await MayChangeAsync(id, null, cancellationToken)
+            ? await DeleteEntityAsync(presenter, id, cancellationToken)
+            : StatusCode(StatusCodes.Status403Forbidden);
 }

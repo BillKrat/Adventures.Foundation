@@ -13,8 +13,32 @@ namespace Adventures.Blog.WebApi;
 [ApiController]
 [Route("api/pages")]
 [AdminRights(Read = Rights.PagesRead, Create = Rights.PagesEdit, Update = Rights.PagesEdit, Delete = Rights.PagesEdit)]
-public sealed class PagesController(IEntityPresenter<Page> presenter) : AdminEntityControllerBase<Page>(presenter)
+public sealed class PagesController(IEntityPresenter<Page> presenter, IRightsAuthorizer rights) : AdminEntityControllerBase<Page>(presenter)
 {
+    /// <summary>Changing whether a page is public needs <see cref="Rights.PagesPublish"/>, not just <see cref="Rights.PagesEdit"/> (S2b): the Publish eye saves through this update route.</summary>
+    protected override async Task<bool> MayChangeAsync(string id, EntityDataModel? request, CancellationToken cancellationToken)
+    {
+        if (request is null || await rights.IsAllowedAsync(User, Rights.PagesPublish, cancellationToken))
+        {
+            return true;
+        }
+
+        var stored = await presenter.GetFormAsync(id, cancellationToken);
+        return !PublishedFlagChanges(stored?.Entity.Values, request.Values);
+    }
+
+    private static bool PublishedFlagChanges(IReadOnlyDictionary<string, string?>? stored, IReadOnlyDictionary<string, string?> submitted)
+    {
+        // a request that does not name the flag leaves it alone
+        if (!submitted.TryGetValue("IsPublished", out var sent))
+        {
+            return false;
+        }
+
+        static bool On(string? value) => string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+        return On(sent) != On(stored?.GetValueOrDefault("IsPublished"));
+    }
+
     /// <summary>The id of the page with this slug, so the public reader can offer Edit and Delete to a signed-in administrator (the public API carries no ids).</summary>
     [HttpGet("by-slug/{slug}")]
     public async Task<IActionResult> BySlug(string slug, CancellationToken cancellationToken) =>
@@ -40,9 +64,26 @@ public sealed class TagsController(IEntityPresenter<Tag> presenter) : AdminEntit
 /// </summary>
 [ApiController]
 [Route("api/posts")]
-[AdminRights(Read = Rights.PostsRead, Create = Rights.PostsCreate, Update = Rights.PostsEditAny, Delete = Rights.PostsDeleteAny)]
-public sealed class PostsController(IEntityPresenter<Post> presenter, IPostBll posts, IUserPresenter users) : AdminEntityControllerBase<Post>(presenter)
+[AdminRights(Read = Rights.PostsRead, Create = Rights.PostsCreate, Update = Rights.PostsEditOwn, Delete = Rights.PostsDeleteOwn)]
+public sealed class PostsController(IEntityPresenter<Post> presenter, IPostBll posts, IUserPresenter users, IRightsAuthorizer rights) : AdminEntityControllerBase<Post>(presenter)
 {
+    /// <summary>
+    /// Own-versus-any (S2b): the route lets in anyone holding the ".own" right (an ".any" right implies it); the ".any" right is needed for a post someone else
+    /// wrote. Without it the stored author must be the signed-in person.
+    /// </summary>
+    protected override async Task<bool> MayChangeAsync(string id, EntityDataModel? request, CancellationToken cancellationToken)
+    {
+        if (await rights.IsAllowedAsync(User, request is null ? Rights.PostsDeleteAny : Rights.PostsEditAny, cancellationToken))
+        {
+            return true;
+        }
+
+        var stored = await presenter.GetFormAsync(id, cancellationToken);
+        var author = stored?.Entity.Values.GetValueOrDefault("Author");
+        var me = User.Identity?.Name is { Length: > 0 } name ? await users.GetFormByUserNameAsync(name, cancellationToken) : null;
+        return !string.IsNullOrEmpty(author) && me is not null && string.Equals(author, me.Entity.EntityId, StringComparison.Ordinal);
+    }
+
     /// <summary>The signed-in user is the author unless the form names one.</summary>
     protected override async Task<EntityDataModel> PrepareForCreateAsync(EntityDataModel request, CancellationToken cancellationToken)
     {
