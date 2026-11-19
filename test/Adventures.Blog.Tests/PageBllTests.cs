@@ -155,4 +155,21 @@ public sealed class PageBllTests : IAsyncLifetime
         Assert.Equal(["Angular", "Article"], all.Select(o => o.Text));
         Assert.Equal(["Angular"], withoutSelf.Select(o => o.Text));
     }
+
+    [Fact]
+    public async Task ThePageFormShowsTitleThenContent_AndTheRestKeepTheirSequence()
+    {
+        var presenter = ActivatorUtilities.CreateInstance<PagePresenter>(_services);
+        var schema = _services.GetRequiredService<EntitySchemaOf<Page>>().Schema;
+        var rest = schema.Fields.Values.Where(f => f.Name is not ("Title" or "Content")).OrderBy(f => f.Order ?? int.MaxValue).Select(f => f.Name).ToList();
+
+        var blank = (await presenter.GetNewFormAsync())!.Schema.Fields.Select(f => f.Name).ToList();
+        var saved = (await presenter.CreateAsync(new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["Title"] = "Order check" }))).Schema.Fields.Select(f => f.Name).ToList();
+
+        foreach (var names in new[] { blank, saved })
+        {
+            Assert.Equal(["Title", "Content"], names.Take(2));
+            Assert.Equal(rest, names.Skip(2));
+        }
+    }
 }

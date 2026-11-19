@@ -24,6 +24,28 @@ public class EntityPresenter<TEntity>(
     /// <summary>Field names this presenter makes read-only on top of what the schema declares (for example a login name that must not change). The server refuses a change to them on update; the client only renders them as read-only.</summary>
     protected virtual IReadOnlySet<string> ReadOnlyFields { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Field names a form shows first, in this order, ahead of the rest (which keep the order the schema gives them). The schema order is stored data that a
+    /// named seed cannot supersede, so a presentation preference lives here and needs no data change.
+    /// </summary>
+    protected virtual IReadOnlyList<string> LeadingFields { get; } = [];
+
+    /// <summary>Puts the <see cref="LeadingFields"/> first and renumbers the field order to match, so a client that sorts by order and one that keeps the array agree.</summary>
+    protected EntityFormModel Arranged(EntityFormModel form)
+    {
+        if (LeadingFields.Count == 0)
+        {
+            return form;
+        }
+
+        var lead = LeadingFields
+            .Select(name => form.Schema.Fields.FirstOrDefault(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+            .Where(f => f is not null)
+            .Select(f => f!)
+            .ToList();
+        var fields = lead.Concat(form.Schema.Fields.Where(f => !lead.Contains(f))).Select((f, position) => f with { Order = position }).ToArray();
+        return form with { Schema = form.Schema with { Fields = fields } };
+    }
     /// <summary>Fields only the server sets, through its own actions (a post publish state): a client may not send a different value on create or update, so the generic form cannot do what an action is guarded for.</summary>
     protected virtual IReadOnlySet<string> ServerManagedFields { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -45,7 +67,7 @@ public class EntityPresenter<TEntity>(
     public async Task<EntityFormModel?> GetFormAsync(string id, CancellationToken cancellationToken = default)
     {
         var entity = await Bll.GetAsync(id, cancellationToken).ConfigureAwait(false);
-        return entity is null ? null : await WithRelationsAsync(EntityFormModel.From(Schema, entity, PermissionsFor(entity), ReadOnlyFields), PermissionsFor(entity).CanUpdate, cancellationToken).ConfigureAwait(false);
+        return entity is null ? null : await WithRelationsAsync(Arranged(EntityFormModel.From(Schema, entity, PermissionsFor(entity), ReadOnlyFields)), PermissionsFor(entity).CanUpdate, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Adds the child collections the schema declares (when this presenter has a provider and the schema declares any).</summary>
@@ -68,7 +90,7 @@ public class EntityPresenter<TEntity>(
     }
 
     public virtual Task<EntityFormModel?> GetNewFormAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(CanCreate ? EntityFormModel.Blank(Schema, EntityPermissions.Full, ReadOnlyFields) : null);
+        Task.FromResult(CanCreate ? Arranged(EntityFormModel.Blank(Schema, EntityPermissions.Full, ReadOnlyFields)) : null);
 
     public async Task<IReadOnlyList<EntityDataModel>> ListAsync(CancellationToken cancellationToken = default)
     {
@@ -112,7 +134,7 @@ public class EntityPresenter<TEntity>(
         var newId = Guid.NewGuid().ToString();
         var entity = ApplyValues(EntityFactory(Schema), data, newId);
         var created = await Bll.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
-        return await WithRelationsAsync(EntityFormModel.From(Schema, created, PermissionsFor(created), ReadOnlyFields), PermissionsFor(created).CanUpdate, cancellationToken).ConfigureAwait(false);
+        return await WithRelationsAsync(Arranged(EntityFormModel.From(Schema, created, PermissionsFor(created), ReadOnlyFields)), PermissionsFor(created).CanUpdate, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<EntityFormModel?> UpdateAsync(string id, EntityDataModel data, CancellationToken cancellationToken = default)
@@ -131,7 +153,7 @@ public class EntityPresenter<TEntity>(
         RejectReadOnlyChanges(existing, data);
         ApplyValues(existing, data, entityId: null);
         await Bll.UpdateAsync(existing, cancellationToken).ConfigureAwait(false);
-        return await WithRelationsAsync(EntityFormModel.From(Schema, existing, PermissionsFor(existing), ReadOnlyFields), PermissionsFor(existing).CanUpdate, cancellationToken).ConfigureAwait(false);
+        return await WithRelationsAsync(Arranged(EntityFormModel.From(Schema, existing, PermissionsFor(existing), ReadOnlyFields)), PermissionsFor(existing).CanUpdate, cancellationToken).ConfigureAwait(false);
     }
 
     public Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default) =>

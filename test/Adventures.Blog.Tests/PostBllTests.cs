@@ -256,4 +256,20 @@ public sealed class PostBllTests : IAsyncLifetime
         var options = await _services.GetRequiredService<IEntityRelationProvider>().GetOptionsAsync(BlogConstants.Content.CategorySchemaIri);
         Assert.Equal(["Angular"], options.Select(o => o.Text));
     }
+
+    [Fact]
+    public async Task TheFormShowsTitleThenContent_AndTheRestKeepTheirSequence()
+    {
+        var schema = _services.GetRequiredService<EntitySchemaOf<Post>>().Schema;
+        var rest = schema.Fields.Values.Where(f => f.Name is not ("Title" or "Content")).OrderBy(f => f.Order ?? int.MaxValue).Select(f => f.Name).ToList();
+
+        var blank = (await _posts.GetNewFormAsync())!.Schema.Fields.Select(f => f.Name).ToList();
+        var saved = (await _posts.CreateAsync(Data(("Title", "Order check")))).Schema.Fields.Select(f => f.Name).ToList();
+
+        foreach (var names in new[] { blank, saved })
+        {
+            Assert.Equal(["Title", "Content"], names.Take(2));
+            Assert.Equal(rest, names.Skip(2));
+        }
+    }
 }
