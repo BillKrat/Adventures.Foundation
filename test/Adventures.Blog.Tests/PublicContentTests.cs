@@ -1,4 +1,5 @@
 // Assessed 2026-10-24 17:37 CT (Claude): automated scan for secrets, injection and unsafe patterns - no finding in this file. See docs/artifacts/Claude-2026-10-24-security-practices-patterns-review.md (ai-research-blog).
+using Adventures.Common.Exceptions;
 using Adventures.Data.NQuad;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -22,7 +23,7 @@ public sealed class PublicContentTests : IAsyncLifetime
     {
         var store = new InMemoryNQuadStore();
         var seeds = Path.Combine(AppContext.BaseDirectory, "Sql", "seed");
-        foreach (var file in new[] { "seed.nq", "seed-006-content.nq", "seed-007-post-taxonomy.nq", "seed-008-post-revision.nq", "seed-013-post-approval.nq" })
+        foreach (var file in new[] { "seed.nq", "seed-006-content.nq", "seed-007-post-taxonomy.nq", "seed-008-post-revision.nq", "seed-013-post-approval.nq", "seed-022-content-format.nq" })
         {
             await store.SeedFromFileAsync(Path.Combine(seeds, file));
         }
@@ -66,6 +67,59 @@ public sealed class PublicContentTests : IAsyncLifetime
         var draft = await _authoring.CreateDraftAsync("Claude", new DraftPost(title, Content: content, Categories: categories, Tags: tags));
         await _postBll.PublishAsync(draft.Id);
         return draft.Id;
+    }
+
+    [Fact]
+    public async Task APostSaysHowItIsWritten_AnAiPostIsMarkdownAndAPersonPostIsHtml()
+    {
+        var ai = await PublishedPostAsync("By an AI", content: "## Markdown");
+        var made = await _services.GetRequiredService<IEntityPresenter<Post>>().CreateAsync(new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["Title"] = "By a person", ["Content"] = "<p>Word-like</p>" }));
+        await _postBll.PublishAsync(made.Entity.EntityId);
+
+        Assert.Equal("Markdown", (await _public.GetPostAsync("by-an-ai"))!.ContentFormat);
+        var html = (await _public.GetPostAsync("by-a-person"))!;
+        Assert.Equal("Html", html.ContentFormat);
+        Assert.Contains("<p>Word-like</p>", html.Content);
+        Assert.NotNull(ai);
+    }
+
+    [Fact]
+    public async Task HtmlIsCleanedAgainWhenItIsServed_EvenIfUnsafeMarkupGotIntoTheStoreByAnotherRoute()
+    {
+        var repository = _services.GetRequiredService<IEntityRepository<Post>>();
+        var post = new Post(_services.GetRequiredService<EntitySchemaOf<Post>>().Schema);
+        void Put(string name, object value) => post.Set(name, Guid.NewGuid().ToString(), value);
+        Put("Id", Guid.NewGuid());
+        Put("Title", "Raw");
+        Put("Slug", "raw");
+        Put("Content", "<p>fine</p><script>alert(1)</script><img src=x onerror=alert(1)>");
+        Put("ContentFormat", "Html");
+        Put("IsPublished", true);
+        Put("DatePublished", DateTimeOffset.UtcNow);
+        await repository.CreateAsync(post);
+
+        var served = (await _public.GetPostAsync("raw"))!;
+
+        Assert.Contains("<p>fine</p>", served.Content);
+        Assert.DoesNotContain("script", served.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("onerror", served.Content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AnAiCannotProposeAMarkdownRevisionOfAPostWrittenInTheVisualEditor()
+    {
+        var made = await _services.GetRequiredService<IEntityPresenter<Post>>().CreateAsync(new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["Title"] = "Visual post", ["Content"] = "<p>x</p>" }));
+        await _postBll.PublishAsync(made.Entity.EntityId);
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _authoring.ProposeRevisionAsync("Claude", made.Entity.EntityId, new DraftPost("Visual post", Content: "## markdown")));
+    }
+
+    [Fact]
+    public async Task AMarkdownPostIsServedAsWritten_ItIsTheReaderThatSanitisesIt()
+    {
+        await PublishedPostAsync("Md post", content: "text with <b>html</b>");
+
+        Assert.Equal("text with <b>html</b>", (await _public.GetPostAsync("md-post"))!.Content);
     }
 
     private async Task<string> PageAsync(string title, bool published = true, bool show = true, string? parent = null, int order = 0, bool front = false)

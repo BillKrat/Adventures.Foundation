@@ -10,7 +10,11 @@ public sealed class PostPresenter(IPostBll bll, EntitySchemaOf<Post> schema, IEn
 
     protected override IReadOnlySet<string> ServerManagedFields => Managed;
 
-    protected override IReadOnlySet<string> ReadOnlyFields => Managed;
+    private static readonly HashSet<string> ReadOnly = new(["IsPublished", "RevisionOf", "Approval", "ApprovedBy", "ApprovedAt", ContentFormats.FieldName], StringComparer.OrdinalIgnoreCase);
+
+    protected override IReadOnlySet<string> ReadOnlyFields => ReadOnly;
+
+    protected override EntityDataModel PrepareCreate(EntityDataModel data) => ContentFormats.DefaultForNewForm(data, Schema);
 
     /// <summary>Newest first: a draft is dated when it is created, so the posts to review or publish are at the top of the list.</summary>
     protected override (string Field, bool Descending)? DefaultSort => ("DatePublished", true);

@@ -98,9 +98,13 @@ public class EntityPresenter<TEntity>(
     public virtual async Task<EntityGridModel> GetGridAsync(CancellationToken cancellationToken = default) =>
         EntityGridModel.From(Schema, await Bll.ListAsync(cancellationToken).ConfigureAwait(false), ReadOnlyFields, ListHiddenFields);
 
+    /// <summary>Lets a presenter fill in what a new item from the form needs before it is checked (the default is nothing).</summary>
+    protected virtual EntityDataModel PrepareCreate(EntityDataModel data) => data;
+
     public async Task<EntityFormModel> CreateAsync(EntityDataModel data, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(data);
+        data = PrepareCreate(data);
         EntityInputValidator.ThrowIfInvalid(Schema, data, isCreate: true);
         RejectServerManaged(data, isCreate: true);
         await ValidatePointersAsync(data, cancellationToken).ConfigureAwait(false);

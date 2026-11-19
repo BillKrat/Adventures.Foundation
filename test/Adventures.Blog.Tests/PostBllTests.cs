@@ -28,6 +28,7 @@ public sealed class PostBllTests : IAsyncLifetime
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-007-post-taxonomy.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-008-post-revision.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-013-post-approval.nq"));
+        await store.SeedFromFileAsync(Path.Combine(seeds, "seed-022-content-format.nq"));
         var quads = await store.QueryAsync();
 
         var services = new ServiceCollection();
@@ -115,6 +116,60 @@ public sealed class PostBllTests : IAsyncLifetime
         Assert.Equal("Changes requested", requested["Approval"]);
         Assert.True(string.IsNullOrEmpty(requested.GetValueOrDefault("ApprovedBy")));
         Assert.True(string.IsNullOrEmpty(requested.GetValueOrDefault("ApprovedAt")));
+    }
+
+    [Fact]
+    public async Task APostMadeInTheAdminIsAWordLikeHtmlPost_ButOneMadeByCodeWithNoFormatIsMarkdown()
+    {
+        var fromTheForm = await _posts.CreateAsync(Data(("Title", "Written by a person")));
+        Assert.Equal("Html", fromTheForm.Entity.Values["ContentFormat"]);
+
+        var post = new Post(_services.GetRequiredService<EntitySchemaOf<Post>>().Schema);
+        post.Set("Id", Guid.NewGuid().ToString(), Guid.NewGuid());
+        post.Set("Title", Guid.NewGuid().ToString(), "Written by an AI");
+        post.Set("Content", Guid.NewGuid().ToString(), "## Markdown");
+        var made = await _bll.CreateAsync(post);
+
+        Assert.Equal("Markdown", made.GetValue("ContentFormat"));
+        Assert.Equal("## Markdown", made.GetValue("Content"));
+    }
+
+    [Fact]
+    public async Task HtmlContentIsMadeSafeWhenItIsSaved_AndMarkdownIsLeftAsWritten()
+    {
+        var html = await _posts.CreateAsync(Data(("Title", "Html post"), ("ContentFormat", "Html"), ("Content", "<p style=\"text-align:center\">hi</p><script>alert(1)</script><img src=x onerror=alert(1)>")));
+        var markdown = await _posts.CreateAsync(Data(("Title", "Markdown post"), ("ContentFormat", "Markdown"), ("Content", "<script>kept as text for the sanitised reader</script>")));
+
+        var stored = html.Entity.Values["Content"]!;
+        Assert.Contains("text-align", stored);
+        Assert.DoesNotContain("script", stored, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("onerror", stored, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<script>", markdown.Entity.Values["Content"]);
+    }
+
+    [Fact]
+    public async Task AnUnknownFormatIsRefused_AndTheFormatCannotBeChangedLater()
+    {
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _posts.CreateAsync(Data(("Title", "Odd"), ("ContentFormat", "Rtf"))));
+
+        var created = await _posts.CreateAsync(Data(("Title", "Fixed format"), ("ContentFormat", "Html")));
+        var post = (await _bll.GetAsync(created.Entity.EntityId))!;
+        post.Set("ContentFormat", Guid.NewGuid().ToString(), "Markdown");
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _bll.UpdateAsync(post));
+    }
+
+    [Fact]
+    public async Task APostSavedAgainKeepsItsFormat_AndAnOlderPostWithNoFormatStaysMarkdown()
+    {
+        var created = await _posts.CreateAsync(Data(("Title", "Again"), ("ContentFormat", "Html"), ("Content", "<p>one</p>")));
+        var post = (await _bll.GetAsync(created.Entity.EntityId))!;
+        post.Set("Content", Guid.NewGuid().ToString(), "<p>two</p><script>x</script>");
+        await _bll.UpdateAsync(post);
+
+        var again = (await _bll.GetAsync(created.Entity.EntityId))!;
+        Assert.Equal("Html", again.GetValue("ContentFormat"));
+        Assert.DoesNotContain("script", (string)again.GetValue("Content")!, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -51,6 +51,9 @@ public static class BlogConstants
         public const string TagTypeIri = OntologyBase + "Tag";
 
         /// <summary>Seed 021 adds the VisitorComment type: what a reader writes under a post, pending until a person approves it.</summary>
+        /// <summary>Seed 022 adds ContentFormat (Markdown or Html) to Post and Page: how the Content field is written and shown. A post without it is Markdown.</summary>
+        public const string ContentFormatSeedName = "022-content-format";
+
         public const string VisitorCommentSeedName = "021-visitor-comments";
         public const string VisitorCommentSchemaIri = SchemaBase + "VisitorComment";
         public const string VisitorCommentBaseIri = IdBase + "visitor-comment/";

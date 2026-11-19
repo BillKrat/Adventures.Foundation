@@ -100,6 +100,7 @@ public sealed class ContentAuthoring(
         var authorId = await AuthorIdAsync(authorUserName, cancellationToken).ConfigureAwait(false);
         var values = await ValuesAsync(draft, cancellationToken).ConfigureAwait(false);
         values["Author"] = authorId;
+        await MarkAsMarkdownAsync(values, cancellationToken).ConfigureAwait(false); // an AI writes Markdown; only the admin form makes visual-editor (Html) posts
         var created = await posts.CreateAsync(new EntityDataModel(string.Empty, values), cancellationToken).ConfigureAwait(false);
         // a draft filed under Collaboration goes to the human for review
         if (InCollaboration(created.Entity))
@@ -163,6 +164,11 @@ public sealed class ContentAuthoring(
             throw new BusinessRuleException("This post is still a draft: change it directly instead of proposing a revision.");
         }
 
+        if (string.Equals(original.Entity.Values.GetValueOrDefault(ContentFormats.FieldName), ContentFormats.Html, StringComparison.Ordinal))
+        {
+            throw new BusinessRuleException("This post is written in the visual editor (HTML), so an AI cannot propose a Markdown revision of it. Ask the author to change it in the admin.");
+        }
+
         // start from the published post so a revision that names only the content keeps the title, description, categories and tags
         var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var field in new[] { "Title", "Content", "Description", "EnableComments", "Categories", "Tags" })
@@ -192,6 +198,7 @@ public sealed class ContentAuthoring(
         else
         {
             values["Author"] = authorId;
+            await MarkAsMarkdownAsync(values, cancellationToken).ConfigureAwait(false);
             revisionId = (await posts.CreateAsync(new EntityDataModel(string.Empty, values), cancellationToken).ConfigureAwait(false)).Entity.EntityId;
             await postBll.MarkRevisionAsync(revisionId, publishedPostId, cancellationToken).ConfigureAwait(false);
         }
@@ -226,6 +233,16 @@ public sealed class ContentAuthoring(
     {
         var form = await users.GetFormByUserNameAsync(authorUserName, cancellationToken).ConfigureAwait(false);
         return form?.Entity.EntityId ?? throw new BusinessRuleException($"The author account '{authorUserName}' does not exist.");
+    }
+
+    /// <summary>Says the new post is Markdown, when the store knows the format field (a store without it treats every post as Markdown anyway).</summary>
+    private async Task MarkAsMarkdownAsync(Dictionary<string, string?> values, CancellationToken cancellationToken)
+    {
+        var form = await posts.GetNewFormAsync(cancellationToken).ConfigureAwait(false);
+        if (form is not null && form.Schema.Fields.Any(field => string.Equals(field.Name, ContentFormats.FieldName, StringComparison.OrdinalIgnoreCase)))
+        {
+            values[ContentFormats.FieldName] = ContentFormats.Markdown;
+        }
     }
 
     private async Task<Dictionary<string, string?>> ValuesAsync(DraftPost draft, CancellationToken cancellationToken)

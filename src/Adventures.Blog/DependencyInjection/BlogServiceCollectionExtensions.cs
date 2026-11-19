@@ -33,8 +33,8 @@ public static class BlogServiceCollectionExtensions
             p.GetRequiredService<IEntityBll<Category>>(), p.GetRequiredService<EntitySchemaOf<Category>>().Schema, s => new Category(s), p.GetService<IEntityRelationProvider>()));
         services.AddScoped<IEntityPresenter<Tag>>(p => new EntityPresenter<Tag>(
             p.GetRequiredService<IEntityBll<Tag>>(), p.GetRequiredService<EntitySchemaOf<Tag>>().Schema, s => new Tag(s), p.GetService<IEntityRelationProvider>()));
-        services.AddScoped<IEntityPresenter<Page>>(p => new EntityPresenter<Page>(
-            p.GetRequiredService<IPageBll>(), p.GetRequiredService<EntitySchemaOf<Page>>().Schema, s => new Page(s), p.GetService<IEntityRelationProvider>()));
+
+        services.AddScoped<IEntityPresenter<Page>, PagePresenter>();
 
         // A conversation can hang under a post.
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IConversationTarget, PostConversationTarget>());

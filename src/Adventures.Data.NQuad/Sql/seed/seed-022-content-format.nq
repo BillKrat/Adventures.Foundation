@@ -1,0 +1,16 @@
+<https://schema.global-webnet.com/content/Post> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/content/Post/ContentFormat> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ContentFormat> <https://global-webnet.com/ontology/schema#name> "ContentFormat" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ContentFormat> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ContentFormat> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/content#contentFormat> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ContentFormat> <https://global-webnet.com/ontology/schema#order> "40" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ContentFormat> <https://global-webnet.com/ontology/schema#label> "Format" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ContentFormat> <https://global-webnet.com/ontology/schema#default> "Html" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Post/ContentFormat> <https://global-webnet.com/ontology/schema#listVisible> "false" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Page> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/content/Page/ContentFormat> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Page/ContentFormat> <https://global-webnet.com/ontology/schema#name> "ContentFormat" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Page/ContentFormat> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Page/ContentFormat> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/content#contentFormat> <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Page/ContentFormat> <https://global-webnet.com/ontology/schema#order> "40" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Page/ContentFormat> <https://global-webnet.com/ontology/schema#label> "Format" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Page/ContentFormat> <https://global-webnet.com/ontology/schema#default> "Html" <https://global-webnet.com/graph/content> .
+<https://schema.global-webnet.com/content/Page/ContentFormat> <https://global-webnet.com/ontology/schema#listVisible> "false" <https://global-webnet.com/graph/content> .

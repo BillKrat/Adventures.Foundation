@@ -14,6 +14,7 @@ public sealed class PageBll(IEntityDal<Page> pages) : EntityBll<Page>(pages), IP
     public override async Task<Page> CreateAsync(Page entity, CancellationToken cancellationToken = default)
     {
         await PrepareAsync(entity, selfId: null, storedSlug: null, cancellationToken).ConfigureAwait(false);
+        ContentFormats.Prepare(entity, storedFormat: null);
         var created = await base.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
         await ClearOtherFrontPagesAsync(created, cancellationToken).ConfigureAwait(false);
         return created;
@@ -24,6 +25,7 @@ public sealed class PageBll(IEntityDal<Page> pages) : EntityBll<Page>(pages), IP
         var id = entity.EntityId?.Value;
         var stored = id is null ? null : await GetAsync(id, cancellationToken).ConfigureAwait(false);
         await PrepareAsync(entity, id, stored?.GetValue("Slug") as string, cancellationToken).ConfigureAwait(false);
+        ContentFormats.Prepare(entity, stored is null ? null : ContentFormats.Of(stored));
         await RejectCycleAsync(entity, cancellationToken).ConfigureAwait(false);
         await base.UpdateAsync(entity, cancellationToken).ConfigureAwait(false);
         await ClearOtherFrontPagesAsync(entity, cancellationToken).ConfigureAwait(false);

@@ -10,10 +10,11 @@ public sealed record PublicPostSummary(
     string Title, string Slug, string? Description, string? DatePublished, string? Author, IReadOnlyList<string> Categories, IReadOnlyList<string> Tags, bool IsDraft = false, string? Approval = null);
 
 /// <summary>A post to read: the summary plus its Markdown content (the reader renders it).</summary>
-public sealed record PublicPost(PublicPostSummary Summary, string Content, bool EnableComments);
+/// <summary>A post to read. <paramref name="ContentFormat"/> says how <paramref name="Content"/> is written (Markdown or Html, see <see cref="ContentFormats"/>); Html is already cleaned.</summary>
+public sealed record PublicPost(PublicPostSummary Summary, string Content, bool EnableComments, string ContentFormat = ContentFormats.Markdown);
 
 /// <summary>A page to read, with its parent so the reader can show a breadcrumb; <paramref name="IsDraft"/> as for <see cref="PublicPostSummary"/>.</summary>
-public sealed record PublicPage(string Title, string Slug, string? Description, string Content, string? DatePublished, string? ParentTitle, string? ParentSlug, bool IsDraft = false);
+public sealed record PublicPage(string Title, string Slug, string? Description, string Content, string? DatePublished, string? ParentTitle, string? ParentSlug, bool IsDraft = false, string ContentFormat = ContentFormats.Markdown);
 
 /// <summary>One entry of the site menu: a page that is shown in the list, with its sub-pages, in sort order.</summary>
 public sealed record PublicMenuItem(string Title, string Slug, IReadOnlyList<PublicMenuItem> Children, bool IsDraft = false);
@@ -70,7 +71,7 @@ public sealed class PublicContent(IEntityPresenter<Post> posts, IEntityPresenter
     {
         var found = (await VisiblePostsAsync(includeDrafts, cancellationToken).ConfigureAwait(false))
             .FirstOrDefault(post => string.Equals(post.Summary.Slug, slug, StringComparison.OrdinalIgnoreCase));
-        return found is null ? null : new PublicPost(found.Summary, found.Content, found.EnableComments);
+        return found is null ? null : new PublicPost(found.Summary, found.Content, found.EnableComments, found.ContentFormat);
     }
 
     public async Task<PublicPage?> GetPageAsync(string slug, CancellationToken cancellationToken = default, bool includeDrafts = false)
@@ -113,7 +114,13 @@ public sealed class PublicContent(IEntityPresenter<Post> posts, IEntityPresenter
             .OrderByDescending(term => term.Posts).ThenBy(term => term.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-    private sealed record PostRow(PublicPostSummary Summary, string Content, bool EnableComments, IReadOnlyList<string> Categories, IReadOnlyList<string> Tags);
+    private static string FormatOf(string? stored) => string.Equals(stored, ContentFormats.Html, StringComparison.Ordinal) ? ContentFormats.Html : ContentFormats.Markdown;
+
+    /// <summary>Html is cleaned again on the way out (defence in depth: it was cleaned on the way in); Markdown is served as written and cleaned by the reader.</summary>
+    private static string ServedContent(string? content, string? format) =>
+        FormatOf(format) == ContentFormats.Html ? HtmlContent.Sanitize(content) : content ?? string.Empty;
+
+    private sealed record PostRow(PublicPostSummary Summary, string Content, bool EnableComments, IReadOnlyList<string> Categories, IReadOnlyList<string> Tags, string ContentFormat);
 
     private sealed record PageRow(string Id, PublicPage Page, string? ParentId, int SortOrder, bool ShowInList, bool IsFront);
 
@@ -139,7 +146,7 @@ public sealed class PublicContent(IEntityPresenter<Post> posts, IEntityPresenter
                     !IsTrue(row.Values.GetValueOrDefault("IsPublished")),
                     // the review state is for the administrator's view only: a visitor never learns that a post is under review
                     includeDrafts && row.Values.GetValueOrDefault("Approval") is { Length: > 0 } approval ? approval : null);
-                return new PostRow(summary, row.Values.GetValueOrDefault("Content") ?? string.Empty, IsTrue(row.Values.GetValueOrDefault("EnableComments")), categories, tags);
+                return new PostRow(summary, ServedContent(row.Values.GetValueOrDefault("Content"), row.Values.GetValueOrDefault(ContentFormats.FieldName)), IsTrue(row.Values.GetValueOrDefault("EnableComments")), categories, tags, FormatOf(row.Values.GetValueOrDefault(ContentFormats.FieldName)));
             })
             .ToList();
     }
@@ -158,11 +165,12 @@ public sealed class PublicContent(IEntityPresenter<Post> posts, IEntityPresenter
                 row.Values.GetValueOrDefault("Title") ?? string.Empty,
                 row.Values.GetValueOrDefault("Slug") ?? string.Empty,
                 row.Values.GetValueOrDefault("Description"),
-                row.Values.GetValueOrDefault("Content") ?? string.Empty,
+                ServedContent(row.Values.GetValueOrDefault("Content"), row.Values.GetValueOrDefault(ContentFormats.FieldName)),
                 row.Values.GetValueOrDefault("DatePublished"),
                 parent?.Values.GetValueOrDefault("Title"),
                 parent?.Values.GetValueOrDefault("Slug"),
-                isDraft);
+                isDraft,
+                FormatOf(row.Values.GetValueOrDefault(ContentFormats.FieldName)));
             _ = int.TryParse(row.Values.GetValueOrDefault("SortOrder"), out var order);
             // a draft page never becomes the front page, even for an administrator
             return new PageRow(row.EntityId, page, parent?.EntityId, order, IsTrue(row.Values.GetValueOrDefault("ShowInList")), !isDraft && IsTrue(row.Values.GetValueOrDefault("IsFrontPage")));
