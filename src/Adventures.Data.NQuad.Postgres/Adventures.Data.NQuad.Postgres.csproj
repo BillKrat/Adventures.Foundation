@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<TargetFramework>net10.0</TargetFramework>
+	<Nullable>enable</Nullable>
+	<ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+	<PackageId>Adventures.Data.NQuad.Postgres</PackageId>
+	<Version>0.1.0</Version>
+	<Authors>Adventures On The Edge</Authors>
+	<Description>The PostgreSQL implementation of the N-Quad store contract (INQuadStore) from Adventures.Data.NQuad.</Description>
+	<PackageLicenseExpression>BUSL-1.1</PackageLicenseExpression>
+	<RepositoryUrl>https://github.com/BillKrat/Adventures.Foundation</RepositoryUrl>
+	<PackageTags>postgres;nquads;rdf;data-access</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<PackageReference Include="Npgsql" Version="9.0.3" />
+	<PackageReference Include="Dapper" Version="2.1.35" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<ProjectReference Include="..\Adventures.Data.NQuad\Adventures.Data.NQuad.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<None Include="Sql\**\*.sql" Pack="true" PackagePath="contentFiles\any\any\Sql\%(RecursiveDir)%(Filename)%(Extension)">
+	  <PackageBuildAction>None</PackageBuildAction>
+	</None>
+  </ItemGroup>
+
+</Project>

@@ -31,6 +31,7 @@ public class DependencyRulesTests
         "Adventures.Common -> Adventures.Ioc",
         "Adventures.Data.NQuad -> Adventures.Entities",
         "Adventures.Data.NQuad -> Adventures.Entities.Identity",
+        "Adventures.Data.NQuad.Postgres -> Adventures.Data.NQuad",
         "Adventures.Data.Postgres -> Adventures.Data",
         "Adventures.Data.Sql -> Adventures.Common",
         "Adventures.Data.Sql -> Adventures.Data",
@@ -291,8 +292,17 @@ public class DependencyRulesTests
         Assert.Empty(offenders);
     }
 
+    // F3: the N-Quad store contract, in-memory store and repository carry no database driver; the Npgsql store lives in Adventures.Data.NQuad.Postgres.
+    [Fact]
+    public void The_nquad_store_project_has_no_database_driver_and_the_postgres_store_has_its_own_project()
+    {
+        Assert.Empty(Graph.Projects["Adventures.Data.NQuad"].PackageReferences.Where(p => p is "Npgsql" or "Dapper"));
+        Assert.False(File.Exists(Path.Combine(Graph.Projects["Adventures.Data.NQuad"].Directory, "Store", "NpgsqlNQuadStore.cs")));
+        Assert.Contains("Adventures.Data.NQuad", Graph.Projects["Adventures.Data.NQuad.Postgres"].ProjectReferences);
+    }
+
     private static bool IsStore(string project) =>
-        project is "Adventures.Data.NQuad" or "Adventures.Data.Postgres" or "Adventures.Data.Sql" or "Adventures.Blog.Postgres" or "Adventures.Identity.Postgres" or "Adventures.Blog.Legacy";
+        project is "Adventures.Data.NQuad" or "Adventures.Data.NQuad.Postgres" or "Adventures.Data.Postgres" or "Adventures.Data.Sql" or "Adventures.Blog.Postgres" or "Adventures.Identity.Postgres" or "Adventures.Blog.Legacy";
 
     private static IEnumerable<(string From, string To)> Edges(params string[] from) =>
         from.Where(Graph.Projects.ContainsKey)
