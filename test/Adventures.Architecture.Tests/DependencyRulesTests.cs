@@ -278,6 +278,19 @@ public class DependencyRulesTests
         Assert.Equal(["Adventures.Common", "Adventures.Entities"], Graph.Projects["Adventures.Entities.Diagnostics"].ProjectReferences.Order().ToArray());
     }
 
+    // F3 (pre-beta structure review): the store project holds the store, the repository and the relation machinery, not the rules about who may be an
+    // administrator. A relation guard is a business rule, so it lives in the identity layer and reads through IEntityRecords, never the store.
+    [Fact]
+    public void The_store_project_declares_no_relation_guard()
+    {
+        var offenders = Directory.GetFiles(Graph.Projects["Adventures.Data.NQuad"].Directory, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar) && !f.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar))
+            .Where(f => File.ReadAllText(f).Contains(": IRelationChangeGuard", StringComparison.Ordinal))
+            .Select(Path.GetFileName)
+            .Order();
+        Assert.Empty(offenders);
+    }
+
     private static bool IsStore(string project) =>
         project is "Adventures.Data.NQuad" or "Adventures.Data.Postgres" or "Adventures.Data.Sql" or "Adventures.Blog.Postgres" or "Adventures.Identity.Postgres" or "Adventures.Blog.Legacy";
 

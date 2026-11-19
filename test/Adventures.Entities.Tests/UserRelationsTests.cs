@@ -38,6 +38,7 @@ public sealed class UserRelationsTests : IAsyncLifetime
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.OrganizationRoleSchemaIri), IdentityConstants.OrganizationRoleBaseIri, IdentityConstants.OrganizationRoleTypeIri, graph, s => new OrganizationRoleAssignment(s));
         services.AddNQuadRelations();
         services.AddNQuadRelationWriter();
+        services.AddIdentityRelationGuards();
         services.AddScoped<IUserBll, UserBll>();
         services.AddScoped<IUserPresenter, UserPresenter>();
         _services = services.BuildServiceProvider();

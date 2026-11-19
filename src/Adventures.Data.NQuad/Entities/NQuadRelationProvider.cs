@@ -185,5 +185,5 @@ public static class NQuadRelationServiceCollectionExtensions
 {
     /// <summary>Registers the N-Quad <see cref="IEntityRelationProvider"/>, so presenters show the child collections their schemas declare.</summary>
     public static IServiceCollection AddNQuadRelations(this IServiceCollection services) =>
-        services.AddScoped<IEntityRelationProvider, NQuadRelationProvider>();
+        services.AddScoped<IEntityRelationProvider, NQuadRelationProvider>().AddScoped<IEntityRecords, NQuadEntityRecords>();
 }

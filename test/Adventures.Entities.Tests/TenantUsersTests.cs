@@ -49,6 +49,7 @@ public sealed class TenantUsersTests : IAsyncLifetime
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.OrganizationRoleSchemaIri), IdentityConstants.OrganizationRoleBaseIri, IdentityConstants.OrganizationRoleTypeIri, graph, s => new OrganizationRoleAssignment(s));
         services.AddNQuadRelations();
         services.AddNQuadRelationWriter();
+        services.AddIdentityRelationGuards();
         services.AddNQuadUserMembership();
         services.AddScoped<IUserBll, UserBll>();
         services.AddScoped<IEntityBll<Role>>(p => new EntityBll<Role>(new EntityDal<Role>(p.GetRequiredService<IEntityRepository<Role>>())));

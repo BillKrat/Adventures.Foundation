@@ -60,6 +60,19 @@ public interface IEntityRelationWriter
         EntitySchema parentSchema, string parentId, string relationName, string childId, string? actingUserName = null, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Reads entities of any schema by schema IRI, tenant-scoped like every other read, for rules that must look at related entities (a relation guard) without
+/// naming a store. The store project implements it; the rules live with the model they protect.
+/// </summary>
+public interface IEntityRecords
+{
+    /// <summary>The live entity with this id under the schema, or null when there is none (or the schema is not registered).</summary>
+    Task<DynamicRecord?> GetAsync(string schemaIri, string id, CancellationToken cancellationToken = default);
+
+    /// <summary>Every live entity under the schema (empty when the schema is not registered).</summary>
+    Task<IReadOnlyList<DynamicRecord>> ListAsync(string schemaIri, CancellationToken cancellationToken = default);
+}
+
 /// <summary>An entity of any schema, for code that reads entities generically (the relation provider) without a class per type.</summary>
 public sealed class DynamicRecord(EntitySchema schema) : DynamicEntity(schema);
 
