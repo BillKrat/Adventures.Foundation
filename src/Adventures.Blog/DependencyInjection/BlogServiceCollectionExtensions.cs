@@ -39,6 +39,7 @@ public static class BlogServiceCollectionExtensions
         // A conversation can hang under a post.
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IConversationTarget, PostConversationTarget>());
         services.AddScoped<CollaborationMigration>();
+        services.AddScoped<ICollaborationMigration>(sp => sp.GetRequiredService<CollaborationMigration>());
         return services;
     }
 }

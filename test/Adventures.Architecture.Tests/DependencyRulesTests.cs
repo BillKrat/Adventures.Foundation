@@ -28,6 +28,11 @@ public class DependencyRulesTests
         "Adventures.Collaboration -> Adventures.Entities",
         "Adventures.Collaboration -> Adventures.Entities.Identity",
         "Adventures.Collaboration -> Adventures.MEF",
+        "Adventures.Collaboration.WebApi -> Adventures.Collaboration",
+        "Adventures.Collaboration.WebApi -> Adventures.Entities.Identity",
+        "Adventures.Collaboration.WebApi -> Adventures.MEF",
+        "Adventures.Collaboration.WebApi -> Adventures.Security",
+        "Adventures.Collaboration.WebApi -> Adventures.WebApi",
         "Adventures.Common -> Adventures.Ioc",
         "Adventures.Data.NQuad -> Adventures.Entities",
         "Adventures.Data.NQuad -> Adventures.Entities.Identity",
@@ -178,14 +183,14 @@ public class DependencyRulesTests
         Assert.Equal(["Adventures.Blog.Legacy", "Adventures.Blog.Postgres", "Adventures.Blog.WebApi"], referrers);
     }
 
-    // S4: Collaboration builds on Entities and the plug-in seam only (no Blog, no store, no host); the plug-in seam builds on Entities only; only the Blog stack builds on Collaboration.
+    // S4: Collaboration builds on Entities and the plug-in seam only (no Blog, no store, no host); the plug-in seam builds on Entities only; only the Blog stack and the collaboration controllers build on Collaboration.
     [Fact]
     public void Collaboration_and_the_plugin_seam_reference_only_their_layer()
     {
         Assert.Equal(["Adventures.Entities", "Adventures.Entities.Identity", "Adventures.MEF"], Graph.Projects["Adventures.Collaboration"].ProjectReferences);
         Assert.Equal(["Adventures.Entities"], Graph.Projects["Adventures.MEF"].ProjectReferences);
         var referrers = Graph.Projects.Values.Where(p => p.ProjectReferences.Contains("Adventures.Collaboration")).Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal);
-        Assert.Equal(["Adventures.Blog"], referrers);
+        Assert.Equal(["Adventures.Blog", "Adventures.Collaboration.WebApi"], referrers);
     }
 
     // S9: the desktop client library talks to the API through the Entities contract and the Security core only. No host framework, no store, no UI

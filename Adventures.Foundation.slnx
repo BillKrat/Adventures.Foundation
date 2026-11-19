@@ -3,6 +3,7 @@
     <Project Path="src/Adventures.Common/Adventures.Common.csproj" Id="1c2babc9-0521-4459-ae72-1933b6d73161" />
     <Project Path="src/Adventures.Ioc/Adventures.Ioc.csproj" Id="4afade36-f01d-4eb6-a0e5-f6b57884849e" />
     <Project Path="src/Adventures.Collaboration/Adventures.Collaboration.csproj" />
+    <Project Path="src/Adventures.Collaboration.WebApi/Adventures.Collaboration.WebApi.csproj" />
     <Project Path="src/Adventures.MEF/Adventures.MEF.csproj" />
     <Project Path="src/Adventures.Blog/Adventures.Blog.csproj" />
     <Project Path="src/Adventures.Blog.Postgres/Adventures.Blog.Postgres.csproj" />

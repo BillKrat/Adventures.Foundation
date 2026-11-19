@@ -3,15 +3,9 @@ using Adventures.Collaboration;
 
 namespace Adventures.Blog;
 
-/// <summary>What the migration did (or, in a dry run, would do) to one post.</summary>
-public sealed record MigratedPost(string Id, string Title, string Approval, bool ItemExisted);
-
-/// <summary>The result of <see cref="CollaborationMigration.RunAsync"/>.</summary>
-public sealed record MigrationReport(bool Applied, IReadOnlyList<MigratedPost> Posts);
-
-/// <summary>Moves Collaboration-category posts into collaboration items (see <see cref="CollaborationController.Migrate"/>).</summary>
+/// <summary>Moves Collaboration-category posts into collaboration items (see <see cref="ICollaborationMigration"/>).</summary>
 public sealed class CollaborationMigration(
-    IPostBll posts, IEntityBll<Category> categories, ICollaborationBll items, EntitySchemaOf<CollaborationItem> schema)
+    IPostBll posts, IEntityBll<Category> categories, ICollaborationBll items, EntitySchemaOf<CollaborationItem> schema) : ICollaborationMigration
 {
     private static readonly string[] CopiedValues = ["Title", "Content", "Author", "Approval", "ApprovedBy", "ApprovedAt"];
 

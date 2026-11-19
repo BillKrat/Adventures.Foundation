@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<TargetFramework>net10.0</TargetFramework>
+	<Nullable>enable</Nullable>
+	<ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+	<PackageId>Adventures.Collaboration.WebApi</PackageId>
+	<Version>0.1.0</Version>
+	<Authors>Adventures On The Edge</Authors>
+	<Description>ASP.NET Core controllers for Adventures.Collaboration: collaboration items, conversations and decisions, the drafts-only authoring surface, and the plug-in switches that gate them.</Description>
+	<PackageLicenseExpression>BUSL-1.1</PackageLicenseExpression>
+	<RepositoryUrl>https://github.com/BillKrat/Adventures.Foundation</RepositoryUrl>
+	<PackageTags>collaboration;webapi;controllers</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Adventures.Collaboration\Adventures.Collaboration.csproj" />
+    <ProjectReference Include="..\Adventures.MEF\Adventures.MEF.csproj" />
+    <ProjectReference Include="..\Adventures.WebApi\Adventures.WebApi.csproj" />
+    <ProjectReference Include="..\Adventures.Security\Adventures.Security.csproj" />
+    <ProjectReference Include="..\Adventures.Entities.Identity\Adventures.Entities.Identity.csproj" />
+  </ItemGroup>
+
+</Project>
