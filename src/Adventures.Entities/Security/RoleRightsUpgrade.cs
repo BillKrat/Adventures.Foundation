@@ -12,6 +12,12 @@ public static class RoleRightsUpgrade
 
     private const string ReviewerAfter = "admin.access,posts.read,pages.read,collaboration.read,collaboration.write,collaboration.review,decisions.read";
 
+    /// <summary>The Editor as seed 018 first shipped it: before comments could be moderated.</summary>
+    private const string EditorBefore =
+        "admin.access,posts.read,posts.create,posts.edit.any,posts.delete.own,posts.publish,pages.read,pages.edit,pages.publish,taxonomy.manage,media.upload,collaboration.read,decisions.read";
+
+    private const string EditorAfter = EditorBefore + ",comments.moderate";
+
     /// <summary>Applies every default-rights upgrade; returns how many roles changed.</summary>
     public static async Task<int> ApplyAsync(IEntityDal<Role> roles, CancellationToken cancellationToken = default)
     {
@@ -22,6 +28,13 @@ public static class RoleRightsUpgrade
             if (role.GetValue("Name") is "Reviewer" && string.Equals(role.GetValue("Rights") as string, ReviewerBefore, StringComparison.Ordinal))
             {
                 role.Set("Rights", Guid.NewGuid().ToString(), ReviewerAfter);
+                await roles.UpdateAsync(role, cancellationToken).ConfigureAwait(false);
+                changed++;
+            }
+
+            if (role.GetValue("Name") is "Editor" && string.Equals(role.GetValue("Rights") as string, EditorBefore, StringComparison.Ordinal))
+            {
+                role.Set("Rights", Guid.NewGuid().ToString(), EditorAfter);
                 await roles.UpdateAsync(role, cancellationToken).ConfigureAwait(false);
                 changed++;
             }

@@ -142,6 +142,38 @@ public sealed class RightsTests : IAsyncLifetime
         Assert.DoesNotContain(Rights.CollaborationWrite, Rights.Parse(await RightsTextOfAsync("Editor")));
     }
 
+    private const string EditorBeforeComments =
+        "admin.access,posts.read,posts.create,posts.edit.any,posts.delete.own,posts.publish,pages.read,pages.edit,pages.publish,taxonomy.manage,media.upload,collaboration.read,decisions.read";
+
+    [Fact]
+    public async Task ANewInstallGivesTheEditorTheRightToModerateComments()
+    {
+        Assert.Contains(Rights.CommentsModerate, Rights.Parse(await RightsTextOfAsync("Editor")));
+        Assert.DoesNotContain(Rights.CommentsModerate, Rights.Parse(await RightsTextOfAsync("Reviewer")));
+    }
+
+    [Fact]
+    public async Task TheUpgradeGivesAnEditorWhoStillHasTheOldDefaultTheRightToModerateComments_ButNeverTouchesAnEditedEditor()
+    {
+        var roles = _services.GetRequiredService<IEntityRepository<Role>>();
+        var editor = (await roles.ListAsync()).Single(r => (string)r.GetValue("Name")! == "Editor");
+        editor.Set("Rights", Guid.NewGuid().ToString(), EditorBeforeComments);
+        await roles.UpdateAsync(editor);
+        Assert.DoesNotContain(Rights.CommentsModerate, Rights.Parse(await RightsTextOfAsync("Editor")));
+
+        await RoleRightsUpgrade.ApplyAsync(new EntityDal<Role>(roles));
+
+        var upgraded = Rights.Parse(await RightsTextOfAsync("Editor"));
+        Assert.Contains(Rights.CommentsModerate, upgraded);
+        Assert.Contains(Rights.PostsPublish, upgraded);
+
+        editor = (await roles.ListAsync()).Single(r => (string)r.GetValue("Name")! == "Editor");
+        editor.Set("Rights", Guid.NewGuid().ToString(), "admin.access,posts.read");
+        await roles.UpdateAsync(editor);
+        await RoleRightsUpgrade.ApplyAsync(new EntityDal<Role>(roles));
+        Assert.Equal("admin.access,posts.read", await RightsTextOfAsync("Editor"));
+    }
+
     [Fact]
     public async Task TheUpgradeIsRepeatable_AndNeverOverwritesRightsAnAdministratorHasEdited()
     {

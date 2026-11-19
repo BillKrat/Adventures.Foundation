@@ -18,7 +18,7 @@ public sealed class RoleMatrixTests : IAsyncLifetime
         ["Editor"] =
         [
             Rights.AdminAccess, Rights.PostsRead, Rights.PostsCreate, Rights.PostsEditAny, Rights.PostsDeleteOwn, Rights.PostsPublish,
-            Rights.PagesRead, Rights.PagesEdit, Rights.PagesPublish, Rights.TaxonomyManage, Rights.MediaUpload, Rights.CollaborationRead, Rights.DecisionsRead,
+            Rights.PagesRead, Rights.PagesEdit, Rights.PagesPublish, Rights.TaxonomyManage, Rights.MediaUpload, Rights.CollaborationRead, Rights.DecisionsRead, Rights.CommentsModerate,
         ],
         ["Reviewer"] =
         [
