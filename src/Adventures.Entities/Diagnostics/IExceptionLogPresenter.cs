@@ -13,6 +13,9 @@ public interface IExceptionLogPresenter : IEntityPresenter<ExceptionLogEntry>
     /// </summary>
     Task<EntityGridModel> GetHistoryGridAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>The occurrences of one kind of failure (an exception signature), newest first; with <paramref name="includePurged"/> the purged ones too, each marked in its State column. An unknown or empty kind has none.</summary>
+    Task<EntityGridModel> GetSignatureGridAsync(string signatureId, bool includePurged, CancellationToken cancellationToken = default);
+
     /// <summary>How many entries exist in all, purged ones included (the exception log has history worth opening).</summary>
     Task<int> CountTotalAsync(CancellationToken cancellationToken = default);
 

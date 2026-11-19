@@ -42,6 +42,17 @@ public sealed class ExceptionLogPresenter(IExceptionLogBll bll, EntitySchemaOf<E
         return new EntityGridModel(new EntitySchemaModel(grid.Schema.SchemaIri, fields), rows);
     }
 
+    public async Task<EntityGridModel> GetSignatureGridAsync(string signatureId, bool includePurged, CancellationToken cancellationToken = default)
+    {
+        var grid = includePurged
+            ? await GetHistoryGridAsync(cancellationToken).ConfigureAwait(false)
+            : await GetGridAsync(cancellationToken).ConfigureAwait(false);
+        var rows = string.IsNullOrWhiteSpace(signatureId)
+            ? []
+            : grid.Rows.Where(row => string.Equals(row.Values.GetValueOrDefault("SignatureId"), signatureId, StringComparison.Ordinal)).ToArray();
+        return grid with { Rows = rows };
+    }
+
     public Task<int> CountTotalAsync(CancellationToken cancellationToken = default) => _bll.CountIncludingPurgedAsync(cancellationToken);
 
     public Task<int> CountActiveAsync(CancellationToken cancellationToken = default) => _bll.CountActiveAsync(cancellationToken);
