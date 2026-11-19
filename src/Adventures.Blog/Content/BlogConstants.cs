@@ -1,6 +1,6 @@
 namespace Adventures.Blog;
 
-/// <summary>Seed names, graphs and IRIs of the blog content model; the seeds themselves ship in <c>Adventures.Data.NQuad</c> under <c>Sql/seed</c> until the Data split (S5).</summary>
+/// <summary>Seed names, graphs and IRIs of the blog content model; the seeds themselves ship in <c>Adventures.Blog</c> under <c>Sql/seed</c> (moved from the store project by F3) (S5).</summary>
 public static class BlogConstants
 {
     /// <summary>The site settings (title, tagline, posts per page, legacy time zone): named rows an administrator edits; defined in <c>Sql/seed/seed-011-site-settings.nq</c>.</summary>

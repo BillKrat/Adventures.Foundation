@@ -301,6 +301,17 @@ public class DependencyRulesTests
         Assert.Contains("Adventures.Data.NQuad", Graph.Projects["Adventures.Data.NQuad.Postgres"].ProjectReferences);
     }
 
+    // F3: each feature ships its own seed files (copied to Sql/seed in the output, where hosts and tests read them); the store project keeps only the base seed.
+    [Fact]
+    public void The_store_project_ships_only_the_base_seed()
+    {
+        var seeds = Directory.GetFiles(Path.Combine(Graph.Projects["Adventures.Data.NQuad"].Directory, "Sql", "seed"), "*.nq")
+            .Select(Path.GetFileName)
+            .Order()
+            .ToArray();
+        Assert.Equal(["seed.nq"], seeds);
+    }
+
     private static bool IsStore(string project) =>
         project is "Adventures.Data.NQuad" or "Adventures.Data.NQuad.Postgres" or "Adventures.Data.Postgres" or "Adventures.Data.Sql" or "Adventures.Blog.Postgres" or "Adventures.Identity.Postgres" or "Adventures.Blog.Legacy";
 

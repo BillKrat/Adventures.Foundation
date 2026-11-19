@@ -25,4 +25,11 @@
     <ProjectReference Include="..\Adventures.Entities\Adventures.Entities.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+	<None Include="Sql\**\*.nq" Pack="true" PackagePath="contentFiles\any\any\Sql\%(RecursiveDir)%(Filename)%(Extension)">
+	  <PackageBuildAction>None</PackageBuildAction>
+	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	</None>
+  </ItemGroup>
+
 </Project>
