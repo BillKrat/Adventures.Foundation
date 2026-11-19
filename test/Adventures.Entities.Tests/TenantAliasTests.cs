@@ -25,7 +25,7 @@ public sealed class TenantAliasTests : IAsyncLifetime
         var quads = await store.QueryAsync();
         var services = new ServiceCollection();
         services.AddSingleton<INQuadStore>(store);
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.TenantSchemaIri), EntityConstants.Identity.TenantBaseIri, EntityConstants.Identity.TenantTypeIri, EntityConstants.Identity.DefaultGraph, s => new Tenant(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.TenantSchemaIri), IdentityConstants.TenantBaseIri, IdentityConstants.TenantTypeIri, IdentityConstants.DefaultGraph, s => new Tenant(s));
         services.AddScoped<IEntityBll<Tenant>>(p => new EntityBll<Tenant>(new EntityDal<Tenant>(p.GetRequiredService<IEntityRepository<Tenant>>())));
         services.AddScoped<ITenantResolver, TenantResolver>();
         services.AddScoped<ITenantAliasEditor, TenantAliasEditor>();

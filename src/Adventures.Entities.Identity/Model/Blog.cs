@@ -1,5 +1,5 @@
 // Assessed 2026-10-24 17:37 CT (Claude): automated scan for secrets, injection and unsafe patterns - no finding in this file. See docs/artifacts/Claude-2026-10-24-security-practices-patterns-review.md (ai-research-blog).
 namespace Adventures.Entities;
 
-/// <summary>See <see cref="EntityConstants.Identity"/>; its schema ships in Sql/seed/seed-004-identity.nq. A blog is a tenant-owned site, so it lives with the security model, not the blog feature.</summary>
+/// <summary>See <see cref="IdentityConstants"/>; its schema ships in Sql/seed/seed-004-identity.nq. A blog is a tenant-owned site, so it lives with the security model, not the blog feature.</summary>
 public sealed class Blog(EntitySchema schema) : DynamicEntity(schema);

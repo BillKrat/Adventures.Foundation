@@ -20,8 +20,8 @@ public sealed class UserAndUserSchemaTests
         var nquadText = File.ReadAllText(seedPath);
         var quads = new NQuadFileParser().Parse(nquadText);
 
-        var schema = SchemaDal.Load(quads, EntityConstants.Schema.UserIri);
-        Assert.Equal(EntityConstants.Schema.UserIri, schema.SchemaIri);
+        var schema = SchemaDal.Load(quads, UserConstants.SchemaIri);
+        Assert.Equal(UserConstants.SchemaIri, schema.SchemaIri);
         Assert.Contains("Id", schema.Fields.Keys);
         Assert.Contains("First", schema.Fields.Keys);
         Assert.Contains("Last", schema.Fields.Keys);
@@ -47,7 +47,7 @@ public sealed class UserAndUserSchemaTests
     {
         var seedPath = Path.Combine(AppContext.BaseDirectory, "Sql", "seed", "seed.nq");
         var quads = new NQuadFileParser().Parse(File.ReadAllText(seedPath));
-        var schema = SchemaDal.Load(quads, EntityConstants.Schema.UserIri);
+        var schema = SchemaDal.Load(quads, UserConstants.SchemaIri);
 
         var users = NQuadUserAdapter.LoadUsers(quads, schema).ToArray();
 

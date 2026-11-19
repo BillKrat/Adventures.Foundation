@@ -44,7 +44,7 @@ public sealed class CollaborationTests : IAsyncLifetime
         services.AddScoped<IConversation, Conversation>();
         services.AddScoped<IConversationTarget, PostConversationTarget>();
         services.AddScoped<IConversationTarget, CollaborationConversationTarget>();
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Schema.UserIri), EntityConstants.User.BaseIri, EntityConstants.User.TypeIri, EntityConstants.User.DefaultGraph, s => new User(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, UserConstants.SchemaIri), UserConstants.BaseIri, UserConstants.TypeIri, UserConstants.DefaultGraph, s => new User(s));
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, CollaborationConstants.SchemaIri), CollaborationConstants.BaseIri, CollaborationConstants.TypeIri, CollaborationConstants.DefaultGraph, s => new CollaborationItem(s));
         services.AddNQuadRelations();
         services.AddScoped<IPostBll, PostBll>();

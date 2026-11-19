@@ -26,13 +26,19 @@ public class DependencyRulesTests
         "Adventures.Client -> Adventures.Entities",
         "Adventures.Client -> Adventures.Security",
         "Adventures.Collaboration -> Adventures.Entities",
+        "Adventures.Collaboration -> Adventures.Entities.Identity",
         "Adventures.Collaboration -> Adventures.MEF",
         "Adventures.Common -> Adventures.Ioc",
         "Adventures.Data.NQuad -> Adventures.Entities",
+        "Adventures.Data.NQuad -> Adventures.Entities.Identity",
         "Adventures.Data.Postgres -> Adventures.Data",
         "Adventures.Data.Sql -> Adventures.Common",
         "Adventures.Data.Sql -> Adventures.Data",
         "Adventures.Entities -> Adventures.Common",
+        "Adventures.Entities.Diagnostics -> Adventures.Common",
+        "Adventures.Entities.Diagnostics -> Adventures.Entities",
+        "Adventures.Entities.Identity -> Adventures.Common",
+        "Adventures.Entities.Identity -> Adventures.Entities",
         "Adventures.Identity -> Adventures.Data",
         "Adventures.Identity -> Adventures.Security",
         "Adventures.Identity.Postgres -> Adventures.Data",
@@ -40,6 +46,8 @@ public class DependencyRulesTests
         "Adventures.MEF -> Adventures.Entities",
         "Adventures.Security.AspNetCore -> Adventures.Security",
         "Adventures.WebApi -> Adventures.Entities",
+        "Adventures.WebApi -> Adventures.Entities.Diagnostics",
+        "Adventures.WebApi -> Adventures.Entities.Identity",
         "Adventures.WebApi -> Adventures.Security",
     ];
 
@@ -173,7 +181,7 @@ public class DependencyRulesTests
     [Fact]
     public void Collaboration_and_the_plugin_seam_reference_only_their_layer()
     {
-        Assert.Equal(["Adventures.Entities", "Adventures.MEF"], Graph.Projects["Adventures.Collaboration"].ProjectReferences);
+        Assert.Equal(["Adventures.Entities", "Adventures.Entities.Identity", "Adventures.MEF"], Graph.Projects["Adventures.Collaboration"].ProjectReferences);
         Assert.Equal(["Adventures.Entities"], Graph.Projects["Adventures.MEF"].ProjectReferences);
         var referrers = Graph.Projects.Values.Where(p => p.ProjectReferences.Contains("Adventures.Collaboration")).Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal);
         Assert.Equal(["Adventures.Blog"], referrers);
@@ -248,6 +256,26 @@ public class DependencyRulesTests
             .Where(f => File.ReadAllText(Path.Combine(Graph.Projects["Adventures.Entities"].Directory, f)).Contains("IEntityRepository<", StringComparison.Ordinal))
             .OrderBy(f => f, StringComparer.Ordinal);
         Assert.Empty(offenders);
+    }
+
+    // F1 (pre-beta structure review, 2026-11): Adventures.Entities is the generic entity model only. Exception-log entities live in
+    // Adventures.Entities.Diagnostics and users, roles, rights and tenants in Adventures.Entities.Identity. Both build on Entities and
+    // know nothing of each other. Their types keep the namespace Adventures.Entities (a split namespace, so no consumer changed its usings).
+    [Fact]
+    public void Entities_is_the_generic_model_with_identity_and_diagnostics_entities_in_their_own_projects()
+    {
+        var entities = Graph.Projects["Adventures.Entities"].Directory;
+        Assert.False(Directory.Exists(Path.Combine(entities, "Security")), "Identity entities belong in Adventures.Entities.Identity.");
+        Assert.False(Directory.Exists(Path.Combine(entities, "Diagnostics")), "Diagnostics entities belong in Adventures.Entities.Diagnostics.");
+
+        var constants = File.ReadAllText(Path.Combine(entities, "Core", "EntityConstants.cs"));
+        foreach (var owned in new[] { "class User", "class ExceptionLog", "class ExceptionSignatureEntity", "class Identity" })
+        {
+            Assert.DoesNotContain(owned, constants, StringComparison.Ordinal);
+        }
+
+        Assert.Equal(["Adventures.Common", "Adventures.Entities"], Graph.Projects["Adventures.Entities.Identity"].ProjectReferences.Order().ToArray());
+        Assert.Equal(["Adventures.Common", "Adventures.Entities"], Graph.Projects["Adventures.Entities.Diagnostics"].ProjectReferences.Order().ToArray());
     }
 
     private static bool IsStore(string project) =>

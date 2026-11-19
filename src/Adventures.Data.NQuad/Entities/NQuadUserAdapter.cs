@@ -22,14 +22,14 @@ public static class NQuadUserAdapter
     {
         var all = quads as Adventures.Data.NQuad.NQuad[] ?? quads.ToArray();
         var userSubjects = all
-            .Where(q => q.Subject.StartsWith(EntityConstants.User.BaseIri, StringComparison.Ordinal))
+            .Where(q => q.Subject.StartsWith(UserConstants.BaseIri, StringComparison.Ordinal))
             .Select(q => q.Subject)
             .Distinct(StringComparer.Ordinal);
 
         foreach (var subject in userSubjects)
         {
             var user = new User(schema);
-            var idValue = subject[EntityConstants.User.BaseIri.Length..];
+            var idValue = subject[UserConstants.BaseIri.Length..];
             user.Set(DynamicEntity.EntityIdPropertyName, subject, idValue);
 
             foreach (var quad in all.Where(q => q.Subject == subject))

@@ -36,7 +36,7 @@ public sealed class PublicContentTests : IAsyncLifetime
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, BlogConstants.Content.PageSchemaIri), BlogConstants.Content.PageBaseIri, BlogConstants.Content.PageTypeIri, graph, s => new Page(s));
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, BlogConstants.Content.CategorySchemaIri), BlogConstants.Content.CategoryBaseIri, BlogConstants.Content.CategoryTypeIri, graph, s => new Category(s));
         services.AddNQuadEntityRepository(SchemaDal.Load(quads, BlogConstants.Content.TagSchemaIri), BlogConstants.Content.TagBaseIri, BlogConstants.Content.TagTypeIri, graph, s => new Tag(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Schema.UserIri), EntityConstants.User.BaseIri, EntityConstants.User.TypeIri, EntityConstants.User.DefaultGraph, s => new User(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, UserConstants.SchemaIri), UserConstants.BaseIri, UserConstants.TypeIri, UserConstants.DefaultGraph, s => new User(s));
         services.AddNQuadRelations();
         services.AddScoped<IPostBll, PostBll>();
         services.AddScoped<IPageBll, PageBll>();

@@ -29,14 +29,14 @@ public sealed class RightsTests : IAsyncLifetime
 
         var services = new ServiceCollection();
         services.AddSingleton<INQuadStore>(store);
-        const string graph = EntityConstants.Identity.DefaultGraph;
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Schema.UserIri), EntityConstants.User.BaseIri, EntityConstants.User.TypeIri, EntityConstants.User.DefaultGraph, s => new User(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.RoleSchemaIri), EntityConstants.Identity.RoleBaseIri, EntityConstants.Identity.RoleTypeIri, graph, s => new Role(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.TenantSchemaIri), EntityConstants.Identity.TenantBaseIri, EntityConstants.Identity.TenantTypeIri, graph, s => new Tenant(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.BlogSchemaIri), EntityConstants.Identity.BlogBaseIri, EntityConstants.Identity.BlogTypeIri, graph, s => new Blog(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.OrganizationSchemaIri), EntityConstants.Identity.OrganizationBaseIri, EntityConstants.Identity.OrganizationTypeIri, graph, s => new Organization(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.TenantRoleSchemaIri), EntityConstants.Identity.TenantRoleBaseIri, EntityConstants.Identity.TenantRoleTypeIri, graph, s => new TenantRoleAssignment(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.OrganizationRoleSchemaIri), EntityConstants.Identity.OrganizationRoleBaseIri, EntityConstants.Identity.OrganizationRoleTypeIri, graph, s => new OrganizationRoleAssignment(s));
+        const string graph = IdentityConstants.DefaultGraph;
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, UserConstants.SchemaIri), UserConstants.BaseIri, UserConstants.TypeIri, UserConstants.DefaultGraph, s => new User(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.RoleSchemaIri), IdentityConstants.RoleBaseIri, IdentityConstants.RoleTypeIri, graph, s => new Role(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.TenantSchemaIri), IdentityConstants.TenantBaseIri, IdentityConstants.TenantTypeIri, graph, s => new Tenant(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.BlogSchemaIri), IdentityConstants.BlogBaseIri, IdentityConstants.BlogTypeIri, graph, s => new Blog(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.OrganizationSchemaIri), IdentityConstants.OrganizationBaseIri, IdentityConstants.OrganizationTypeIri, graph, s => new Organization(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.TenantRoleSchemaIri), IdentityConstants.TenantRoleBaseIri, IdentityConstants.TenantRoleTypeIri, graph, s => new TenantRoleAssignment(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.OrganizationRoleSchemaIri), IdentityConstants.OrganizationRoleBaseIri, IdentityConstants.OrganizationRoleTypeIri, graph, s => new OrganizationRoleAssignment(s));
         services.AddNQuadRelations();
         services.AddNQuadRelationWriter();
         services.AddScoped<IUserBll, UserBll>();
@@ -256,15 +256,15 @@ public sealed class RightsTests : IAsyncLifetime
     public async Task AnAssignmentWrittenByTheNquadToolsGrantCommandIsReadLikeAnyOther()
     {
         // docs/Claude-nquad-tool "grant" writes these four quads straight into the store (type, tenant, role, and the user's hasTenantRole link); this pins the shape to what the app reads.
-        const string identityGraph = EntityConstants.Identity.DefaultGraph;
+        const string identityGraph = IdentityConstants.DefaultGraph;
         var store = _services.GetRequiredService<INQuadStore>();
-        var user = EntityConstants.User.BaseIri + (await _users.GetFormByUserNameAsync("Claude"))!.Entity.EntityId;
+        var user = UserConstants.BaseIri + (await _users.GetFormByUserNameAsync("Claude"))!.Entity.EntityId;
         var assignment = "https://global-webnet.com/id/tenant-role/" + Guid.NewGuid();
         await store.InsertManyAsync(
         [
             new NQuad(Guid.NewGuid(), assignment, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "https://global-webnet.com/ontology/tenant#TenantRoleAssignment", identityGraph),
-            new NQuad(Guid.NewGuid(), assignment, "https://global-webnet.com/ontology/tenant#tenant", EntityConstants.Identity.TenantBaseIri + DevMain, identityGraph),
-            new NQuad(Guid.NewGuid(), assignment, "https://global-webnet.com/ontology/tenant#role", EntityConstants.Identity.RoleBaseIri + await RoleIdAsync("Developer"), identityGraph),
+            new NQuad(Guid.NewGuid(), assignment, "https://global-webnet.com/ontology/tenant#tenant", IdentityConstants.TenantBaseIri + DevMain, identityGraph),
+            new NQuad(Guid.NewGuid(), assignment, "https://global-webnet.com/ontology/tenant#role", IdentityConstants.RoleBaseIri + await RoleIdAsync("Developer"), identityGraph),
             new NQuad(Guid.NewGuid(), user, "https://global-webnet.com/ontology/tenant#hasTenantRole", assignment, identityGraph),
         ]);
         var resolver = _services.GetRequiredService<IRightsResolver>();

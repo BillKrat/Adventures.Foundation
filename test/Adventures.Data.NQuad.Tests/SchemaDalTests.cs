@@ -17,9 +17,9 @@ public sealed class SchemaDalTests
     [Fact]
     public void Load_UserSchema_ReturnsExpectedFields()
     {
-        var schema = SchemaDal.Load(SeedQuads(), EntityConstants.Schema.UserIri);
+        var schema = SchemaDal.Load(SeedQuads(), UserConstants.SchemaIri);
 
-        Assert.Equal(EntityConstants.Schema.UserIri, schema.SchemaIri);
+        Assert.Equal(UserConstants.SchemaIri, schema.SchemaIri);
         Assert.Contains("Id", schema.Fields.Keys);
         Assert.Contains("First", schema.Fields.Keys);
         Assert.Contains("Last", schema.Fields.Keys);

@@ -40,8 +40,8 @@ public sealed class NQuadUserMembership(INQuadStore store, IEnumerable<EntityTyp
             return;
         }
 
-        var user = Registration(EntityConstants.Schema.UserIri);
-        var assignment = Registration(EntityConstants.Identity.TenantRoleSchemaIri);
+        var user = Registration(UserConstants.SchemaIri);
+        var assignment = Registration(IdentityConstants.TenantRoleSchemaIri);
         var relation = RelationOf(user, TenantRolesRelation);
         var id = Guid.NewGuid().ToString();
         var record = new DynamicRecord(assignment.Schema);
@@ -65,16 +65,16 @@ public sealed class NQuadUserMembership(INQuadStore store, IEnumerable<EntityTyp
             return _tenantsByUser;
         }
 
-        var user = Registration(EntityConstants.Schema.UserIri);
+        var user = Registration(UserConstants.SchemaIri);
         var result = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
 
-        var tenantAssignments = Registration(EntityConstants.Identity.TenantRoleSchemaIri);
+        var tenantAssignments = Registration(IdentityConstants.TenantRoleSchemaIri);
         var tenantOf = (await tenantAssignments.CreateRepository(store, scope: null).ListAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
             .Where(a => a.EntityId is not null && a.GetValue("Tenant") is string)
             .ToDictionary(a => a.EntityId!.Value, a => (string)a.GetValue("Tenant")!, StringComparer.Ordinal);
         await AddLinksAsync(user, tenantAssignments, RelationOf(user, TenantRolesRelation), tenantOf, result, cancellationToken).ConfigureAwait(false);
 
-        var organisationAssignments = Registration(EntityConstants.Identity.OrganizationRoleSchemaIri);
+        var organisationAssignments = Registration(IdentityConstants.OrganizationRoleSchemaIri);
         var organisations = await OrganisationTenantsAsync(cancellationToken).ConfigureAwait(false);
         var organisationTenantOf = (await organisationAssignments.CreateRepository(store, scope: null).ListAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
             .Where(a => a.EntityId is not null && a.GetValue("Organization") is string org && organisations.ContainsKey(org))
@@ -85,7 +85,7 @@ public sealed class NQuadUserMembership(INQuadStore store, IEnumerable<EntityTyp
     }
 
     private async Task<Dictionary<string, string?>> OrganisationTenantsAsync(CancellationToken cancellationToken) =>
-        (await Registration(EntityConstants.Identity.OrganizationSchemaIri).CreateRepository(store, scope: null).ListAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
+        (await Registration(IdentityConstants.OrganizationSchemaIri).CreateRepository(store, scope: null).ListAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
             .Where(o => o.EntityId is not null)
             .ToDictionary(o => o.EntityId!.Value, o => o.GetValue("Tenant") as string, StringComparer.Ordinal);
 

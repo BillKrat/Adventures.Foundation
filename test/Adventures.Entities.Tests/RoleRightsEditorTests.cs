@@ -29,14 +29,14 @@ public sealed class RoleRightsEditorTests : IAsyncLifetime
 
         var services = new ServiceCollection();
         services.AddSingleton<INQuadStore>(store);
-        const string graph = EntityConstants.Identity.DefaultGraph;
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Schema.UserIri), EntityConstants.User.BaseIri, EntityConstants.User.TypeIri, EntityConstants.User.DefaultGraph, s => new User(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.RoleSchemaIri), EntityConstants.Identity.RoleBaseIri, EntityConstants.Identity.RoleTypeIri, graph, s => new Role(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.TenantSchemaIri), EntityConstants.Identity.TenantBaseIri, EntityConstants.Identity.TenantTypeIri, graph, s => new Tenant(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.BlogSchemaIri), EntityConstants.Identity.BlogBaseIri, EntityConstants.Identity.BlogTypeIri, graph, s => new Blog(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.OrganizationSchemaIri), EntityConstants.Identity.OrganizationBaseIri, EntityConstants.Identity.OrganizationTypeIri, graph, s => new Organization(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.TenantRoleSchemaIri), EntityConstants.Identity.TenantRoleBaseIri, EntityConstants.Identity.TenantRoleTypeIri, graph, s => new TenantRoleAssignment(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.OrganizationRoleSchemaIri), EntityConstants.Identity.OrganizationRoleBaseIri, EntityConstants.Identity.OrganizationRoleTypeIri, graph, s => new OrganizationRoleAssignment(s));
+        const string graph = IdentityConstants.DefaultGraph;
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, UserConstants.SchemaIri), UserConstants.BaseIri, UserConstants.TypeIri, UserConstants.DefaultGraph, s => new User(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.RoleSchemaIri), IdentityConstants.RoleBaseIri, IdentityConstants.RoleTypeIri, graph, s => new Role(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.TenantSchemaIri), IdentityConstants.TenantBaseIri, IdentityConstants.TenantTypeIri, graph, s => new Tenant(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.BlogSchemaIri), IdentityConstants.BlogBaseIri, IdentityConstants.BlogTypeIri, graph, s => new Blog(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.OrganizationSchemaIri), IdentityConstants.OrganizationBaseIri, IdentityConstants.OrganizationTypeIri, graph, s => new Organization(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.TenantRoleSchemaIri), IdentityConstants.TenantRoleBaseIri, IdentityConstants.TenantRoleTypeIri, graph, s => new TenantRoleAssignment(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.OrganizationRoleSchemaIri), IdentityConstants.OrganizationRoleBaseIri, IdentityConstants.OrganizationRoleTypeIri, graph, s => new OrganizationRoleAssignment(s));
         services.AddNQuadRelations();
         services.AddNQuadRelationWriter();
         services.AddScoped<IUserBll, UserBll>();

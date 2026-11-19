@@ -24,7 +24,7 @@ was the low-risk one - `EntitySchema.Load` had exactly one call path in the whol
   do - find the schema subject, its `schema#field` subjects, each field's name/type/predicate/
   valuePrefix via `EntityConstants.Schema.*` - then calls `EntitySchema.Create`. Generalized to
   take any `schemaIri`, not just the User schema (`NQuadUserAdapter.LoadUserSchema` hardcoded
-  `EntityConstants.Schema.UserIri`). Proven against the *AuditRecord* schema too, which was
+  `UserConstants.SchemaIri`). Proven against the *AuditRecord* schema too, which was
   already sitting fully described but unused in `seed.nq` - no seed changes needed.
 - `NQuadUserAdapter.LoadUserSchema` removed; `LoadUsers` (unrelated - materializes `User`
   instances, not schema metadata) is untouched. The two call sites now call `SchemaDal.Load(...)`.

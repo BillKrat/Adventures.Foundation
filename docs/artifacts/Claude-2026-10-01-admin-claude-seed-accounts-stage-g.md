@@ -11,7 +11,7 @@ CRUDL for free.
 ## Scope check, confirmed before touching anything
 The graph GUID (`b7963bd0-...`) is just an opaque partition key shared by every seed row (roles,
 tenants, blogs, schemas) - never exposed as "Bill" anywhere. Only the literal quad *values* on the
-user subject itself needed to change; `EntityConstants.User.DefaultGraph`, `NQuadStoreToolTests`'s
+user subject itself needed to change; `UserConstants.DefaultGraph`, `NQuadStoreToolTests`'s
 subject query, and every GUID-keyed reference elsewhere in the file were untouched.
 
 ## What changed

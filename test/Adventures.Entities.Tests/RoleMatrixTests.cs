@@ -40,7 +40,7 @@ public sealed class RoleMatrixTests : IAsyncLifetime
         var quads = await store.QueryAsync();
         var services = new ServiceCollection();
         services.AddSingleton<INQuadStore>(store);
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.RoleSchemaIri), EntityConstants.Identity.RoleBaseIri, EntityConstants.Identity.RoleTypeIri, EntityConstants.Identity.DefaultGraph, s => new Role(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.RoleSchemaIri), IdentityConstants.RoleBaseIri, IdentityConstants.RoleTypeIri, IdentityConstants.DefaultGraph, s => new Role(s));
         _services = services.BuildServiceProvider();
         await RoleRightsUpgrade.ApplyAsync(new EntityDal<Role>(_services.GetRequiredService<IEntityRepository<Role>>()));
     }

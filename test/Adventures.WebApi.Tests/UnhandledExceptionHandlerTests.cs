@@ -170,14 +170,14 @@ public sealed class UnhandledExceptionHandlerTests
         var seedDirectory = Path.Combine(AppContext.BaseDirectory, "Sql", "seed");
         await Adventures.Data.NQuad.NQuadStoreExtensions.SeedOnceAsync(store, Path.Combine(seedDirectory, "seed.nq"), "baseline");
         await Adventures.Data.NQuad.NQuadStoreExtensions.SeedOnceAsync(
-            store, Path.Combine(seedDirectory, "seed-002-exception-log.nq"), EntityConstants.ExceptionLog.SeedName);
-        var schema = Adventures.Data.NQuad.SchemaDal.Load(await store.QueryAsync(), EntityConstants.ExceptionLog.SchemaIri);
+            store, Path.Combine(seedDirectory, "seed-002-exception-log.nq"), ExceptionLogConstants.SeedName);
+        var schema = Adventures.Data.NQuad.SchemaDal.Load(await store.QueryAsync(), ExceptionLogConstants.SchemaIri);
 
         var services = new ServiceCollection();
         services.AddSingleton<Adventures.Data.NQuad.INQuadStore>(store);
         Adventures.Data.NQuad.NQuadEntityServiceCollectionExtensions.AddNQuadEntityRepository(
-            services, schema, EntityConstants.ExceptionLog.BaseIri, EntityConstants.ExceptionLog.TypeIri,
-            EntityConstants.ExceptionLog.DefaultGraph, s => new ExceptionLogEntry(s));
+            services, schema, ExceptionLogConstants.BaseIri, ExceptionLogConstants.TypeIri,
+            ExceptionLogConstants.DefaultGraph, s => new ExceptionLogEntry(s));
         services.AddScoped<IExceptionLogBll, ExceptionLogBll>();
         services.AddScoped<IExceptionLogPresenter, ExceptionLogPresenter>();
         using var provider = services.BuildServiceProvider();

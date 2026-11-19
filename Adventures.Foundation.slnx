@@ -14,6 +14,8 @@
     <Project Path="src/Adventures.Data.Sql/Adventures.Data.Sql.csproj" />
     <Project Path="src/Adventures.Client/Adventures.Client.csproj" />
     <Project Path="src/Adventures.Entities/Adventures.Entities.csproj" />
+    <Project Path="src/Adventures.Entities.Diagnostics/Adventures.Entities.Diagnostics.csproj" />
+    <Project Path="src/Adventures.Entities.Identity/Adventures.Entities.Identity.csproj" />
     <Project Path="src/Adventures.Identity/Adventures.Identity.csproj" />
     <Project Path="src/Adventures.Identity.Postgres/Adventures.Identity.Postgres.csproj" />
     <Project Path="src/Adventures.Security/Adventures.Security.csproj" />

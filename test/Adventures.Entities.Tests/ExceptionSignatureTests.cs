@@ -16,29 +16,29 @@ public sealed class ExceptionSignatureTests : IAsyncLifetime
         _store = new InMemoryNQuadStore();
         var seedDirectory = Path.Combine(AppContext.BaseDirectory, "Sql", "seed");
         await _store.SeedOnceAsync(Path.Combine(seedDirectory, "seed.nq"), "baseline");
-        await _store.SeedOnceAsync(Path.Combine(seedDirectory, "seed-002-exception-log.nq"), EntityConstants.ExceptionLog.SeedName);
-        await _store.SeedOnceAsync(Path.Combine(seedDirectory, "seed-003-exception-signature.nq"), EntityConstants.ExceptionLog.SignatureSeedName);
+        await _store.SeedOnceAsync(Path.Combine(seedDirectory, "seed-002-exception-log.nq"), ExceptionLogConstants.SeedName);
+        await _store.SeedOnceAsync(Path.Combine(seedDirectory, "seed-003-exception-signature.nq"), ExceptionLogConstants.SignatureSeedName);
         var quads = await _store.QueryAsync();
 
-        var signatureSchema = new EntitySchemaOf<ExceptionSignatureEntry>(SchemaDal.Load(quads, EntityConstants.ExceptionSignatureEntity.SchemaIri));
+        var signatureSchema = new EntitySchemaOf<ExceptionSignatureEntry>(SchemaDal.Load(quads, ExceptionSignatureConstants.SchemaIri));
         _signatures = new ExceptionSignatureBll(
             new EntityDal<ExceptionSignatureEntry>(new NQuadEntityRepository<ExceptionSignatureEntry>(
                 _store,
                 signatureSchema.Schema,
-                EntityConstants.ExceptionSignatureEntity.BaseIri,
-                EntityConstants.ExceptionSignatureEntity.TypeIri,
-                EntityConstants.ExceptionSignatureEntity.DefaultGraph,
+                ExceptionSignatureConstants.BaseIri,
+                ExceptionSignatureConstants.TypeIri,
+                ExceptionSignatureConstants.DefaultGraph,
                 s => new ExceptionSignatureEntry(s))),
             signatureSchema);
 
-        var logSchema = new EntitySchemaOf<ExceptionLogEntry>(SchemaDal.Load(quads, EntityConstants.ExceptionLog.SchemaIri));
+        var logSchema = new EntitySchemaOf<ExceptionLogEntry>(SchemaDal.Load(quads, ExceptionLogConstants.SchemaIri));
         _log = new ExceptionLogBll(
             new EntityDal<ExceptionLogEntry>(new NQuadEntityRepository<ExceptionLogEntry>(
                 _store,
                 logSchema.Schema,
-                EntityConstants.ExceptionLog.BaseIri,
-                EntityConstants.ExceptionLog.TypeIri,
-                EntityConstants.ExceptionLog.DefaultGraph,
+                ExceptionLogConstants.BaseIri,
+                ExceptionLogConstants.TypeIri,
+                ExceptionLogConstants.DefaultGraph,
                 s => new ExceptionLogEntry(s))),
             logSchema,
             signatures: _signatures);

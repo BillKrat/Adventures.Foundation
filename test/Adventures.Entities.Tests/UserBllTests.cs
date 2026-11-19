@@ -24,13 +24,13 @@ public sealed class UserBllTests : IAsyncLifetime
         var seedPath = Path.Combine(AppContext.BaseDirectory, "Sql", "seed", "seed.nq");
         await _store.SeedFromFileAsync(seedPath);
         var allQuads = await _store.QueryAsync();
-        var schema = SchemaDal.Load(allQuads, EntityConstants.Schema.UserIri);
+        var schema = SchemaDal.Load(allQuads, UserConstants.SchemaIri);
 
         var repository = new NQuadEntityRepository<User>(
             _store,
             schema,
-            EntityConstants.User.BaseIri,
-            EntityConstants.User.TypeIri,
+            UserConstants.BaseIri,
+            UserConstants.TypeIri,
             Graph,
             s => new User(s));
 
@@ -104,7 +104,7 @@ public sealed class UserBllTests : IAsyncLifetime
     private async Task<EntitySchema> LoadSchemaAsync()
     {
         var allQuads = await _store.QueryAsync();
-        return SchemaDal.Load(allQuads, EntityConstants.Schema.UserIri);
+        return SchemaDal.Load(allQuads, UserConstants.SchemaIri);
     }
 
     [Fact]

@@ -27,12 +27,12 @@ public sealed class PlatformAdministratorTests : IAsyncLifetime
         var quads = await store.QueryAsync();
         var services = new ServiceCollection();
         services.AddSingleton<INQuadStore>(store);
-        const string graph = EntityConstants.Identity.DefaultGraph;
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Schema.UserIri), EntityConstants.User.BaseIri, EntityConstants.User.TypeIri, EntityConstants.User.DefaultGraph, s => new User(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.RoleSchemaIri), EntityConstants.Identity.RoleBaseIri, EntityConstants.Identity.RoleTypeIri, graph, s => new Role(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.OrganizationSchemaIri), EntityConstants.Identity.OrganizationBaseIri, EntityConstants.Identity.OrganizationTypeIri, graph, s => new Organization(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.TenantRoleSchemaIri), EntityConstants.Identity.TenantRoleBaseIri, EntityConstants.Identity.TenantRoleTypeIri, graph, s => new TenantRoleAssignment(s));
-        services.AddNQuadEntityRepository(SchemaDal.Load(quads, EntityConstants.Identity.OrganizationRoleSchemaIri), EntityConstants.Identity.OrganizationRoleBaseIri, EntityConstants.Identity.OrganizationRoleTypeIri, graph, s => new OrganizationRoleAssignment(s));
+        const string graph = IdentityConstants.DefaultGraph;
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, UserConstants.SchemaIri), UserConstants.BaseIri, UserConstants.TypeIri, UserConstants.DefaultGraph, s => new User(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.RoleSchemaIri), IdentityConstants.RoleBaseIri, IdentityConstants.RoleTypeIri, graph, s => new Role(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.OrganizationSchemaIri), IdentityConstants.OrganizationBaseIri, IdentityConstants.OrganizationTypeIri, graph, s => new Organization(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.TenantRoleSchemaIri), IdentityConstants.TenantRoleBaseIri, IdentityConstants.TenantRoleTypeIri, graph, s => new TenantRoleAssignment(s));
+        services.AddNQuadEntityRepository(SchemaDal.Load(quads, IdentityConstants.OrganizationRoleSchemaIri), IdentityConstants.OrganizationRoleBaseIri, IdentityConstants.OrganizationRoleTypeIri, graph, s => new OrganizationRoleAssignment(s));
         services.AddNQuadRelations();
         services.AddScoped<IUserBll, UserBll>();
         services.AddScoped<IEntityBll<Role>>(p => new EntityBll<Role>(new EntityDal<Role>(p.GetRequiredService<IEntityRepository<Role>>())));
@@ -143,7 +143,7 @@ public sealed class PlatformAdministratorTests : IAsyncLifetime
     {
         var store = _services.GetRequiredService<INQuadStore>();
         var admin = await IdOfAsync("Admin");
-        var subject = EntityConstants.User.BaseIri + admin;
+        var subject = UserConstants.BaseIri + admin;
         await store.InsertAsync(new NQuad(Guid.NewGuid(), subject, NQuadPlatformAdministrators.Predicate, "200;false;test", NQuadPlatformAdministrators.Graph));
         await store.InsertAsync(new NQuad(Guid.NewGuid(), subject, NQuadPlatformAdministrators.Predicate, "100;true;test", NQuadPlatformAdministrators.Graph));
         await store.InsertAsync(new NQuad(Guid.NewGuid(), subject, NQuadPlatformAdministrators.Predicate, "garbage", NQuadPlatformAdministrators.Graph));

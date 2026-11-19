@@ -166,7 +166,7 @@ public sealed class LastTenantAdministratorGuard(INQuadStore store, IEnumerable<
 
     public async Task CheckRemoveAsync(RelationChange change, CancellationToken cancellationToken = default)
     {
-        if (change.Relation.ChildSchemaIri != EntityConstants.Identity.TenantRoleSchemaIri
+        if (change.Relation.ChildSchemaIri != IdentityConstants.TenantRoleSchemaIri
             || !change.ChildValues.TryGetValue("Role", out var roleId) || !change.ChildValues.TryGetValue("Tenant", out var tenantId)
             || roleId is null || tenantId is null)
         {
@@ -174,7 +174,7 @@ public sealed class LastTenantAdministratorGuard(INQuadStore store, IEnumerable<
         }
 
         var byIri = types.GroupBy(t => t.Schema.SchemaIri, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
-        if (!byIri.TryGetValue(EntityConstants.Identity.RoleSchemaIri, out var roleType) || !byIri.TryGetValue(EntityConstants.Identity.TenantRoleSchemaIri, out var assignmentType))
+        if (!byIri.TryGetValue(IdentityConstants.RoleSchemaIri, out var roleType) || !byIri.TryGetValue(IdentityConstants.TenantRoleSchemaIri, out var assignmentType))
         {
             return;
         }
@@ -209,7 +209,7 @@ public sealed class SelfLockoutGuard(INQuadStore store, IEnumerable<EntityTypeRe
 
     public async Task CheckRemoveAsync(RelationChange change, CancellationToken cancellationToken = default)
     {
-        if (change.Relation.ChildSchemaIri is not (EntityConstants.Identity.TenantRoleSchemaIri or EntityConstants.Identity.OrganizationRoleSchemaIri)
+        if (change.Relation.ChildSchemaIri is not (IdentityConstants.TenantRoleSchemaIri or IdentityConstants.OrganizationRoleSchemaIri)
             || string.IsNullOrWhiteSpace(change.ActingUserName)
             || !change.ChildValues.TryGetValue("Role", out var roleId) || string.IsNullOrEmpty(roleId))
         {
@@ -217,7 +217,7 @@ public sealed class SelfLockoutGuard(INQuadStore store, IEnumerable<EntityTypeRe
         }
 
         var byIri = types.GroupBy(t => t.Schema.SchemaIri, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
-        if (!byIri.TryGetValue(change.ParentSchema.SchemaIri, out var userType) || !byIri.TryGetValue(EntityConstants.Identity.RoleSchemaIri, out var roleType))
+        if (!byIri.TryGetValue(change.ParentSchema.SchemaIri, out var userType) || !byIri.TryGetValue(IdentityConstants.RoleSchemaIri, out var roleType))
         {
             return;
         }

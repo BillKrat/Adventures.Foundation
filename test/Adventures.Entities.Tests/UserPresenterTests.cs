@@ -23,10 +23,10 @@ public sealed class UserPresenterTests : IAsyncLifetime
         var seedPath = Path.Combine(AppContext.BaseDirectory, "Sql", "seed", "seed.nq");
         await store.SeedFromFileAsync(seedPath);
         var allQuads = await store.QueryAsync();
-        var schema = SchemaDal.Load(allQuads, EntityConstants.Schema.UserIri);
+        var schema = SchemaDal.Load(allQuads, UserConstants.SchemaIri);
 
         var repository = new NQuadEntityRepository<User>(
-            store, schema, EntityConstants.User.BaseIri, EntityConstants.User.TypeIri, Graph, s => new User(s));
+            store, schema, UserConstants.BaseIri, UserConstants.TypeIri, Graph, s => new User(s));
         var userBll = new UserBll(new EntityDal<User>(repository));
 
         _presenter = new UserPresenter(userBll, new EntitySchemaOf<User>(schema));

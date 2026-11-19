@@ -22,8 +22,8 @@ public sealed class NQuadPlatformAdministrators(INQuadStore store) : IPlatformAd
         var statements = await store.QueryAsync(predicate: Predicate, graph: Graph, cancellationToken: cancellationToken).ConfigureAwait(false);
         return statements
             .Select(quad => (Subject: quad.Subject, Parsed: Parse(quad.Object)))
-            .Where(item => item.Parsed is not null && item.Subject.StartsWith(EntityConstants.User.BaseIri, StringComparison.Ordinal))
-            .GroupBy(item => item.Subject[EntityConstants.User.BaseIri.Length..], StringComparer.Ordinal)
+            .Where(item => item.Parsed is not null && item.Subject.StartsWith(UserConstants.BaseIri, StringComparison.Ordinal))
+            .GroupBy(item => item.Subject[UserConstants.BaseIri.Length..], StringComparer.Ordinal)
             .Where(group => group.OrderByDescending(item => item.Parsed!.Value.At).First().Parsed!.Value.On)
             .Select(group => group.Key)
             .ToHashSet(StringComparer.Ordinal);
@@ -33,7 +33,7 @@ public sealed class NQuadPlatformAdministrators(INQuadStore store) : IPlatformAd
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
         var text = string.Create(CultureInfo.InvariantCulture, $"{DateTimeOffset.UtcNow.UtcTicks};{(on ? "true" : "false")};{changedBy}");
-        await store.InsertAsync(new NQuad(Guid.NewGuid(), EntityConstants.User.BaseIri + userId, Predicate, text, Graph), cancellationToken).ConfigureAwait(false);
+        await store.InsertAsync(new NQuad(Guid.NewGuid(), UserConstants.BaseIri + userId, Predicate, text, Graph), cancellationToken).ConfigureAwait(false);
     }
 
     private static (long At, bool On)? Parse(string? text)

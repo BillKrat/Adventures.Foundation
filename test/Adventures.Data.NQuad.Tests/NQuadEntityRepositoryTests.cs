@@ -18,12 +18,12 @@ public class NQuadEntityRepositoryTests : IAsyncLifetime
         _store = new InMemoryNQuadStore();
         await _store.SeedFromFileAsync(NQuadStoreTestSupport.SeedFilePath);
         var allQuads = await _store.QueryAsync();
-        _schema = SchemaDal.Load(allQuads, EntityConstants.Schema.UserIri);
+        _schema = SchemaDal.Load(allQuads, UserConstants.SchemaIri);
         _repository = new NQuadEntityRepository<User>(
             _store,
             _schema,
-            EntityConstants.User.BaseIri,
-            EntityConstants.User.TypeIri,
+            UserConstants.BaseIri,
+            UserConstants.TypeIri,
             Graph,
             schema => new User(schema),
             clock: () => new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero).AddSeconds(_nextId++));
@@ -106,7 +106,7 @@ public class NQuadEntityRepositoryTests : IAsyncLifetime
         await _repository.UpdateAsync(user);
 
         // The old quad is still physically present in the store...
-        var allUserQuads = await _store.QueryAsync(subject: EntityConstants.User.BaseIri + id, predicate: _schema.Fields["Last"].Predicate);
+        var allUserQuads = await _store.QueryAsync(subject: UserConstants.BaseIri + id, predicate: _schema.Fields["Last"].Predicate);
         Assert.Equal(2, allUserQuads.Count); // old "Lovelace" quad + new "King" quad, both still present
 
         var supersededMarkers = await _store.QueryAsync(predicate: EntityConstants.Lifecycle.SupersededAtPredicate);
@@ -165,7 +165,7 @@ public class NQuadEntityRepositoryTests : IAsyncLifetime
         Assert.NotNull(stillReadable);
         Assert.Equal("Ada", stillReadable!.GetValue("First")); // field quads are untouched by delete
 
-        var fieldQuads = await _store.QueryAsync(subject: EntityConstants.User.BaseIri + id, predicate: _schema.Fields["First"].Predicate);
+        var fieldQuads = await _store.QueryAsync(subject: UserConstants.BaseIri + id, predicate: _schema.Fields["First"].Predicate);
         Assert.Single(fieldQuads); // nothing physically removed
     }
 

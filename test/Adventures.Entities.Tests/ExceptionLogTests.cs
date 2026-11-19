@@ -16,16 +16,16 @@ public sealed class ExceptionLogTests : IAsyncLifetime
         _store = new InMemoryNQuadStore();
         var seedDirectory = Path.Combine(AppContext.BaseDirectory, "Sql", "seed");
         await _store.SeedOnceAsync(Path.Combine(seedDirectory, "seed.nq"), "baseline");
-        await _store.SeedOnceAsync(Path.Combine(seedDirectory, "seed-002-exception-log.nq"), EntityConstants.ExceptionLog.SeedName);
+        await _store.SeedOnceAsync(Path.Combine(seedDirectory, "seed-002-exception-log.nq"), ExceptionLogConstants.SeedName);
 
         var schema = new EntitySchemaOf<ExceptionLogEntry>(
-            SchemaDal.Load(await _store.QueryAsync(), EntityConstants.ExceptionLog.SchemaIri));
+            SchemaDal.Load(await _store.QueryAsync(), ExceptionLogConstants.SchemaIri));
         var repository = new NQuadEntityRepository<ExceptionLogEntry>(
             _store,
             schema.Schema,
-            EntityConstants.ExceptionLog.BaseIri,
-            EntityConstants.ExceptionLog.TypeIri,
-            EntityConstants.ExceptionLog.DefaultGraph,
+            ExceptionLogConstants.BaseIri,
+            ExceptionLogConstants.TypeIri,
+            ExceptionLogConstants.DefaultGraph,
             s => new ExceptionLogEntry(s));
 
         _bll = new ExceptionLogBll(new EntityDal<ExceptionLogEntry>(repository), schema);
@@ -84,13 +84,13 @@ public sealed class ExceptionLogTests : IAsyncLifetime
     {
         var failing = new NQuadEntityRepository<ExceptionLogEntry>(
             new ThrowingStore(),
-            SchemaDal.Load(await _store.QueryAsync(), EntityConstants.ExceptionLog.SchemaIri),
-            EntityConstants.ExceptionLog.BaseIri,
-            EntityConstants.ExceptionLog.TypeIri,
-            EntityConstants.ExceptionLog.DefaultGraph,
+            SchemaDal.Load(await _store.QueryAsync(), ExceptionLogConstants.SchemaIri),
+            ExceptionLogConstants.BaseIri,
+            ExceptionLogConstants.TypeIri,
+            ExceptionLogConstants.DefaultGraph,
             s => new ExceptionLogEntry(s));
         var bll = new ExceptionLogBll(new EntityDal<ExceptionLogEntry>(failing), new EntitySchemaOf<ExceptionLogEntry>(
-            SchemaDal.Load(await _store.QueryAsync(), EntityConstants.ExceptionLog.SchemaIri)));
+            SchemaDal.Load(await _store.QueryAsync(), ExceptionLogConstants.SchemaIri)));
 
         var id = await bll.RecordAsync(Thrown("boom"), null, null);
 
