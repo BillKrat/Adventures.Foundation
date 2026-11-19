@@ -33,6 +33,14 @@ public static class RequestHardening
 
     public const int DefaultHealthPerMinute = 30;
 
+    /// <summary>Name of the rate-limit policy for the anonymous comment submit: <c>[EnableRateLimiting(RequestHardening.CommentPolicy)]</c>.</summary>
+    public const string CommentPolicy = "comment";
+
+    /// <summary>Configuration key for the number of comments one client address may submit per minute.</summary>
+    public const string CommentsPerMinuteKey = "RateLimit:CommentsPerMinute";
+
+    public const int DefaultCommentsPerMinute = 3;
+
     /// <summary>A positive configured number, else the default (a zero or garbled setting must not switch the limit off or lock everyone out).</summary>
     public static int ResolveLimit(IConfiguration configuration, string key, int defaultValue)
     {
@@ -48,6 +56,7 @@ public static class RequestHardening
     {
         var perMinute = ResolveLimit(configuration, TokensPerMinuteKey, DefaultTokensPerMinute);
         var healthPerMinute = ResolveLimit(configuration, HealthPerMinuteKey, DefaultHealthPerMinute);
+        var commentsPerMinute = ResolveLimit(configuration, CommentsPerMinuteKey, DefaultCommentsPerMinute);
 
         services.Configure<AuthorizationOptions>(options =>
             options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
@@ -57,6 +66,7 @@ public static class RequestHardening
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.AddPolicy(TokenPolicy, context => ClientPartition(context, perMinute));
             options.AddPolicy(HealthPolicy, context => ClientPartition(context, healthPerMinute));
+            options.AddPolicy(CommentPolicy, context => ClientPartition(context, commentsPerMinute));
         });
 
         return services;

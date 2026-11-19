@@ -27,6 +27,7 @@ public static class Rights
     public const string PagesPublish = "pages.publish";
     public const string TaxonomyManage = "taxonomy.manage";
     public const string MediaUpload = "media.upload";
+    public const string CommentsModerate = "comments.moderate";
     public const string CollaborationRead = "collaboration.read";
     public const string CollaborationWrite = "collaboration.write";
     public const string CollaborationReview = "collaboration.review";
@@ -56,6 +57,7 @@ public static class Rights
         new(PagesPublish, "Publish and unpublish pages."),
         new(TaxonomyManage, "Manage categories and tags."),
         new(MediaUpload, "Upload images."),
+        new(CommentsModerate, "Approve, unapprove and delete the comments readers write under posts."),
         new(CollaborationRead, "Read collaboration items and their conversations."),
         new(CollaborationWrite, "Create and change your own collaboration items; comment."),
         new(CollaborationReview, "Approve, request changes, record decisions and accept research."),

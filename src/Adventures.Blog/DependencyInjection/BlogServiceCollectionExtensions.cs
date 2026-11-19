@@ -26,6 +26,9 @@ public static class BlogServiceCollectionExtensions
         services.AddScoped<IEntityBll<SiteSetting>>(p => new EntityBll<SiteSetting>(p.GetRequiredService<IEntityDal<SiteSetting>>()));
         services.AddScoped<IEntityBll<Category>>(p => new EntityBll<Category>(p.GetRequiredService<IEntityDal<Category>>()));
         services.AddScoped<IEntityBll<Tag>>(p => new EntityBll<Tag>(p.GetRequiredService<IEntityDal<Tag>>()));
+        services.AddScoped<IEntityBll<VisitorComment>>(p => new EntityBll<VisitorComment>(p.GetRequiredService<IEntityDal<VisitorComment>>()));
+        services.AddScoped<ICommentablePosts, PublicContentCommentablePosts>();
+        services.AddScoped<IVisitorComments, VisitorComments>();
         services.AddScoped<IEntityPresenter<Category>>(p => new EntityPresenter<Category>(
             p.GetRequiredService<IEntityBll<Category>>(), p.GetRequiredService<EntitySchemaOf<Category>>().Schema, s => new Category(s), p.GetService<IEntityRelationProvider>()));
         services.AddScoped<IEntityPresenter<Tag>>(p => new EntityPresenter<Tag>(

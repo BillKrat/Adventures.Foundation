@@ -49,6 +49,12 @@ public static class BlogConstants
         public const string TagSchemaIri = SchemaBase + "Tag";
         public const string TagBaseIri = IdBase + "tag/";
         public const string TagTypeIri = OntologyBase + "Tag";
+
+        /// <summary>Seed 021 adds the VisitorComment type: what a reader writes under a post, pending until a person approves it.</summary>
+        public const string VisitorCommentSeedName = "021-visitor-comments";
+        public const string VisitorCommentSchemaIri = SchemaBase + "VisitorComment";
+        public const string VisitorCommentBaseIri = IdBase + "visitor-comment/";
+        public const string VisitorCommentTypeIri = OntologyBase + "VisitorComment";
     }
 
 }
