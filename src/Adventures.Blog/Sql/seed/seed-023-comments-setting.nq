@@ -1,4 +1,0 @@
-<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d05> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://global-webnet.com/ontology/site#Setting> <https://global-webnet.com/graph/site> .
-<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d05> <https://global-webnet.com/ontology/site#name> "CommentsEnabled" <https://global-webnet.com/graph/site> .
-<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d05> <https://global-webnet.com/ontology/site#value> "true" <https://global-webnet.com/graph/site> .
-<https://global-webnet.com/id/site-setting/5b0a6a1e-3c0e-4d6b-9c41-0e1a2b3c4d05> <https://global-webnet.com/ontology/site#description> "Visitor comments on the whole site: true shows the comment form where a post allows comments, false hides it and refuses new comments (existing comments are kept)." <https://global-webnet.com/graph/site> .

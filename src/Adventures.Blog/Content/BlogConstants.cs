@@ -7,9 +7,6 @@ public static class BlogConstants
     public static class Site
     {
         public const string SeedName = "011-site-settings";
-
-        /// <summary>The CommentsEnabled setting, added after the first four (an existing store gets it at the next start).</summary>
-        public const string CommentsSettingSeedName = "023-comments-setting";
         public const string DefaultGraph = "https://global-webnet.com/graph/site";
         public const string SettingSchemaIri = "https://schema.global-webnet.com/site/Setting";
         public const string SettingBaseIri = "https://global-webnet.com/id/site-setting/";

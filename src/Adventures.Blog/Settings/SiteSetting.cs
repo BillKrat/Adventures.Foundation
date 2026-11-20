@@ -83,4 +83,43 @@ public sealed class SiteSettingPresenter(IEntityBll<SiteSetting> bll, EntitySche
     protected override bool CanCreate => false;
 
     protected override EntityPermissions PermissionsFor(SiteSetting entity) => new(CanUpdate: true, CanDelete: false);
+
+    /// <summary>
+    /// The settings the site reads, with the value each starts at. A seed writes outside every tenant's graph, so a setting added by a later
+    /// seed (or a tenant that never had any) has no row to edit; the screen creates the missing ones for the tenant being administered.
+    /// </summary>
+    private static readonly (string Name, string Value, string Description)[] Known =
+    [
+        ("SiteTitle", SiteSettings.DefaultTitle, "The name shown in the header and the browser tab."),
+        ("Tagline", string.Empty, "A short line under the title (optional)."),
+        ("PostsPerPage", SiteSettings.DefaultPostsPerPage.ToString(System.Globalization.CultureInfo.InvariantCulture), "How many posts the list shows on a page (1 to 50)."),
+        ("TimeZone", "UTC", "The time zone the legacy BlogEngine dates were written in (for the migration)."),
+        ("CommentsEnabled", "true", "Visitor comments on the whole site: true shows the comment form where a post allows comments, false hides it and refuses new comments (existing comments are kept)."),
+    ];
+
+    public override async Task<EntityGridModel> GetGridAsync(EntityGridQuery query, CancellationToken cancellationToken = default)
+    {
+        await EnsureKnownAsync(cancellationToken).ConfigureAwait(false);
+        return await base.GetGridAsync(query, cancellationToken).ConfigureAwait(false);
+    }
+
+    public override async Task<EntityGridModel> GetGridAsync(CancellationToken cancellationToken = default)
+    {
+        await EnsureKnownAsync(cancellationToken).ConfigureAwait(false);
+        return await base.GetGridAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task EnsureKnownAsync(CancellationToken cancellationToken)
+    {
+        var present = (await ListAsync(cancellationToken).ConfigureAwait(false))
+            .Select(row => row.Values.GetValueOrDefault("Name"))
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, value, description) in Known.Where(setting => !present.Contains(setting.Name)))
+        {
+            await CreateAsync(
+                new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["Name"] = name, ["Value"] = value, ["Description"] = description }),
+                cancellationToken).ConfigureAwait(false);
+        }
+    }
 }

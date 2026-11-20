@@ -21,7 +21,6 @@ public sealed class SiteSettingsTests : IAsyncLifetime
         var seeds = Path.Combine(AppContext.BaseDirectory, "Sql", "seed");
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-011-site-settings.nq"));
-        await store.SeedFromFileAsync(Path.Combine(seeds, "seed-023-comments-setting.nq"));
         var quads = await store.QueryAsync();
 
         var services = new ServiceCollection();
@@ -40,12 +39,14 @@ public sealed class SiteSettingsTests : IAsyncLifetime
     private static EntityDataModel Row(string name, string? value) => new(string.Empty, new Dictionary<string, string?> { ["Name"] = name, ["Value"] = value });
 
     [Fact]
-    public async Task TheSeedsShipTheFiveDefaults()
+    public async Task TheSeedShipsTheFourDefaults_AndTheScreenAddsTheOthers()
     {
         var list = await _presenter.ListAsync();
 
-        Assert.Equal(["CommentsEnabled", "PostsPerPage", "SiteTitle", "Tagline", "TimeZone"], list.Select(r => r.Values["Name"]).Order());
-        Assert.True((await _settings.GetPublicAsync()).CommentsEnabled);
+        Assert.Equal(["PostsPerPage", "SiteTitle", "Tagline", "TimeZone"], list.Select(r => r.Values["Name"]).Order());
+        Assert.True((await _settings.GetPublicAsync()).CommentsEnabled);   // no row yet: on
+        var grid = await _presenter.GetGridAsync(new EntityGridQuery());
+        Assert.Contains(grid.Rows, r => r.Values["Name"] == "CommentsEnabled");
         var site = await _settings.GetPublicAsync();
         Assert.Equal("AI Research Blog", site.Title);
         Assert.Equal(10, site.PostsPerPage);
@@ -79,6 +80,7 @@ public sealed class SiteSettingsTests : IAsyncLifetime
     [InlineData("", true)]
     public async Task CommentsAreOnUnlessTheSettingSaysFalse(string value, bool expected)
     {
+        await _presenter.GetGridAsync(new EntityGridQuery());   // the screen creates the row
         var row = (await _presenter.ListAsync()).Single(r => r.Values["Name"] == "CommentsEnabled");
         await _presenter.UpdateAsync(row.EntityId, Row("CommentsEnabled", value));
 
@@ -111,6 +113,42 @@ public sealed class SiteSettingsTests : IAsyncLifetime
 
         Assert.Equal("AI Research Blog", (await _settings.GetPublicAsync()).Title);
         Assert.Equal("UTC", await _settings.GetLegacyTimeZoneAsync());
+    }
+
+    [Fact]
+    public async Task TheSettingsScreen_CreatesAnyKnownSettingTheTenantLacks_WithItsDefault()
+    {
+        // a seed writes outside every tenant's graph, so a setting added by a later seed (or a new tenant) has no row until the screen asks
+        await _presenter.GetGridAsync(new EntityGridQuery());
+        var comments = (await _presenter.ListAsync()).Single(r => r.Values["Name"] == "CommentsEnabled");
+        await _presenter.DeleteAsync(comments.EntityId);
+        var perPage = (await _presenter.ListAsync()).Single(r => r.Values["Name"] == "PostsPerPage");
+        await _presenter.UpdateAsync(perPage.EntityId, Row("PostsPerPage", "25"));
+        Assert.DoesNotContain(await _presenter.ListAsync(), r => r.Values["Name"] == "CommentsEnabled");
+
+        var grid = await _presenter.GetGridAsync(new EntityGridQuery());
+
+        var recreated = Assert.Single(grid.Rows, r => r.Values["Name"] == "CommentsEnabled");
+        Assert.Equal("true", recreated.Values["Value"]);
+        Assert.NotEmpty(recreated.Values["Description"] ?? string.Empty);
+        Assert.Equal(5, grid.Rows.Count);                                         // nothing duplicated
+        Assert.Equal(25, (await _settings.GetPublicAsync()).PostsPerPage);        // an edited setting is left alone
+        await _presenter.GetGridAsync(new EntityGridQuery());
+        Assert.Equal(5, (await _presenter.ListAsync()).Count);                    // and asking again creates nothing more
+    }
+
+    [Fact]
+    public async Task ABrandNewTenantWithNoSettingsAtAll_GetsEveryKnownSettingOnFirstOpen()
+    {
+        foreach (var row in await _presenter.ListAsync())
+        {
+            await _presenter.DeleteAsync(row.EntityId);
+        }
+
+        var grid = await _presenter.GetGridAsync(new EntityGridQuery());
+
+        Assert.Equal(["CommentsEnabled", "PostsPerPage", "SiteTitle", "Tagline", "TimeZone"], grid.Rows.Select(r => r.Values["Name"]).Order());
+        Assert.Equal("AI Research Blog", (await _settings.GetPublicAsync()).Title);
     }
 
     [Fact]

@@ -30,7 +30,6 @@
     <None Include="..\..\src\Adventures.Entities.Identity\Sql\seed\seed-005-identity-required.nq" Link="Sql\seed\seed-005-identity-required.nq" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Adventures.Blog\Sql\seed\seed-006-content.nq" Link="Sql\seed\seed-006-content.nq" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Adventures.Blog\Sql\seed\seed-011-site-settings.nq" Link="Sql\seed\seed-011-site-settings.nq" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\src\Adventures.Blog\Sql\seed\seed-023-comments-setting.nq" Link="Sql\seed\seed-023-comments-setting.nq" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Adventures.Blog\Sql\seed\seed-007-post-taxonomy.nq" Link="Sql\seed\seed-007-post-taxonomy.nq" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Adventures.Blog\Sql\seed\seed-008-post-revision.nq" Link="Sql\seed\seed-008-post-revision.nq" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Adventures.Blog\Sql\seed\seed-013-post-approval.nq" Link="Sql\seed\seed-013-post-approval.nq" CopyToOutputDirectory="PreserveNewest" />
