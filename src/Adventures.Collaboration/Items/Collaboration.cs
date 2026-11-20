@@ -172,6 +172,9 @@ public sealed class CollaborationPresenter(ICollaborationBll bll, EntitySchemaOf
 
     protected override IReadOnlySet<string> ReadOnlyFields => Managed;
 
+    /// <summary>Title, then content, before the other fields, as in the post and page editors (human, 2026-11-20).</summary>
+    protected override IReadOnlyList<string> LeadingFields { get; } = ["Title", "Content"];
+
     /// <summary>Newest first, so the items waiting for review are at the top.</summary>
     protected override (string Field, bool Descending)? DefaultSort => ("DateCreated", true);
 }

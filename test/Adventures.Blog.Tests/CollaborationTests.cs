@@ -218,6 +218,19 @@ public sealed class CollaborationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TheFormShowsTitleThenContent_LikePostsAndPages_AndTheRestKeepTheirSequence()
+    {
+        var schema = _services.GetRequiredService<EntitySchemaOf<CollaborationItem>>();
+        var presenter = new CollaborationPresenter(_bll, schema, _services.GetRequiredService<IEntityRelationProvider>());
+        var rest = schema.Schema.Fields.Values.Where(f => f.Name is not ("Title" or "Content")).OrderBy(f => f.Order ?? int.MaxValue).Select(f => f.Name).ToList();
+
+        var blank = (await presenter.GetNewFormAsync())!.Schema.Fields.Select(f => f.Name).ToList();
+
+        Assert.Equal(["Title", "Content"], blank.Take(2));
+        Assert.Equal(rest, blank.Skip(2));
+    }
+
+    [Fact]
     public async Task AGridFilterKeepsOnlyTheMatchingRows_IgnoresAnUnknownField_AndIsRemembered()
     {
         await _authoring.CreateAsync("Claude", new CollaborationDraft("Review"));

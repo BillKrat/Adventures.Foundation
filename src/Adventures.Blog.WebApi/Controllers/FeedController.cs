@@ -29,6 +29,13 @@ public sealed class FeedController(IPublicContent content, ISiteSettings setting
 
         var posts = await content.ListPostsAsync(1, MaxItems, category: null, tag: null, cancellationToken, includeDrafts: false);
         var site = await settings.GetPublicAsync(cancellationToken);
-        return Content(RssFeed.Build(site, $"https://{domain}", posts.Posts), RssFeed.ContentType);
+        return Content(RssFeed.Build(site, $"https://{SiteHost(domain)}", posts.Posts), RssFeed.ContentType);
+    }
+
+    /// <summary>A bare domain (two labels, like example.org) is linked as www, the way the public site is served (human, 2026-11-20); a host that already has a subdomain is kept.</summary>
+    internal static string SiteHost(string domain)
+    {
+        var host = domain.Trim().TrimEnd('/');
+        return host.Count(c => c == '.') == 1 ? "www." + host : host;
     }
 }
