@@ -66,7 +66,7 @@ public interface IVisitorComments
 }
 
 /// <summary>Implementation over the visitor comment repository and the published posts.</summary>
-public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntitySchemaOf<VisitorComment> schema, ICommentablePosts posts) : IVisitorComments
+public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntitySchemaOf<VisitorComment> schema, ICommentablePosts posts, ISiteSettings settings) : IVisitorComments
 {
     public const int MaxBodyLength = 2000;
     public const int MaxAuthorLength = 80;
@@ -78,6 +78,11 @@ public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntityS
     public async Task SubmitAsync(SubmittedComment comment, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(comment);
+        if (!(await settings.GetPublicAsync(cancellationToken).ConfigureAwait(false)).CommentsEnabled)
+        {
+            throw new BusinessRuleException("Comments are closed on this site.");
+        }
+
         var author = Clean(comment.Author);
         var body = Clean(comment.Body);
         var email = Clean(comment.Email ?? string.Empty);

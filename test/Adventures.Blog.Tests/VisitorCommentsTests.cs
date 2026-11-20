@@ -11,6 +11,17 @@ public sealed class VisitorCommentsTests : IAsyncLifetime
 {
     private IVisitorComments _comments = null!;
     private readonly FakePosts _posts = new();
+    private readonly FakeSettings _settings = new();
+
+    private sealed class FakeSettings : ISiteSettings
+    {
+        public bool CommentsEnabled { get; set; } = true;
+
+        public Task<PublicSiteSettings> GetPublicAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new PublicSiteSettings("Site", string.Empty, 10, CommentsEnabled));
+
+        public Task<string> GetLegacyTimeZoneAsync(CancellationToken cancellationToken = default) => Task.FromResult("UTC");
+    }
 
     private sealed class FakePosts : ICommentablePosts
     {
@@ -39,6 +50,7 @@ public sealed class VisitorCommentsTests : IAsyncLifetime
             BlogConstants.Content.VisitorCommentTypeIri, BlogConstants.Content.DefaultGraph, s => new VisitorComment(s));
         services.AddScoped<IEntityBll<VisitorComment>>(p => new EntityBll<VisitorComment>(new EntityDal<VisitorComment>(p.GetRequiredService<IEntityRepository<VisitorComment>>())));
         services.AddSingleton<ICommentablePosts>(_posts);
+        services.AddSingleton<ISiteSettings>(_settings);
         services.AddScoped<IVisitorComments, VisitorComments>();
         _comments = services.BuildServiceProvider().CreateScope().ServiceProvider.GetRequiredService<IVisitorComments>();
     }
@@ -46,6 +58,24 @@ public sealed class VisitorCommentsTests : IAsyncLifetime
     public Task DisposeAsync() => Task.CompletedTask;
 
     private static SubmittedComment Valid(string body = "Nice post.") => new("open-post", "Pat", "pat@example.com", body);
+
+    [Fact]
+    public async Task WhenTheSiteTurnsCommentsOff_NewCommentsAreRefused_AndExistingOnesAreKept()
+    {
+        await _comments.SubmitAsync(Valid());
+        var id = (await _comments.ListAsync(CommentStatuses.Pending)).Single().Id;
+        await _comments.SetStatusAsync([id], CommentStatuses.Approved);
+
+        _settings.CommentsEnabled = false;
+
+        var refused = await Assert.ThrowsAsync<BusinessRuleException>(() => _comments.SubmitAsync(Valid("Another one.")));
+        Assert.Contains("closed", refused.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Single(await _comments.ListApprovedAsync("open-post"));
+        Assert.Single(await _comments.ListAsync(null));
+
+        _settings.CommentsEnabled = true;
+        await _comments.SubmitAsync(Valid("Back on."));
+    }
 
     [Fact]
     public async Task ASubmittedCommentWaitsForApproval_AndIsNotPublic()

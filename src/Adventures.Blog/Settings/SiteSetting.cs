@@ -6,7 +6,7 @@ namespace Adventures.Blog;
 public sealed class SiteSetting(EntitySchema schema) : DynamicEntity(schema);
 
 /// <summary>The settings a visitor's browser needs: no secrets, nothing about the server.</summary>
-public sealed record PublicSiteSettings(string Title, string Tagline, int PostsPerPage);
+public sealed record PublicSiteSettings(string Title, string Tagline, int PostsPerPage, bool CommentsEnabled = true);
 
 /// <summary>Reads the site settings with safe defaults, so a missing or mistyped row never breaks the site.</summary>
 public interface ISiteSettings
@@ -29,7 +29,9 @@ public sealed class SiteSettings(IEntityPresenter<SiteSetting> presenter) : ISit
         var values = await ValuesAsync(cancellationToken).ConfigureAwait(false);
         var title = values.GetValueOrDefault("SiteTitle");
         var perPage = int.TryParse(values.GetValueOrDefault("PostsPerPage"), out var parsed) ? Math.Clamp(parsed, 1, MaxPostsPerPage) : DefaultPostsPerPage;
-        return new PublicSiteSettings(string.IsNullOrWhiteSpace(title) ? DefaultTitle : title.Trim(), values.GetValueOrDefault("Tagline")?.Trim() ?? string.Empty, perPage);
+        // Comments are on unless the setting says false (a missing or mistyped row never closes them by accident).
+        var commentsEnabled = !string.Equals(values.GetValueOrDefault("CommentsEnabled")?.Trim(), "false", StringComparison.OrdinalIgnoreCase);
+        return new PublicSiteSettings(string.IsNullOrWhiteSpace(title) ? DefaultTitle : title.Trim(), values.GetValueOrDefault("Tagline")?.Trim() ?? string.Empty, perPage, commentsEnabled);
     }
 
     public async Task<string> GetLegacyTimeZoneAsync(CancellationToken cancellationToken = default)

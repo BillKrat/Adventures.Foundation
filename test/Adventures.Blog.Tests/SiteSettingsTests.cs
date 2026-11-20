@@ -21,6 +21,7 @@ public sealed class SiteSettingsTests : IAsyncLifetime
         var seeds = Path.Combine(AppContext.BaseDirectory, "Sql", "seed");
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed.nq"));
         await store.SeedFromFileAsync(Path.Combine(seeds, "seed-011-site-settings.nq"));
+        await store.SeedFromFileAsync(Path.Combine(seeds, "seed-023-comments-setting.nq"));
         var quads = await store.QueryAsync();
 
         var services = new ServiceCollection();
@@ -39,11 +40,12 @@ public sealed class SiteSettingsTests : IAsyncLifetime
     private static EntityDataModel Row(string name, string? value) => new(string.Empty, new Dictionary<string, string?> { ["Name"] = name, ["Value"] = value });
 
     [Fact]
-    public async Task TheSeedShipsTheFourDefaults()
+    public async Task TheSeedsShipTheFiveDefaults()
     {
         var list = await _presenter.ListAsync();
 
-        Assert.Equal(["PostsPerPage", "SiteTitle", "Tagline", "TimeZone"], list.Select(r => r.Values["Name"]).Order());
+        Assert.Equal(["CommentsEnabled", "PostsPerPage", "SiteTitle", "Tagline", "TimeZone"], list.Select(r => r.Values["Name"]).Order());
+        Assert.True((await _settings.GetPublicAsync()).CommentsEnabled);
         var site = await _settings.GetPublicAsync();
         Assert.Equal("AI Research Blog", site.Title);
         Assert.Equal(10, site.PostsPerPage);
@@ -66,6 +68,21 @@ public sealed class SiteSettingsTests : IAsyncLifetime
         var site = await _settings.GetPublicAsync();
         Assert.Equal("Adventures on the Edge", site.Title);
         Assert.Equal(10, site.PostsPerPage);   // not a number: the default
+    }
+
+    [Theory]
+    [InlineData("false", false)]
+    [InlineData("FALSE", false)]
+    [InlineData(" False ", false)]
+    [InlineData("true", true)]
+    [InlineData("anything else", true)]
+    [InlineData("", true)]
+    public async Task CommentsAreOnUnlessTheSettingSaysFalse(string value, bool expected)
+    {
+        var row = (await _presenter.ListAsync()).Single(r => r.Values["Name"] == "CommentsEnabled");
+        await _presenter.UpdateAsync(row.EntityId, Row("CommentsEnabled", value));
+
+        Assert.Equal(expected, (await _settings.GetPublicAsync()).CommentsEnabled);
     }
 
     [Fact]
