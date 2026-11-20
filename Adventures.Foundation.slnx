@@ -41,6 +41,8 @@
     <Project Path="test/Adventures.Identity.Tests/Adventures.Identity.Tests.csproj" />
     <Project Path="test/Adventures.Identity.WebApi.Tests/Adventures.Identity.WebApi.Tests.csproj" />
     <Project Path="test/Adventures.Diagnostics.WebApi.Tests/Adventures.Diagnostics.WebApi.Tests.csproj" />
+    <Project Path="test/Adventures.Blog.WebApi.Tests/Adventures.Blog.WebApi.Tests.csproj" />
+    <Project Path="test/Adventures.Collaboration.WebApi.Tests/Adventures.Collaboration.WebApi.Tests.csproj" />
     <Project Path="test/Adventures.Security.Tests/Adventures.Security.Tests.csproj" />
     <Project Path="test/Adventures.Security.AspNetCore.Tests/Adventures.Security.AspNetCore.Tests.csproj" />
     <Project Path="test/Adventures.WebApi.Tests/Adventures.WebApi.Tests.csproj" />

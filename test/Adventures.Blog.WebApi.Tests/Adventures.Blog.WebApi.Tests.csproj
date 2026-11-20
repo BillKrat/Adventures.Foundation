@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Adventures.Blog.WebApi\Adventures.Blog.WebApi.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Security\Adventures.Security.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Security.AspNetCore\Adventures.Security.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Data.NQuad\Adventures.Data.NQuad.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Blog\Adventures.Blog.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Collaboration\Adventures.Collaboration.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Identity\Adventures.Identity.csproj" />
+  </ItemGroup>
+
+</Project>
