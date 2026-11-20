@@ -37,10 +37,33 @@ public sealed class AdminExceptionsController(IExceptionLogPresenter presenter, 
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<EntityGridModel>> Grid(
-        [FromQuery] bool includePurged = false, [FromQuery] string? signature = null, CancellationToken cancellationToken = default) =>
-        Ok(!string.IsNullOrWhiteSpace(signature)
+        [FromQuery] bool includePurged = false,
+        [FromQuery] string? signature = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = EntityGridQuery.DefaultPageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var all = !string.IsNullOrWhiteSpace(signature)
             ? await presenter.GetSignatureGridAsync(signature, includePurged, cancellationToken)
-            : includePurged ? await presenter.GetHistoryGridAsync(cancellationToken) : await presenter.GetGridAsync(cancellationToken));
+            : includePurged ? await presenter.GetHistoryGridAsync(cancellationToken) : await presenter.GetGridAsync(cancellationToken);
+
+        // Paged like every other grid (25 a page, at most 100); a page past the end shows the last one. The next and previous links
+        // keep the history switch and the drill-down, which the generic link builder does not know about.
+        var query = new EntityGridQuery(page, pageSize).Normalized();
+        var paging = new GridPaging(query.Page, query.PageSize, all.Rows.Count, null, false);
+        var current = Math.Min(query.Page, paging.TotalPages);
+        paging = paging with { Page = current };
+
+        string Link(int number) =>
+            $"/api/admin/exceptions?page={number}&pageSize={paging.PageSize}"
+            + (includePurged ? "&includePurged=true" : string.Empty)
+            + (string.IsNullOrWhiteSpace(signature) ? string.Empty : $"&signature={Uri.EscapeDataString(signature)}");
+
+        var rows = all.Rows.Skip((current - 1) * paging.PageSize).Take(paging.PageSize).ToArray();
+        var links = new EntityGridLinks(
+            Link(current), null, current < paging.TotalPages ? Link(current + 1) : null, current > 1 ? Link(current - 1) : null);
+        return Ok(all with { Rows = rows, Paging = paging, Links = links });
+    }
 
     [HttpGet("count")]
     public async Task<ActionResult<ExceptionCount>> Count(CancellationToken cancellationToken) =>
