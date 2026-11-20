@@ -1,4 +1,6 @@
+using Adventures.Tools;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Adventures.Collaboration.WebApi;
 
@@ -11,6 +13,11 @@ public static class CollaborationWebApiExtensions
     public static IMvcBuilder AddCollaborationControllers(this IMvcBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
+        foreach (var tool in CollaborationAuthoringTools.All)
+        {
+            builder.Services.AddSingleton<IAppTool>(tool);
+        }
+
         return builder.AddApplicationPart(typeof(CollaborationWebApiExtensions).Assembly);
     }
 }

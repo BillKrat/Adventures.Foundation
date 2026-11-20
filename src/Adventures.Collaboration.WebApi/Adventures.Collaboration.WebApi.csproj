@@ -32,6 +32,7 @@
     <ProjectReference Include="..\Adventures.WebApi\Adventures.WebApi.csproj" />
     <ProjectReference Include="..\Adventures.Security\Adventures.Security.csproj" />
     <ProjectReference Include="..\Adventures.Entities.Identity\Adventures.Entities.Identity.csproj" />
+    <ProjectReference Include="..\Adventures.Tools\Adventures.Tools.csproj" />
   </ItemGroup>
 
 </Project>

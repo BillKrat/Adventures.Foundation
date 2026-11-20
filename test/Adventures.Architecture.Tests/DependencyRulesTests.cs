@@ -22,6 +22,7 @@ public class DependencyRulesTests
         "Adventures.Blog.Postgres -> Adventures.Blog",
         "Adventures.Blog.WebApi -> Adventures.Blog",
         "Adventures.Blog.WebApi -> Adventures.Security",
+        "Adventures.Blog.WebApi -> Adventures.Tools",
         "Adventures.Blog.WebApi -> Adventures.WebApi",
         "Adventures.Client -> Adventures.Entities",
         "Adventures.Client -> Adventures.Security",
@@ -32,6 +33,7 @@ public class DependencyRulesTests
         "Adventures.Collaboration.WebApi -> Adventures.Entities.Identity",
         "Adventures.Collaboration.WebApi -> Adventures.MEF",
         "Adventures.Collaboration.WebApi -> Adventures.Security",
+        "Adventures.Collaboration.WebApi -> Adventures.Tools",
         "Adventures.Collaboration.WebApi -> Adventures.WebApi",
         "Adventures.Common -> Adventures.Ioc",
         "Adventures.Data.NQuad -> Adventures.Entities",
@@ -42,6 +44,7 @@ public class DependencyRulesTests
         "Adventures.Data.Sql -> Adventures.Data",
         "Adventures.Diagnostics.WebApi -> Adventures.Entities.Diagnostics",
         "Adventures.Diagnostics.WebApi -> Adventures.Security",
+        "Adventures.Diagnostics.WebApi -> Adventures.Tools",
         "Adventures.Diagnostics.WebApi -> Adventures.WebApi",
         "Adventures.Entities -> Adventures.Common",
         "Adventures.Entities.Diagnostics -> Adventures.Common",
@@ -58,6 +61,8 @@ public class DependencyRulesTests
         "Adventures.Identity.WebApi -> Adventures.WebApi",
         "Adventures.MEF -> Adventures.Entities",
         "Adventures.Security.AspNetCore -> Adventures.Security",
+        "Adventures.Tools.WebApi -> Adventures.MEF",
+        "Adventures.Tools.WebApi -> Adventures.Tools",
         "Adventures.WebApi -> Adventures.Entities",
         "Adventures.WebApi -> Adventures.Entities.Diagnostics",
         "Adventures.WebApi -> Adventures.Entities.Identity",
@@ -176,7 +181,19 @@ public class DependencyRulesTests
         Assert.Equal(["Adventures.Collaboration", "Adventures.Entities"], Graph.Projects["Adventures.Blog"].ProjectReferences);
         Assert.Equal(["Adventures.Blog"], Graph.Projects["Adventures.Blog.Postgres"].ProjectReferences);
         Assert.Equal(["Adventures.Blog", "Adventures.Data.Sql"], Graph.Projects["Adventures.Blog.Legacy"].ProjectReferences);
-        Assert.Equal(["Adventures.Blog", "Adventures.Security", "Adventures.WebApi"], Graph.Projects["Adventures.Blog.WebApi"].ProjectReferences);
+        Assert.Equal(["Adventures.Blog", "Adventures.Security", "Adventures.Tools", "Adventures.WebApi"], Graph.Projects["Adventures.Blog.WebApi"].ProjectReferences);
+    }
+
+    // Tools: the tool seam stands alone (no references at all); only the controller libraries that declare tools, and the manifest endpoint, build on it.
+    [Fact]
+    public void The_tool_seam_references_nothing_and_only_controller_libraries_build_on_it()
+    {
+        Assert.Empty(Graph.Projects["Adventures.Tools"].ProjectReferences);
+        var referrers = Graph.Projects.Values
+            .Where(p => p.ProjectReferences.Contains("Adventures.Tools"))
+            .Select(p => p.Name)
+            .OrderBy(n => n, StringComparer.Ordinal);
+        Assert.Equal(["Adventures.Blog.WebApi", "Adventures.Collaboration.WebApi", "Adventures.Diagnostics.WebApi", "Adventures.Tools.WebApi"], referrers);
     }
 
     // S3: nothing below the Blog (Entities and the other libraries) references it, so Entities holds no blog types.

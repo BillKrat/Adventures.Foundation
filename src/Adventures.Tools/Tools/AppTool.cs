@@ -4,7 +4,7 @@ namespace Adventures.Tools;
 /// A tool described as data. <see cref="CanHandle"/> is virtual: the default matches by exact name, by every word of the key appearing in the
 /// name or description (a grep), and by a small misspelling of the name (fuzzy); a tool author overrides it for something better.
 /// </summary>
-public class AppTool(string name, string description, string inputSchema, string requiredRight, string method, string pathTemplate) : IAppTool
+public class AppTool(string name, string description, string inputSchema, string requiredScope, string method, string pathTemplate, IReadOnlyList<string>? pluginKeys = null) : IAppTool
 {
     private const int FuzzyDistance = 2;
     private const int FuzzyMinimumKeyLength = 6;
@@ -15,7 +15,9 @@ public class AppTool(string name, string description, string inputSchema, string
 
     public string InputSchema { get; } = inputSchema;
 
-    public string RequiredRight { get; } = requiredRight;
+    public string RequiredScope { get; } = requiredScope;
+
+    public IReadOnlyList<string> PluginKeys { get; } = pluginKeys ?? [];
 
     public string Method { get; } = method;
 

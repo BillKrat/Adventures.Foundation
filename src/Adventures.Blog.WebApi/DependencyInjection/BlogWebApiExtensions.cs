@@ -1,4 +1,6 @@
+using Adventures.Tools;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Adventures.Blog.WebApi;
 
@@ -11,6 +13,11 @@ public static class BlogWebApiExtensions
     public static IMvcBuilder AddBlogControllers(this IMvcBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
+        foreach (var tool in AuthoringTools.All)
+        {
+            builder.Services.AddSingleton<IAppTool>(tool);
+        }
+
         return builder.AddApplicationPart(typeof(BlogWebApiExtensions).Assembly);
     }
 }

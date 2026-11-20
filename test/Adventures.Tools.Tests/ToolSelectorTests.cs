@@ -6,8 +6,8 @@ namespace Adventures.Tools.Tests;
 /// <summary>Finding a tool: each tool answers CanHandle, the selector walks the chain, and a fallback tool always ends it.</summary>
 public class ToolSelectorTests
 {
-    private static AppTool Tool(string name, string description, string right = "posts.read") =>
-        new(name, description, "{}", right, "GET", $"api/{name}");
+    private static AppTool Tool(string name, string description, string scope = "content.draft") =>
+        new(name, description, "{}", scope, "GET", $"api/{name}");
 
     private sealed class WikiTool() : AppTool("wiki_lookup", "Looks things up", "{}", "posts.read", "GET", "api/wiki")
     {

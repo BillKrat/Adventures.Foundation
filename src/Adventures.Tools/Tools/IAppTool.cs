@@ -14,8 +14,11 @@ public interface IAppTool
     /// <summary>JSON Schema of the input, as text.</summary>
     string InputSchema { get; }
 
-    /// <summary>The one right the API demands for this call (the same name the API enforces).</summary>
-    string RequiredRight { get; }
+    /// <summary>The scope the API demands on the caller token for this call (the same name the API enforces).</summary>
+    string RequiredScope { get; }
+
+    /// <summary>The plug-ins this tool belongs to: it is offered while any one of them is on. Empty means it always is.</summary>
+    IReadOnlyList<string> PluginKeys { get; }
 
     string Method { get; }
 

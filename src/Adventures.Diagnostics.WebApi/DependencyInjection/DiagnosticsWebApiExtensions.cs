@@ -1,4 +1,6 @@
+using Adventures.Tools;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Adventures.Diagnostics.WebApi;
 
@@ -11,6 +13,11 @@ public static class DiagnosticsWebApiExtensions
     public static IMvcBuilder AddDiagnosticsControllers(this IMvcBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
+        foreach (var tool in DiagnosticsTools.All)
+        {
+            builder.Services.AddSingleton<IAppTool>(tool);
+        }
+
         return builder.AddApplicationPart(typeof(DiagnosticsWebApiExtensions).Assembly);
     }
 }

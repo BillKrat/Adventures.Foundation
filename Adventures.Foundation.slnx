@@ -8,6 +8,7 @@
     <Project Path="src/Adventures.Identity.WebApi/Adventures.Identity.WebApi.csproj" />
     <Project Path="src/Adventures.MEF/Adventures.MEF.csproj" />
     <Project Path="src/Adventures.Tools/Adventures.Tools.csproj" />
+    <Project Path="src/Adventures.Tools.WebApi/Adventures.Tools.WebApi.csproj" />
     <Project Path="src/Adventures.Blog/Adventures.Blog.csproj" />
     <Project Path="src/Adventures.Blog.Postgres/Adventures.Blog.Postgres.csproj" />
     <Project Path="src/Adventures.Blog.Legacy/Adventures.Blog.Legacy.csproj" />
@@ -45,6 +46,7 @@
     <Project Path="test/Adventures.Blog.WebApi.Tests/Adventures.Blog.WebApi.Tests.csproj" />
     <Project Path="test/Adventures.Collaboration.WebApi.Tests/Adventures.Collaboration.WebApi.Tests.csproj" />
     <Project Path="test/Adventures.Tools.Tests/Adventures.Tools.Tests.csproj" />
+    <Project Path="test/Adventures.Tools.WebApi.Tests/Adventures.Tools.WebApi.Tests.csproj" />
     <Project Path="test/Adventures.Security.Tests/Adventures.Security.Tests.csproj" />
     <Project Path="test/Adventures.Security.AspNetCore.Tests/Adventures.Security.AspNetCore.Tests.csproj" />
     <Project Path="test/Adventures.WebApi.Tests/Adventures.WebApi.Tests.csproj" />

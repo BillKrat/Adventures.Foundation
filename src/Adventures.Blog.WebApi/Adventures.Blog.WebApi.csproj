@@ -30,6 +30,7 @@
     <ProjectReference Include="..\Adventures.Blog\Adventures.Blog.csproj" />
     <ProjectReference Include="..\Adventures.WebApi\Adventures.WebApi.csproj" />
     <ProjectReference Include="..\Adventures.Security\Adventures.Security.csproj" />
+    <ProjectReference Include="..\Adventures.Tools\Adventures.Tools.csproj" />
   </ItemGroup>
 
 </Project>
