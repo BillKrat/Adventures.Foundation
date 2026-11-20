@@ -39,6 +39,7 @@
     <Project Path="test/Adventures.Client.Tests/Adventures.Client.Tests.csproj" />
     <Project Path="test/Adventures.Entities.Tests/Adventures.Entities.Tests.csproj" />
     <Project Path="test/Adventures.Identity.Tests/Adventures.Identity.Tests.csproj" />
+    <Project Path="test/Adventures.Identity.WebApi.Tests/Adventures.Identity.WebApi.Tests.csproj" />
     <Project Path="test/Adventures.Security.Tests/Adventures.Security.Tests.csproj" />
     <Project Path="test/Adventures.Security.AspNetCore.Tests/Adventures.Security.AspNetCore.Tests.csproj" />
     <Project Path="test/Adventures.WebApi.Tests/Adventures.WebApi.Tests.csproj" />
