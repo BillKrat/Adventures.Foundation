@@ -13,6 +13,12 @@ public static class WellKnownClaims
     /// </summary>
     public const string Tenant = "tenant";
 
+    /// <summary>
+    /// "true" when the person signed in with a password that must be changed first (a seeded or administrator-set one). A host that wants the change
+    /// enforced refuses everything but the password change while this is set and the store still says the change is pending.
+    /// </summary>
+    public const string PasswordChange = "pwd_change";
+
     /// <summary>Tenant-wide administrator: full user management (seed account "Admin").</summary>
     public const string TenantAdminRole = "TenantAdmin";
 
