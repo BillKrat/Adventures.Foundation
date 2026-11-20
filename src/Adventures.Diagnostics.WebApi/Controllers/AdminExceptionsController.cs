@@ -27,8 +27,24 @@ public sealed class AdminExceptionsController(IExceptionLogPresenter presenter, 
 {
     /// <summary>The kinds of failure seen (grouped repeats), most recently seen first, each with how often.</summary>
     [HttpGet("signatures")]
-    public async Task<ActionResult<IReadOnlyList<ExceptionSignatureSummary>>> Signatures(CancellationToken cancellationToken) =>
-        Ok(await signatures.ListSummariesAsync(cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<ExceptionSignatureSummary>>> Signatures(CancellationToken cancellationToken)
+    {
+        // The stored counter can drift from the log; the number on the pill is what the drill-down lists (history included).
+        var kinds = await signatures.ListSummariesAsync(cancellationToken);
+        var logged = await presenter.GetHistoryGridAsync(cancellationToken);
+        return Ok(WithLoggedCounts(kinds, logged.Rows));
+    }
+
+    /// <summary>Each kind's count becomes the number of logged occurrences carrying its signature id (purged ones included); a kind with none logged keeps its stored count.</summary>
+    public static IReadOnlyList<ExceptionSignatureSummary> WithLoggedCounts(IReadOnlyList<ExceptionSignatureSummary> kinds, IReadOnlyList<EntityDataModel> rows)
+    {
+        var perKind = rows
+            .Select(row => row.Values.GetValueOrDefault("SignatureId"))
+            .Where(id => !string.IsNullOrEmpty(id))
+            .GroupBy(id => id!, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+        return kinds.Select(kind => perKind.TryGetValue(kind.Id, out var count) ? kind with { OccurrenceCount = count } : kind).ToList();
+    }
 
 /// <summary>An administrator's triage of one kind of failure: Acknowledged (being handled), Fixed, or back to New. A Fixed kind that recurs becomes Regressed by itself.</summary>    [HttpPut("signatures/{signatureId}/status")]    public async Task<IActionResult> SetStatus(string signatureId, [FromBody] SignatureStatusChange change, CancellationToken cancellationToken)    {        if (!ExceptionSignatureStatus.Settable.Contains(change.Status ?? string.Empty, StringComparer.Ordinal))        {            return BadRequest(new { title = $"Status must be one of: {string.Join(", ", ExceptionSignatureStatus.Settable)}." });        }        return await signatures.SetStatusAsync(signatureId, change.Status!, cancellationToken) ? NoContent() : NotFound();    }
     /// <summary>
