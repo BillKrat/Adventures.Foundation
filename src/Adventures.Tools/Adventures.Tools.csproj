@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<TargetFramework>net10.0</TargetFramework>
+	<Nullable>enable</Nullable>
+	<ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+	<PackageId>Adventures.Tools</PackageId>
+	<Version>0.1.0</Version>
+	<Authors>Adventures On The Edge</Authors>
+	<Description>The tool seam for Adventures.* applications: IAppTool (a feature declares what it can do), a replaceable selector that walks a chain of responsibility, and a fallback tool that always handles a request.</Description>
+	<PackageLicenseExpression>BUSL-1.1</PackageLicenseExpression>
+	<RepositoryUrl>https://github.com/BillKrat/Adventures.Foundation</RepositoryUrl>
+	<PackageTags>tools;extensibility</PackageTags>
+  </PropertyGroup>
+
+</Project>
