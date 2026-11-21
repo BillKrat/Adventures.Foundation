@@ -58,6 +58,32 @@ public sealed class TenantController(IRequestTenant requestTenant, TenantCacheIn
             caches?.Invalidate();
             return updated is null ? NotFound() : Ok(updated);
         });
+
+    /// <summary>
+    /// Deletes a tenant (a soft delete: its domain and host names reach nothing afterwards). The tenant's own domain must be given as <c>confirm</c>. Refused (409, with the
+    /// reason) for the tenant the person is working in, the tenant that owns the host this request came on, and the last tenant. The content stays in its graph, unreachable.
+    /// </summary>
+    [HttpDelete("{id}")]
+    [RequireRight(Rights.PlatformManage)]
+    public Task<IActionResult> DeleteTenant(string id, [FromQuery] string? confirm, [FromServices] ITenantRemover remover, [FromServices] ITenantResolver resolver, CancellationToken cancellationToken) =>
+        GuardedAsync(async () =>
+        {
+            var keep = new List<string>();
+            if (requestTenant.Current.Id is { } working)
+            {
+                keep.Add(working);
+            }
+
+            // the tenant that owns the host this request came on: deleting it would leave the site's own address with no tenant
+            if ((await resolver.ResolveAsync(requestTenant.Current.Host, null, cancellationToken)).Id is { } owner)
+            {
+                keep.Add(owner);
+            }
+
+            var removed = await remover.RemoveAsync(id, confirm, keep, cancellationToken);
+            caches?.Invalidate();
+            return removed is null ? NotFound() : Ok(removed);
+        });
 }
 
 /// <summary>The host name to add as an alias.</summary>
