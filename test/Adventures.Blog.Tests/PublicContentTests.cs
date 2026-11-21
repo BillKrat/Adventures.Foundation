@@ -251,4 +251,29 @@ public sealed class PublicContentTests : IAsyncLifetime
         Assert.Equal("hidden-from-the-menu", (await _public.GetPageAsync("hidden-from-the-menu"))!.Slug); // reachable by URL, just not listed
         Assert.Null(await _public.GetPageAsync("a-draft-page"));
     }
+
+    private sealed class PassThroughSanitizer : IHtmlContentSanitizer
+    {
+        public Task<Func<string?, string>> GetAsync(CancellationToken cancellationToken = default) => Task.FromResult<Func<string?, string>>(html => html ?? string.Empty);
+    }
+
+    [Fact]
+    public async Task WithTheSanitiserSwitchedOff_HtmlIsServedAsStored()
+    {
+        var repository = _services.GetRequiredService<IEntityRepository<Post>>();
+        var post = new Post(_services.GetRequiredService<EntitySchemaOf<Post>>().Schema);
+        void Put(string name, object value) => post.Set(name, Guid.NewGuid().ToString(), value);
+        Put("Id", Guid.NewGuid());
+        Put("Title", "Owner HTML");
+        Put("Slug", "owner-html");
+        Put("Content", "<p>fine</p><script>owner.script()</script>");
+        Put("ContentFormat", "Html");
+        Put("IsPublished", true);
+        Put("DatePublished", DateTimeOffset.UtcNow);
+        await repository.CreateAsync(post);
+
+        var served = await ActivatorUtilities.CreateInstance<PublicContent>(_services, new PassThroughSanitizer()).GetPostAsync("owner-html");
+
+        Assert.Equal("<p>fine</p><script>owner.script()</script>", served!.Content);
+    }
 }

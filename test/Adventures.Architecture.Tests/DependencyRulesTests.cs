@@ -17,6 +17,7 @@ public class DependencyRulesTests
     [
         "Adventures.Blog -> Adventures.Collaboration",
         "Adventures.Blog -> Adventures.Entities",
+        "Adventures.Blog -> Adventures.MEF",
         "Adventures.Blog.Legacy -> Adventures.Blog",
         "Adventures.Blog.Legacy -> Adventures.Data.Sql",
         "Adventures.Blog.Postgres -> Adventures.Blog",
@@ -174,11 +175,11 @@ public class DependencyRulesTests
         Assert.Empty(stray);
     }
 
-    // S3: the blog feature builds on the Entities model only. It names no store, no security project and no host (the NQuad browser must not pull it in, and it must not pull a store).
+    // S3: the blog feature builds on the Entities model and the plug-in seam (the HTML sanitiser is a plug-in) only. It names no store, no security project and no host (the NQuad browser must not pull it in, and it must not pull a store).
     [Fact]
     public void Blog_projects_reference_only_their_layer()
     {
-        Assert.Equal(["Adventures.Collaboration", "Adventures.Entities"], Graph.Projects["Adventures.Blog"].ProjectReferences);
+        Assert.Equal(["Adventures.Collaboration", "Adventures.Entities", "Adventures.MEF"], Graph.Projects["Adventures.Blog"].ProjectReferences);
         Assert.Equal(["Adventures.Blog"], Graph.Projects["Adventures.Blog.Postgres"].ProjectReferences);
         Assert.Equal(["Adventures.Blog", "Adventures.Data.Sql"], Graph.Projects["Adventures.Blog.Legacy"].ProjectReferences);
         Assert.Equal(["Adventures.Blog", "Adventures.Security", "Adventures.Tools", "Adventures.WebApi"], Graph.Projects["Adventures.Blog.WebApi"].ProjectReferences);

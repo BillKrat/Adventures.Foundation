@@ -2,6 +2,7 @@ using Adventures.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Adventures.Collaboration;
+using Adventures.MEF;
 
 namespace Adventures.Blog;
 
@@ -21,6 +22,12 @@ public static class BlogServiceCollectionExtensions
         services.AddScoped<IContentAuthoring, ContentAuthoring>();
         services.AddScoped<IPublicContent, PublicContent>();
         services.AddScoped<ISiteSettings, SiteSettings>();
+
+        // HTML sanitising is a plug-in that is on by default, behind a seam an owner can switch off and a developer can replace (register another IHtmlContentSanitizer after this).
+        services.AddPlugins();
+        services.AddPlugin(HtmlSanitizerPlugin.Definition);
+        services.AddScoped<IHtmlContentSanitizer, HtmlContentSanitizer>();
+
         services.AddScoped<IEntityPresenter<SiteSetting>, SiteSettingPresenter>();
         services.AddScoped<IEntityPresenter<Post>, PostPresenter>();
         services.AddScoped<IEntityBll<SiteSetting>>(p => new EntityBll<SiteSetting>(p.GetRequiredService<IEntityDal<SiteSetting>>()));

@@ -22,9 +22,9 @@ public static class ContentFormats
 
     /// <summary>
     /// Applies the rules when an item is saved: a missing format becomes Markdown (or the stored one on an update), an unknown one is refused, a stored
-    /// format cannot change, and HTML content is sanitised. Does nothing for a store whose schema has no such field.
+    /// format cannot change, and HTML content is sanitised (by the given function, which the sanitiser plug-in decides; the fixed rules when none is given). Does nothing for a store whose schema has no such field.
     /// </summary>
-    public static void Prepare(DynamicEntity entity, string? storedFormat)
+    public static void Prepare(DynamicEntity entity, string? storedFormat, Func<string?, string>? sanitize = null)
     {
         if (!entity.Fields.Any(field => string.Equals(field.Name, FieldName, StringComparison.OrdinalIgnoreCase)))
         {
@@ -50,9 +50,13 @@ public static class ContentFormats
 
         if (format == Html && entity.GetValue("Content") is string content)
         {
-            entity.Set("Content", Guid.NewGuid().ToString(), HtmlContent.Sanitize(content));
+            entity.Set("Content", Guid.NewGuid().ToString(), (sanitize ?? HtmlContent.Sanitize)(content));
         }
     }
+
+    /// <summary>The sanitising function for this request from the seam, or null (the fixed rules) when a host registered none.</summary>
+    internal static async Task<Func<string?, string>?> SanitizerAsync(IHtmlContentSanitizer? sanitizer, CancellationToken cancellationToken) =>
+        sanitizer is null ? null : await sanitizer.GetAsync(cancellationToken).ConfigureAwait(false);
 
     /// <summary>For the admin form: a new item with no format is an Html one (people write in the visual editor).</summary>
     public static EntityDataModel DefaultForNewForm(EntityDataModel data, EntitySchema schema)

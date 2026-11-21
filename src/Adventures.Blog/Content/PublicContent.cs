@@ -51,7 +51,7 @@ public interface IPublicContent
 }
 
 /// <summary>Implementation of <see cref="IPublicContent"/> over the ordinary presenters (so display names resolve the same way as in the admin), filtered to what is published (or, for an administrator, also the drafts).</summary>
-public sealed class PublicContent(IEntityPresenter<Post> posts, IEntityPresenter<Page> pages) : IPublicContent
+public sealed class PublicContent(IEntityPresenter<Post> posts, IEntityPresenter<Page> pages, IHtmlContentSanitizer? sanitizer = null) : IPublicContent
 {
     public const int MaxPageSize = 50;
 
@@ -117,8 +117,8 @@ public sealed class PublicContent(IEntityPresenter<Post> posts, IEntityPresenter
     private static string FormatOf(string? stored) => string.Equals(stored, ContentFormats.Html, StringComparison.Ordinal) ? ContentFormats.Html : ContentFormats.Markdown;
 
     /// <summary>Html is cleaned again on the way out (defence in depth: it was cleaned on the way in); Markdown is served as written and cleaned by the reader.</summary>
-    private static string ServedContent(string? content, string? format) =>
-        FormatOf(format) == ContentFormats.Html ? HtmlContent.Sanitize(content) : content ?? string.Empty;
+    private static string ServedContent(string? content, string? format, Func<string?, string> sanitize) =>
+        FormatOf(format) == ContentFormats.Html ? sanitize(content) : content ?? string.Empty;
 
     private sealed record PostRow(PublicPostSummary Summary, string Content, bool EnableComments, IReadOnlyList<string> Categories, IReadOnlyList<string> Tags, string ContentFormat);
 
@@ -126,6 +126,7 @@ public sealed class PublicContent(IEntityPresenter<Post> posts, IEntityPresenter
 
     private async Task<IReadOnlyList<PostRow>> VisiblePostsAsync(bool includeDrafts, CancellationToken cancellationToken)
     {
+        var sanitize = await ContentFormats.SanitizerAsync(sanitizer, cancellationToken).ConfigureAwait(false) ?? HtmlContent.Sanitize;
         var rows = await AllRowsAsync(posts, "DatePublished", descending: true, cancellationToken).ConfigureAwait(false);
         return rows
             // a proposed revision is a hidden copy of a published post, never a post of its own
@@ -146,13 +147,14 @@ public sealed class PublicContent(IEntityPresenter<Post> posts, IEntityPresenter
                     !IsTrue(row.Values.GetValueOrDefault("IsPublished")),
                     // the review state is for the administrator's view only: a visitor never learns that a post is under review
                     includeDrafts && row.Values.GetValueOrDefault("Approval") is { Length: > 0 } approval ? approval : null);
-                return new PostRow(summary, ServedContent(row.Values.GetValueOrDefault("Content"), row.Values.GetValueOrDefault(ContentFormats.FieldName)), IsTrue(row.Values.GetValueOrDefault("EnableComments")), categories, tags, FormatOf(row.Values.GetValueOrDefault(ContentFormats.FieldName)));
+                return new PostRow(summary, ServedContent(row.Values.GetValueOrDefault("Content"), row.Values.GetValueOrDefault(ContentFormats.FieldName), sanitize), IsTrue(row.Values.GetValueOrDefault("EnableComments")), categories, tags, FormatOf(row.Values.GetValueOrDefault(ContentFormats.FieldName)));
             })
             .ToList();
     }
 
     private async Task<IReadOnlyList<PageRow>> VisiblePagesAsync(bool includeDrafts, CancellationToken cancellationToken)
     {
+        var sanitize = await ContentFormats.SanitizerAsync(sanitizer, cancellationToken).ConfigureAwait(false) ?? HtmlContent.Sanitize;
         var rows = await AllRowsAsync(pages, "SortOrder", descending: false, cancellationToken).ConfigureAwait(false);
         var visible = rows.Where(row => includeDrafts || IsTrue(row.Values.GetValueOrDefault("IsPublished"))).ToList();
         var byId = visible.ToDictionary(row => row.EntityId, StringComparer.Ordinal);
@@ -165,7 +167,7 @@ public sealed class PublicContent(IEntityPresenter<Post> posts, IEntityPresenter
                 row.Values.GetValueOrDefault("Title") ?? string.Empty,
                 row.Values.GetValueOrDefault("Slug") ?? string.Empty,
                 row.Values.GetValueOrDefault("Description"),
-                ServedContent(row.Values.GetValueOrDefault("Content"), row.Values.GetValueOrDefault(ContentFormats.FieldName)),
+                ServedContent(row.Values.GetValueOrDefault("Content"), row.Values.GetValueOrDefault(ContentFormats.FieldName), sanitize),
                 row.Values.GetValueOrDefault("DatePublished"),
                 parent?.Values.GetValueOrDefault("Title"),
                 parent?.Values.GetValueOrDefault("Slug"),

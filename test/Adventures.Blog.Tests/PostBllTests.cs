@@ -272,4 +272,24 @@ public sealed class PostBllTests : IAsyncLifetime
             Assert.Equal(rest, names.Skip(2));
         }
     }
+
+    private sealed class PassThroughSanitizer : IHtmlContentSanitizer
+    {
+        public Task<Func<string?, string>> GetAsync(CancellationToken cancellationToken = default) => Task.FromResult<Func<string?, string>>(html => html ?? string.Empty);
+    }
+
+    [Fact]
+    public async Task WithTheSanitiserSwitchedOff_HtmlIsSavedAsWritten()
+    {
+        var bll = ActivatorUtilities.CreateInstance<PostBll>(_services, new PassThroughSanitizer());
+        var post = new Post(_services.GetRequiredService<EntitySchemaOf<Post>>().Schema);
+        post.Set("Id", Guid.NewGuid().ToString(), Guid.NewGuid());
+        post.Set("Title", Guid.NewGuid().ToString(), "Owner's own HTML");
+        post.Set("ContentFormat", Guid.NewGuid().ToString(), "Html");
+        post.Set("Content", Guid.NewGuid().ToString(), "<p>mine</p><script>site.owner.wants.this()</script>");
+
+        var made = await bll.CreateAsync(post);
+
+        Assert.Equal("<p>mine</p><script>site.owner.wants.this()</script>", made.GetValue("Content"));
+    }
 }

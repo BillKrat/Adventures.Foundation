@@ -9,12 +9,12 @@ namespace Adventures.Blog;
 /// page is the front page (setting it on one clears it on the others); an empty slug is made from the title; a new page gets
 /// a publication date; a slug is unique among pages (see <see cref="SlugRules"/>). Everything else is the generic Bll (required fields).
 /// </summary>
-public sealed class PageBll(IEntityDal<Page> pages) : EntityBll<Page>(pages), IPageBll
+public sealed class PageBll(IEntityDal<Page> pages, IHtmlContentSanitizer? sanitizer = null) : EntityBll<Page>(pages), IPageBll
 {
     public override async Task<Page> CreateAsync(Page entity, CancellationToken cancellationToken = default)
     {
         await PrepareAsync(entity, selfId: null, storedSlug: null, cancellationToken).ConfigureAwait(false);
-        ContentFormats.Prepare(entity, storedFormat: null);
+        ContentFormats.Prepare(entity, storedFormat: null, await ContentFormats.SanitizerAsync(sanitizer, cancellationToken).ConfigureAwait(false));
         var created = await base.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
         await ClearOtherFrontPagesAsync(created, cancellationToken).ConfigureAwait(false);
         return created;
@@ -25,7 +25,7 @@ public sealed class PageBll(IEntityDal<Page> pages) : EntityBll<Page>(pages), IP
         var id = entity.EntityId?.Value;
         var stored = id is null ? null : await GetAsync(id, cancellationToken).ConfigureAwait(false);
         await PrepareAsync(entity, id, stored?.GetValue("Slug") as string, cancellationToken).ConfigureAwait(false);
-        ContentFormats.Prepare(entity, stored is null ? null : ContentFormats.Of(stored));
+        ContentFormats.Prepare(entity, stored is null ? null : ContentFormats.Of(stored), await ContentFormats.SanitizerAsync(sanitizer, cancellationToken).ConfigureAwait(false));
         await RejectCycleAsync(entity, cancellationToken).ConfigureAwait(false);
         await base.UpdateAsync(entity, cancellationToken).ConfigureAwait(false);
         await ClearOtherFrontPagesAsync(entity, cancellationToken).ConfigureAwait(false);

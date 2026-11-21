@@ -10,14 +10,14 @@ namespace Adventures.Blog;
 /// from its title when it has none and a date; <see cref="PublishAsync"/> and <see cref="UnpublishAsync"/> are the only ways the
 /// published state changes; a draft can be marked as a revision of a published post and later applied or discarded.
 /// </summary>
-public sealed class PostBll(IEntityDal<Post> posts) : EntityBll<Post>(posts), IPostBll
+public sealed class PostBll(IEntityDal<Post> posts, IHtmlContentSanitizer? sanitizer = null) : EntityBll<Post>(posts), IPostBll
 {
     private static readonly string[] CopiedByRevision = ["Title", "Content", "ContentFormat", "Description", "EnableComments"];
 
     public override async Task<Post> CreateAsync(Post entity, CancellationToken cancellationToken = default)
     {
         await PrepareAsync(entity, selfId: null, storedSlug: null, cancellationToken).ConfigureAwait(false);
-        ContentFormats.Prepare(entity, storedFormat: null);
+        ContentFormats.Prepare(entity, storedFormat: null, await ContentFormats.SanitizerAsync(sanitizer, cancellationToken).ConfigureAwait(false));
         entity.Set("IsPublished", Guid.NewGuid().ToString(), false);
         return await base.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
     }
@@ -27,7 +27,7 @@ public sealed class PostBll(IEntityDal<Post> posts) : EntityBll<Post>(posts), IP
         var id = entity.EntityId?.Value;
         var stored = id is null ? null : await GetAsync(id, cancellationToken).ConfigureAwait(false);
         await PrepareAsync(entity, id, stored?.GetValue("Slug") as string, cancellationToken).ConfigureAwait(false);
-        ContentFormats.Prepare(entity, stored is null ? null : ContentFormats.Of(stored));
+        ContentFormats.Prepare(entity, stored is null ? null : ContentFormats.Of(stored), await ContentFormats.SanitizerAsync(sanitizer, cancellationToken).ConfigureAwait(false));
         await base.UpdateAsync(entity, cancellationToken).ConfigureAwait(false);
     }
 
