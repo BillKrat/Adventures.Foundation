@@ -36,6 +36,8 @@
     <Project Path="test/Adventures.Ioc.Tests/Adventures.Ioc.Tests.csproj" Id="1608b7d0-697c-4764-af29-9d9df5380493" />
     <Project Path="test/Adventures.Tests/Adventures.Tests.csproj" Id="4e60653f-b143-4ae7-8797-1233129c35e6" />
     <Project Path="test/Adventures.Architecture.Tests/Adventures.Architecture.Tests.csproj" />
+    <Project Path="test/Adventures.MEF.SamplePlugin/Adventures.MEF.SamplePlugin.csproj" />
+    <Project Path="test/Adventures.MEF.Tests/Adventures.MEF.Tests.csproj" />
     <Project Path="test/Adventures.Data.NQuad.Tests/Adventures.Data.NQuad.Tests.csproj" />
     <Project Path="test/Adventures.Data.Postgres.Tests/Adventures.Data.Postgres.Tests.csproj" />
     <Project Path="test/Adventures.Client.Tests/Adventures.Client.Tests.csproj" />
