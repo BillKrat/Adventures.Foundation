@@ -10,6 +10,7 @@ using Xunit;
 namespace Adventures.WebApi.Tests;
 
 /// <summary>An expired or failing AI key is never silent: plain-words reasons, the exception log, and a health warning before it expires.</summary>
+[Xunit.Collection("AiTriage static state")]
 public sealed class AiKeyErrorTests : IDisposable
 {
     public AiKeyErrorTests() => AiTriage.ResetForTests();

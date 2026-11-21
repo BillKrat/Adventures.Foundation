@@ -10,6 +10,8 @@ using Xunit;
 
 namespace Adventures.WebApi.Tests;
 
+// The AI triage call counter and cache are static, so the two classes that reset and fill them must not run at the same time.
+[Xunit.Collection("AiTriage static state")]
 public sealed class AiTriageTests : IDisposable
 {
     private const string SecretKey = "sk-ant-api03-THISISATESTKEY123456";
