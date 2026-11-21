@@ -66,7 +66,7 @@ public sealed partial class AesGcmFieldEncryptor : IFieldEncryptor
                 throw new InvalidOperationException($"Encryption key '{id}' is too short: use at least {MinimumKeyLength} characters (for example 32 random bytes as base64).");
             }
 
-            _keys[id] = HKDF.DeriveKey(HashAlgorithmName.SHA256, Encoding.UTF8.GetBytes(material), 32, salt: null, info: KeyInfo);
+            _keys[id!] = HKDF.DeriveKey(HashAlgorithmName.SHA256, Encoding.UTF8.GetBytes(material), 32, salt: null, info: KeyInfo);
         }
 
         if (!string.IsNullOrWhiteSpace(options.CurrentKeyId))

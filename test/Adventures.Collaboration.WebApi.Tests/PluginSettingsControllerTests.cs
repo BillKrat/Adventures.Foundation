@@ -20,6 +20,8 @@ public sealed class PluginSettingsControllerTests
     {
         public Dictionary<string, string?>? Saved { get; private set; }
 
+        public IReadOnlyCollection<string>? Cleared { get; private set; }
+
         public IReadOnlyList<PluginSettingDefinition> DefinitionsOf(string pluginKey) =>
             pluginKey == "sample" ? [Greeting] : throw new BusinessRuleException($"There is no plug-in '{pluginKey}'.");
 
@@ -29,7 +31,7 @@ public sealed class PluginSettingsControllerTests
             return Task.FromResult<IReadOnlyDictionary<string, string>>(new Dictionary<string, string> { ["Greeting"] = "hello" });
         }
 
-        public Task SetAsync(string pluginKey, IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken = default)
+        public Task SetAsync(string pluginKey, IReadOnlyDictionary<string, string?> values, IReadOnlyCollection<string>? clear = null, CancellationToken cancellationToken = default)
         {
             _ = DefinitionsOf(pluginKey);
             if (values.TryGetValue("Greeting", out var v) && v == "bad")
@@ -38,8 +40,11 @@ public sealed class PluginSettingsControllerTests
             }
 
             Saved = new Dictionary<string, string?>(values);
+            Cleared = clear;
             return Task.CompletedTask;
         }
+
+        public async Task<PluginSettingsView> GetForDisplayAsync(string pluginKey, CancellationToken cancellationToken = default) => new(await GetAsync(pluginKey, cancellationToken), []);
     }
 
     private static PluginsController Controller(FakeSettings settings) => new(new PluginLoadReportTests.NoPlugins(), [], settings);
@@ -88,11 +93,22 @@ public sealed class PluginSettingsControllerTests
     [Fact]
     public void TheDefinitions_SerializeWithoutThePluginsValidator()
     {
-        var json = JsonSerializer.Serialize(new PluginSettingsModel([Greeting], new Dictionary<string, string> { ["Greeting"] = "hello" }));
+        var json = JsonSerializer.Serialize(new PluginSettingsModel([Greeting], new Dictionary<string, string> { ["Greeting"] = "hello" }, ["Token"]));
 
         Assert.Contains("Greeting", json);
         Assert.DoesNotContain("Validate", json);
         Assert.Contains("\"Kind\":\"Text\"", json);
+    }
+
+    [Fact]
+    public async Task AClearRequest_ReachesTheStore_AndASecretKindSerializesByName()
+    {
+        var settings = new FakeSettings();
+
+        await Controller(settings).UpdateSettings("sample", new PluginSettingsUpdate(new() { ["Greeting"] = "hi" }, ["Token"]), CancellationToken.None);
+
+        Assert.Equal(["Token"], settings.Cleared);
+        Assert.Contains("\"Kind\":\"Secret\"", JsonSerializer.Serialize(new PluginSettingDefinition("Token", "Token", "A token.", PluginSettingKind.Secret, string.Empty)));
     }
 
     [Fact]

@@ -155,7 +155,9 @@ public sealed class HtmlSanitizerSettingsTests
         public Task<IReadOnlyDictionary<string, string>> GetAsync(string pluginKey, CancellationToken cancellationToken = default) =>
             throws ? throw new InvalidOperationException("down") : Task.FromResult<IReadOnlyDictionary<string, string>>(values!);
 
-        public Task SetAsync(string pluginKey, IReadOnlyDictionary<string, string?> v, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SetAsync(string pluginKey, IReadOnlyDictionary<string, string?> v, IReadOnlyCollection<string>? clear = null, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public async Task<PluginSettingsView> GetForDisplayAsync(string pluginKey, CancellationToken cancellationToken = default) => new(await GetAsync(pluginKey, cancellationToken), []);
     }
 
     private static IServiceProvider With(IPluginSettings settings) =>

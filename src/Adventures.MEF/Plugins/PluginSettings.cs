@@ -2,10 +2,11 @@ using System.Globalization;
 using System.Text.Json.Serialization;
 using Adventures.Common.Exceptions;
 using Adventures.Entities;
+using Adventures.Security;
 
 namespace Adventures.MEF;
 
-/// <summary>How a plug-in setting is entered and checked: free text, one value per line, true or false, or a whole number.</summary>
+/// <summary>How a plug-in setting is entered and checked: free text, one value per line, true or false, a whole number, or a secret (a credential: encrypted at rest, write-only on the screen).</summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum PluginSettingKind
 {
@@ -13,6 +14,7 @@ public enum PluginSettingKind
     Lines,
     Bool,
     Number,
+    Secret,
 }
 
 /// <summary>
@@ -41,11 +43,19 @@ public interface IPluginSettings
     Task<IReadOnlyDictionary<string, string>> GetAsync(string pluginKey, CancellationToken cancellationToken = default);
 
     /// <summary>Validates every given value (and that the plug-in declares it), then stores them all; one bad value stores nothing.</summary>
-    Task SetAsync(string pluginKey, IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken = default);
+    Task SetAsync(string pluginKey, IReadOnlyDictionary<string, string?> values, IReadOnlyCollection<string>? clear = null, CancellationToken cancellationToken = default);
+
+    /// <summary>What the Customize screen may show: every value as <see cref="GetAsync"/>, except secrets are empty, plus the names of the secrets that are set. A secret is never sent to a browser.</summary>
+    Task<PluginSettingsView> GetForDisplayAsync(string pluginKey, CancellationToken cancellationToken = default);
 }
 
-public sealed class PluginSettings(IEntityBll<PluginSetting> states, EntitySchemaOf<PluginSetting> schema, IEnumerable<PluginDefinition> definitions) : IPluginSettings
+/// <summary>The settings of one plug-in as the screen sees them: secrets are blank, and <see cref="SecretsSet"/> says which of them have a value.</summary>
+public sealed record PluginSettingsView(IReadOnlyDictionary<string, string> Values, IReadOnlyList<string> SecretsSet);
+
+public sealed class PluginSettings(IEntityBll<PluginSetting> states, EntitySchemaOf<PluginSetting> schema, IEnumerable<PluginDefinition> definitions, IFieldEncryptor? encryptor = null) : IPluginSettings
 {
+    private static string ContextOf(string pluginKey, string name) => $"plugin-setting:{pluginKey}:{name}";
+
     public IReadOnlyList<PluginSettingDefinition> DefinitionsOf(string pluginKey) =>
         (definitions.FirstOrDefault(p => string.Equals(p.Key, pluginKey, StringComparison.Ordinal))
             ?? throw new BusinessRuleException($"There is no plug-in '{pluginKey}'.")).Settings ?? [];
@@ -56,11 +66,34 @@ public sealed class PluginSettings(IEntityBll<PluginSetting> states, EntitySchem
         var stored = await StoredAsync(pluginKey, cancellationToken).ConfigureAwait(false);
         return declared.ToDictionary(
             d => d.Name,
-            d => stored.TryGetValue(d.Name, out var row) && row.GetValue("Value") is string value ? value : d.Default,
+            d => stored.TryGetValue(d.Name, out var row) && row.GetValue("Value") is string value
+                ? (d.Kind == PluginSettingKind.Secret ? Reveal(pluginKey, d.Name, value) : value)
+                : (d.Kind == PluginSettingKind.Secret ? string.Empty : d.Default),
             StringComparer.Ordinal);
     }
 
-    public async Task SetAsync(string pluginKey, IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken = default)
+    public async Task<PluginSettingsView> GetForDisplayAsync(string pluginKey, CancellationToken cancellationToken = default)
+    {
+        var values = new Dictionary<string, string>(await GetAsync(pluginKey, cancellationToken).ConfigureAwait(false), StringComparer.Ordinal);
+        var set = new List<string>();
+        foreach (var d in DefinitionsOf(pluginKey).Where(d => d.Kind == PluginSettingKind.Secret))
+        {
+            if (values[d.Name].Length > 0)
+            {
+                set.Add(d.Name);
+            }
+
+            values[d.Name] = string.Empty;
+        }
+
+        return new PluginSettingsView(values, set);
+    }
+
+    /// <summary>The decrypted secret, or empty when it cannot be read (no key, another key, a changed value, or text that was never encrypted by us).</summary>
+    private string Reveal(string pluginKey, string name, string stored) =>
+        encryptor?.TryDecrypt(stored, ContextOf(pluginKey, name)) ?? string.Empty;
+
+    public async Task SetAsync(string pluginKey, IReadOnlyDictionary<string, string?> values, IReadOnlyCollection<string>? clear = null, CancellationToken cancellationToken = default)
     {
         var declared = DefinitionsOf(pluginKey).ToDictionary(d => d.Name, StringComparer.Ordinal);
         var clean = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -71,7 +104,35 @@ public sealed class PluginSettings(IEntityBll<PluginSetting> states, EntitySchem
                 throw new BusinessRuleException($"The plug-in '{pluginKey}' has no setting '{name}'.");
             }
 
-            clean[name] = CheckValue(definition, raw);
+            if (definition.Kind == PluginSettingKind.Secret)
+            {
+                if (string.IsNullOrWhiteSpace(raw))
+                {
+                    continue; // an empty secret field means keep what is there; clearing is its own request
+                }
+
+                var plain = CheckPlain(definition, raw);
+
+                if (encryptor is null || !encryptor.IsConfigured)
+                {
+                    throw new BusinessRuleException($"{definition.Label} cannot be saved: encryption is not configured on this host (set Encryption:CurrentKeyId and Encryption:Keys:<id>). Nothing was stored.");
+                }
+
+                clean[name] = encryptor.Encrypt(plain, ContextOf(pluginKey, name));
+                continue;
+            }
+
+            clean[name] = CheckPlain(definition, raw);
+        }
+
+        foreach (var name in clear ?? [])
+        {
+            if (!declared.TryGetValue(name, out var cleared) || cleared.Kind != PluginSettingKind.Secret)
+            {
+                throw new BusinessRuleException($"'{name}' is not a secret setting of '{pluginKey}', so it cannot be cleared this way.");
+            }
+
+            clean[name] = string.Empty;
         }
 
         var stored = await StoredAsync(pluginKey, cancellationToken).ConfigureAwait(false);
@@ -94,7 +155,12 @@ public sealed class PluginSettings(IEntityBll<PluginSetting> states, EntitySchem
     }
 
     /// <summary>The value in its stored form, or a business-rule error saying what is wrong with it.</summary>
-    public static string CheckValue(PluginSettingDefinition definition, string? raw)
+    public static string CheckValue(PluginSettingDefinition definition, string? raw) =>
+        definition.Kind == PluginSettingKind.Secret
+            ? throw new BusinessRuleException($"{definition.Label} is a secret, and secrets are not supported for this kind of setting yet.")
+            : CheckPlain(definition, raw);
+
+    private static string CheckPlain(PluginSettingDefinition definition, string? raw)
     {
         var value = (raw ?? string.Empty).Trim();
         if (value.Length > definition.MaxLength)

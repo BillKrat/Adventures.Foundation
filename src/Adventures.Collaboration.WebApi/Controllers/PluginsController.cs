@@ -51,7 +51,8 @@ public sealed class PluginsController(IPlugins plugins, IEnumerable<PluginLoadRe
     {
         try
         {
-            return Ok(new PluginSettingsModel(settings.DefinitionsOf(key), await settings.GetAsync(key, cancellationToken)));
+            var view = await settings.GetForDisplayAsync(key, cancellationToken);
+            return Ok(new PluginSettingsModel(settings.DefinitionsOf(key), view.Values, view.SecretsSet));
         }
         catch (BusinessRuleException)
         {
@@ -74,7 +75,7 @@ public sealed class PluginsController(IPlugins plugins, IEnumerable<PluginLoadRe
 
         return await GuardedAsync(async () =>
         {
-            await settings.SetAsync(key, update.Values, cancellationToken);
+            await settings.SetAsync(key, update.Values, update.Clear, cancellationToken);
             return NoContent();
         });
     }
@@ -94,7 +95,7 @@ public sealed class PluginsController(IPlugins plugins, IEnumerable<PluginLoadRe
 }
 
 /// <summary>A plug-in's settings for its Customize screen: what it declares, and the value of each now (the default where none is stored).</summary>
-public sealed record PluginSettingsModel(IReadOnlyList<PluginSettingDefinition> Definitions, IReadOnlyDictionary<string, string> Values);
+public sealed record PluginSettingsModel(IReadOnlyList<PluginSettingDefinition> Definitions, IReadOnlyDictionary<string, string> Values, IReadOnlyList<string> SecretsSet);
 
-/// <summary>The values an administrator saves; only settings the plug-in declares are accepted, and a bad value saves nothing.</summary>
-public sealed record PluginSettingsUpdate(Dictionary<string, string?> Values);
+/// <summary>The values an administrator saves; only settings the plug-in declares are accepted, and a bad value saves nothing. An empty secret keeps what is stored; a secret is removed only by naming it in <see cref="Clear"/>.</summary>
+public sealed record PluginSettingsUpdate(Dictionary<string, string?> Values, string[]? Clear = null);

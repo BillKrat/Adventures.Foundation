@@ -62,6 +62,7 @@ public class DependencyRulesTests
         "Adventures.Identity.WebApi -> Adventures.Security",
         "Adventures.Identity.WebApi -> Adventures.WebApi",
         "Adventures.MEF -> Adventures.Entities",
+        "Adventures.MEF -> Adventures.Security",
         "Adventures.MEF.WebApi -> Adventures.MEF",
         "Adventures.MEF.WebApi -> Adventures.Tools",
         "Adventures.Security.AspNetCore -> Adventures.Security",
@@ -217,7 +218,7 @@ public class DependencyRulesTests
     public void Collaboration_and_the_plugin_seam_reference_only_their_layer()
     {
         Assert.Equal(["Adventures.Entities", "Adventures.Entities.Identity", "Adventures.MEF"], Graph.Projects["Adventures.Collaboration"].ProjectReferences);
-        Assert.Equal(["Adventures.Entities"], Graph.Projects["Adventures.MEF"].ProjectReferences);
+        Assert.Equal(["Adventures.Entities", "Adventures.Security"], Graph.Projects["Adventures.MEF"].ProjectReferences); // Security: the field encryptor behind Secret settings
         var referrers = Graph.Projects.Values.Where(p => p.ProjectReferences.Contains("Adventures.Collaboration")).Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal);
         Assert.Equal(["Adventures.Blog", "Adventures.Collaboration.WebApi"], referrers);
     }

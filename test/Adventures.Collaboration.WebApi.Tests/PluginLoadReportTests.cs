@@ -19,7 +19,9 @@ public sealed class PluginLoadReportTests
 
         public Task<IReadOnlyDictionary<string, string>> GetAsync(string pluginKey, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyDictionary<string, string>>(new Dictionary<string, string>());
 
-        public Task SetAsync(string pluginKey, IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SetAsync(string pluginKey, IReadOnlyDictionary<string, string?> values, IReadOnlyCollection<string>? clear = null, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public async Task<PluginSettingsView> GetForDisplayAsync(string pluginKey, CancellationToken cancellationToken = default) => new(await GetAsync(pluginKey, cancellationToken), []);
     }
 
     internal sealed class NoPlugins : IPlugins
