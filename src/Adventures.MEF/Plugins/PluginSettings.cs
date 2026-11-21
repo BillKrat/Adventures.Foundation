@@ -71,7 +71,7 @@ public sealed class PluginSettings(IEntityBll<PluginSetting> states, EntitySchem
                 throw new BusinessRuleException($"The plug-in '{pluginKey}' has no setting '{name}'.");
             }
 
-            clean[name] = Check(definition, raw);
+            clean[name] = CheckValue(definition, raw);
         }
 
         var stored = await StoredAsync(pluginKey, cancellationToken).ConfigureAwait(false);
@@ -94,7 +94,7 @@ public sealed class PluginSettings(IEntityBll<PluginSetting> states, EntitySchem
     }
 
     /// <summary>The value in its stored form, or a business-rule error saying what is wrong with it.</summary>
-    private static string Check(PluginSettingDefinition definition, string? raw)
+    public static string CheckValue(PluginSettingDefinition definition, string? raw)
     {
         var value = (raw ?? string.Empty).Trim();
         if (value.Length > definition.MaxLength)
