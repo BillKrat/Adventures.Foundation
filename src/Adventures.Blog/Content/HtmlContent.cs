@@ -38,6 +38,15 @@ public static class HtmlContent
             }
         };
         sanitizer.AllowedAttributes.Add("target");
+        // classes are allowed only from a list (the blog's own widget classes and the ones the owner added), so content cannot borrow the app's interface styles
+        sanitizer.AllowedAttributes.Add("class");
+        sanitizer.AllowedAttributes.Add("aria-label");
+        sanitizer.AllowedClasses.Clear();
+        foreach (var name in HtmlAllowList.BuiltInClasses.Concat(allow.Classes))
+        {
+            sanitizer.AllowedClasses.Add(name);
+        }
+
         foreach (var tag in allow.Tags)
         {
             sanitizer.AllowedTags.Add(tag);

@@ -11,12 +11,13 @@ namespace Adventures.Blog.Tests;
 /// </summary>
 public sealed class HtmlSanitizerSettingsTests
 {
-    private static HtmlAllowList Allow(string tags = "", string attributes = "", string schemes = "http,https,mailto") =>
+    private static HtmlAllowList Allow(string tags = "", string attributes = "", string schemes = "http,https,mailto", string classes = "") =>
         HtmlAllowList.From(new Dictionary<string, string>
         {
             [HtmlSanitizerPlugin.ExtraAllowedTags] = tags,
             [HtmlSanitizerPlugin.ExtraAllowedAttributes] = attributes,
             [HtmlSanitizerPlugin.AllowedUrlSchemes] = schemes,
+            [HtmlSanitizerPlugin.ExtraAllowedClasses] = classes,
         });
 
     [Fact]
@@ -126,11 +127,11 @@ public sealed class HtmlSanitizerSettingsTests
     }
 
     [Fact]
-    public void ThePluginDeclaresTheThreeSettings_WithTheirDefaults_AndTheValidators()
+    public void ThePluginDeclaresTheFourSettings_WithTheirDefaults_AndTheValidators()
     {
         var settings = HtmlSanitizerPlugin.Definition.Settings!;
 
-        Assert.Equal([HtmlSanitizerPlugin.ExtraAllowedTags, HtmlSanitizerPlugin.ExtraAllowedAttributes, HtmlSanitizerPlugin.AllowedUrlSchemes], settings.Select(s => s.Name));
+        Assert.Equal([HtmlSanitizerPlugin.ExtraAllowedTags, HtmlSanitizerPlugin.ExtraAllowedAttributes, HtmlSanitizerPlugin.ExtraAllowedClasses, HtmlSanitizerPlugin.AllowedUrlSchemes], settings.Select(s => s.Name));
         Assert.Equal("http,https,mailto", settings.Single(s => s.Name == HtmlSanitizerPlugin.AllowedUrlSchemes).Default);
         Assert.All(settings, s => Assert.NotNull(s.Validate));
         Assert.NotNull(settings.Single(s => s.Name == HtmlSanitizerPlugin.ExtraAllowedTags).Validate!("script"));
@@ -177,5 +178,54 @@ public sealed class HtmlSanitizerSettingsTests
         var cleaned = sanitize("<x-widget>w</x-widget><script>x()</script>");
         Assert.DoesNotContain("x-widget", cleaned);
         Assert.DoesNotContain("script", cleaned, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ---- CSS classes: the blog's own widget classes survive by default, anything else only when the owner allows it
+
+    [Fact]
+    public void TheBlogsOwnWidgetClasses_SurviveByDefault_AndAnyOtherClassIsStripped()
+    {
+        var cleaned = HtmlContent.Sanitize("<ul class=\"tag-cloud\"><li class=\"tag-cloud__item\"><a class=\"tag-cloud__tag tag-cloud__size-5 sneaky\" href=\"/tag/x\">x<span class=\"tag-cloud__count\">5</span></a></li></ul>", HtmlAllowList.Default);
+
+        Assert.Contains("class=\"tag-cloud\"", cleaned);
+        Assert.Contains("tag-cloud__tag tag-cloud__size-5", cleaned);
+        Assert.Contains("class=\"tag-cloud__count\"", cleaned);
+        Assert.DoesNotContain("sneaky", cleaned);
+    }
+
+    [Fact]
+    public void AClassTheOwnerAllows_IsKept_AndOthersStillAreNot()
+    {
+        var cleaned = HtmlContent.Sanitize("<p class=\"my-note other\">a</p>", Allow(classes: "my-note"));
+
+        Assert.Contains("my-note", cleaned);
+        Assert.DoesNotContain("other", cleaned);
+    }
+
+    [Theory]
+    [InlineData("my.note")]
+    [InlineData("1abc")]
+    [InlineData("a<b")]
+    [InlineData("a\"b")]
+    public void ANameThatIsNotAClassName_IsRefused_AndIgnoredAtUse(string classes)
+    {
+        Assert.NotNull(HtmlAllowList.ValidateClasses(classes));
+        Assert.Empty(Allow(classes: classes).Classes);
+    }
+
+    [Fact]
+    public void ClassNamesLikeThoseOfTheAppsOverlays_AreRefused_SoPostHtmlCannotDressAsTheAppsOwnInterface()
+    {
+        Assert.NotNull(HtmlAllowList.ValidateClasses("cdk-overlay-container"));
+        Assert.NotNull(HtmlAllowList.ValidateClasses("mat-mdc-dialog-container"));
+        Assert.NotNull(HtmlAllowList.ValidateClasses("busy"));
+        Assert.NotNull(HtmlAllowList.ValidateClasses("page__problem"));
+        Assert.Null(HtmlAllowList.ValidateClasses("my-note, note-box"));
+    }
+
+    [Fact]
+    public void AnAriaLabel_IsKept_ForAccessibility()
+    {
+        Assert.Contains("aria-label=\"Tags\"", HtmlContent.Sanitize("<ul aria-label=\"Tags\"><li>x</li></ul>"));
     }
 }

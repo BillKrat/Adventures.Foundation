@@ -23,15 +23,37 @@ public sealed class TextBoxWidget : IWidget
         Task.FromResult(context.Settings.TryGetValue("Content", out var content) ? content.Trim() : string.Empty);
 }
 
-/// <summary>The tags with the number of posts using each, most used first, each linking to its page.</summary>
+/// <summary>
+/// The tag cloud as BlogEngine drew it: each tag a pill with its post count and a link to its posts, sized by how much it is used. Tags used by fewer
+/// posts than the minimum (two by default) are left out. The sizes are classes (<c>tag-cloud__size-1</c> to <c>-5</c>) that the public page styles.
+/// </summary>
 public sealed class TagCloudWidget(IPublicContent content) : IWidget
 {
     public static readonly WidgetDefinition Definition = new(
-        "tag-cloud", "Tag cloud", "The tags of the blog, most used first, each linking to its posts.",
-        [WidgetTerms.MaxSetting]);
+        "tag-cloud", "Tag cloud", "The tags of the blog as pills with their post counts, sized by use and linking to their posts.",
+        [
+            WidgetTerms.MaxSetting,
+            new PluginSettingDefinition("Min", "Fewest posts", "Hide tags used by fewer posts than this (1 shows every tag).", PluginSettingKind.Number, "2"),
+        ]);
 
-    public async Task<string> RenderAsync(WidgetContext context, CancellationToken cancellationToken) =>
-        WidgetTerms.List(await content.GetTagsAsync(cancellationToken).ConfigureAwait(false), "tag", WidgetTerms.MaxOf(context));
+    public async Task<string> RenderAsync(WidgetContext context, CancellationToken cancellationToken)
+    {
+        var min = int.TryParse(context.Settings.GetValueOrDefault("Min"), out var parsed) ? Math.Max(1, parsed) : 2;
+        var shown = (await content.GetTagsAsync(cancellationToken).ConfigureAwait(false)).Where(t => t.Posts >= min).Take(WidgetTerms.MaxOf(context)).ToList();
+        if (shown.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var (least, most) = (shown.Min(t => t.Posts), shown.Max(t => t.Posts));
+        var items = shown.Select(t =>
+        {
+            var size = most == least ? 3 : 1 + (int)Math.Round((t.Posts - least) / (double)(most - least) * 4, MidpointRounding.AwayFromZero);
+            var title = t.Posts == 1 ? "1 post" : $"{t.Posts} posts";
+            return $"<li class=\"tag-cloud__item\"><a class=\"tag-cloud__tag tag-cloud__size-{size}\" href=\"/tag/{Uri.EscapeDataString(t.Name)}\" title=\"{title}\">{WebUtility.HtmlEncode(t.Name)}<span class=\"tag-cloud__count\">{t.Posts}</span></a></li>";
+        });
+        return $"<ul class=\"tag-cloud\" aria-label=\"Tags\">{string.Concat(items)}</ul>";
+    }
 }
 
 /// <summary>The categories with the number of posts in each, each linking to its page.</summary>

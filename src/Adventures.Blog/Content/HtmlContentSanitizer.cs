@@ -25,6 +25,8 @@ public static class HtmlSanitizerPlugin
 
     public const string AllowedUrlSchemes = "AllowedUrlSchemes";
 
+    public const string ExtraAllowedClasses = "ExtraAllowedClasses";
+
     public static readonly PluginDefinition Definition = new(
         Key,
         "HTML sanitising",
@@ -35,6 +37,7 @@ public static class HtmlSanitizerPlugin
         [
             new PluginSettingDefinition(ExtraAllowedTags, "Extra allowed tags", "Tags to keep in addition to what the editor produces, separated by commas, spaces or lines (for example details, summary, mark). Scripts, frames, forms and other loaders cannot be allowed here.", PluginSettingKind.Lines, string.Empty, 1000, HtmlAllowList.ValidateTags),
             new PluginSettingDefinition(ExtraAllowedAttributes, "Extra allowed attributes", "Attributes to keep on any tag, separated by commas, spaces or lines (for example data-note, id, title). Event handlers such as onclick cannot be allowed here.", PluginSettingKind.Lines, string.Empty, 1000, HtmlAllowList.ValidateAttributes),
+            new PluginSettingDefinition(ExtraAllowedClasses, "Extra allowed CSS classes", "CSS class names to keep on any tag, separated by commas, spaces or lines, so your own styles can be used (for example note-box). The blog's own widget classes are always kept; class names used by the app's interface cannot be allowed.", PluginSettingKind.Lines, string.Empty, 1000, HtmlAllowList.ValidateClasses),
             new PluginSettingDefinition(AllowedUrlSchemes, "Allowed link and picture schemes", "The address schemes a link or picture may use. http, https and mailto are the default; tel, ftp and sms can be added. javascript and data can never be allowed.", PluginSettingKind.Text, "http,https,mailto", 200, HtmlAllowList.ValidateSchemes),
         ]);
 }

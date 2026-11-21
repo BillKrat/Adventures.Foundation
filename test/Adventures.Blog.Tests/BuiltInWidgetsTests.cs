@@ -36,23 +36,54 @@ public sealed class BuiltInWidgetsTests
     }
 
     [Fact]
-    public async Task TheTagCloud_LinksEachTagToItsPage_WithItsCount_MostUsedFirst()
+    public async Task TheTagCloud_DrawsEachTagAsAPillWithItsCountAndLink_MostUsedFirst()
     {
         var widget = new TagCloudWidget(new FakeContent([new PublicTerm("angular", 5), new PublicTerm("mcp", 2)], []));
 
-        var html = await widget.RenderAsync(Context(("Max", "30")), CancellationToken.None);
+        var html = await widget.RenderAsync(Context(("Max", "30"), ("Min", "2")), CancellationToken.None);
 
-        Assert.Contains("<a href=\"/tag/angular\">angular</a>", html);
-        Assert.Contains("(5)", html);
+        Assert.Contains("<ul class=\"tag-cloud\"", html);
+        Assert.Contains("<a class=\"tag-cloud__tag tag-cloud__size-5\" href=\"/tag/angular\" title=\"5 posts\">angular<span class=\"tag-cloud__count\">5</span></a>", html);
+        Assert.Contains("tag-cloud__size-1", html);
         Assert.True(html.IndexOf("angular", StringComparison.Ordinal) < html.IndexOf("mcp", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task TheTagCloud_HidesTagsUsedByFewerPostsThanTheMinimum_TwoByDefault()
+    {
+        var content = new FakeContent([new PublicTerm("popular", 6), new PublicTerm("pair", 2), new PublicTerm("loner", 1)], []);
+
+        var byDefault = await new TagCloudWidget(content).RenderAsync(Context(("Max", "30"), ("Min", "2")), CancellationToken.None);
+        var showAll = await new TagCloudWidget(content).RenderAsync(Context(("Max", "30"), ("Min", "1")), CancellationToken.None);
+        var strict = await new TagCloudWidget(content).RenderAsync(Context(("Max", "30"), ("Min", "5")), CancellationToken.None);
+
+        Assert.DoesNotContain("loner", byDefault);
+        Assert.Contains("pair", byDefault);
+        Assert.Contains("loner", showAll);
+        Assert.DoesNotContain("pair", strict);
+        Assert.Contains("popular", strict);
+    }
+
+    [Fact]
+    public async Task TheTagCloud_SizesEachTagByHowMuchItIsUsed_AndSingleSizedWhenAllAreEqual()
+    {
+        var content = new FakeContent([new PublicTerm("big", 10), new PublicTerm("mid", 6), new PublicTerm("small", 2)], []);
+
+        var html = await new TagCloudWidget(content).RenderAsync(Context(("Max", "30"), ("Min", "2")), CancellationToken.None);
+        var equal = await new TagCloudWidget(new FakeContent([new PublicTerm("a", 3), new PublicTerm("b", 3)], [])).RenderAsync(Context(("Max", "30"), ("Min", "2")), CancellationToken.None);
+
+        Assert.Contains("tag-cloud__size-5\" href=\"/tag/big\"", html);
+        Assert.Contains("tag-cloud__size-3\" href=\"/tag/mid\"", html);
+        Assert.Contains("tag-cloud__size-1\" href=\"/tag/small\"", html);
+        Assert.Equal(2, equal.Split("tag-cloud__size-3").Length - 1);
     }
 
     [Fact]
     public async Task ANameWithMarkupOrSpaces_IsEncoded_InTheTextAndInTheAddress()
     {
-        var widget = new TagCloudWidget(new FakeContent([new PublicTerm("<script>x</script> & c#", 1)], []));
+        var widget = new TagCloudWidget(new FakeContent([new PublicTerm("<script>x</script> & c#", 3)], []));
 
-        var html = await widget.RenderAsync(Context(("Max", "30")), CancellationToken.None);
+        var html = await widget.RenderAsync(Context(("Max", "30"), ("Min", "2")), CancellationToken.None);
 
         Assert.DoesNotContain("<script>", html);
         Assert.Contains("&lt;script&gt;", html);
@@ -64,15 +95,15 @@ public sealed class BuiltInWidgetsTests
     {
         var terms = Enumerable.Range(1, 10).Select(i => new PublicTerm("t" + i, 20 - i)).ToList();
 
-        var html = await new TagCloudWidget(new FakeContent(terms, [])).RenderAsync(Context(("Max", "3")), CancellationToken.None);
+        var html = await new TagCloudWidget(new FakeContent(terms, [])).RenderAsync(Context(("Max", "3"), ("Min", "2")), CancellationToken.None);
 
-        Assert.Equal(3, html.Split("<li>").Length - 1);
+        Assert.Equal(3, html.Split("<li class=\"tag-cloud__item\">").Length - 1);
     }
 
     [Fact]
     public async Task TheCategoryList_LinksToTheCategoryPages()
     {
-        var html = await new CategoryListWidget(new FakeContent([], [new PublicTerm("Help", 4)])).RenderAsync(Context(("Max", "30")), CancellationToken.None);
+        var html = await new CategoryListWidget(new FakeContent([], [new PublicTerm("Help", 4)])).RenderAsync(Context(("Max", "30"), ("Min", "2")), CancellationToken.None);
 
         Assert.Contains("<a href=\"/category/Help\">Help</a>", html);
     }
@@ -80,7 +111,7 @@ public sealed class BuiltInWidgetsTests
     [Fact]
     public async Task WithNothingToShow_TheWidgetsAnswerNothing_SoNoEmptyBoxIsDrawn()
     {
-        Assert.Equal(string.Empty, await new TagCloudWidget(new FakeContent([], [])).RenderAsync(Context(("Max", "30")), CancellationToken.None));
+        Assert.Equal(string.Empty, await new TagCloudWidget(new FakeContent([], [])).RenderAsync(Context(("Max", "30"), ("Min", "2")), CancellationToken.None));
         Assert.Equal(string.Empty, await new TextBoxWidget().RenderAsync(Context(("Content", "  ")), CancellationToken.None));
     }
 
@@ -95,5 +126,18 @@ public sealed class BuiltInWidgetsTests
         Assert.Equal(["text-box", "tag-cloud", "category-list"], keys.Select(k => k.Definition.Key));
         Assert.All(keys, k => Assert.Equal(WidgetsPlugin.Key, k.PluginKey));
         Assert.Contains(services, d => d.ServiceType == typeof(PluginDefinition) && ((PluginDefinition)d.ImplementationInstance!).Key == WidgetsPlugin.Key);
+    }
+
+    [Fact]
+    public async Task TheCloudsPills_SurviveTheSanitiser_WithTheirClassesLinksAndCounts()
+    {
+        var html = await new TagCloudWidget(new FakeContent([new PublicTerm("angular", 5), new PublicTerm("mcp", 2)], [])).RenderAsync(Context(("Max", "30"), ("Min", "2")), CancellationToken.None);
+
+        var cleaned = HtmlContent.Sanitize(html);
+
+        Assert.Contains("class=\"tag-cloud__tag tag-cloud__size-5\"", cleaned);
+        Assert.Contains("href=\"/tag/angular\"", cleaned);
+        Assert.Contains("<span class=\"tag-cloud__count\">5</span>", cleaned);
+        Assert.Contains("title=\"5 posts\"", cleaned);
     }
 }
