@@ -1,6 +1,10 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Cors.Infrastructure;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Adventures.WebApi;
 
@@ -19,6 +23,24 @@ public static class TenancyExtensions
         services.AddMemoryCache();
         services.AddScoped<RequestTenant>();
         services.AddScoped<IRequestTenant>(provider => provider.GetRequiredService<RequestTenant>());
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the named CORS policy from data (see <see cref="TenantCorsPolicyProvider"/>): the registered tenants' sites plus <paramref name="fixedOrigins"/>.
+    /// The host also registers <c>ITenantHostSource</c>. Use <c>UseCors(policyName)</c> as before.
+    /// </summary>
+    public static IServiceCollection AddTenantCors(this IServiceCollection services, string policyName, IReadOnlyCollection<string> fixedOrigins, int cacheSeconds = 60)
+    {
+        services.AddMemoryCache();
+        services.AddCors();
+        services.Replace(ServiceDescriptor.Singleton<ICorsPolicyProvider>(provider => new TenantCorsPolicyProvider(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            provider.GetRequiredService<IMemoryCache>(),
+            provider.GetRequiredService<ILoggerFactory>().CreateLogger<TenantCorsPolicyProvider>(),
+            policyName,
+            fixedOrigins,
+            cacheSeconds)));
         return services;
     }
 
