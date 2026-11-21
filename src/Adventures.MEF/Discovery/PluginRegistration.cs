@@ -20,9 +20,10 @@ public static class PluginRegistration
 
     /// <summary>
     /// Finds plug-ins in <paramref name="hostAssemblies"/> and in the configured plug-in directory and registers them. Call once at start-up, before the
-    /// service provider is built. A plug-in that fails to load or to configure is reported in <see cref="PluginLoadReport"/> and adds nothing.
+    /// service provider is built. A plug-in that fails to load, to configure, or a host <paramref name="validators"/> check is reported in
+    /// <see cref="PluginLoadReport"/> and adds nothing.
     /// </summary>
-    public static IServiceCollection AddPluginDiscovery(this IServiceCollection services, IConfiguration configuration, IEnumerable<Assembly> hostAssemblies)
+    public static IServiceCollection AddPluginDiscovery(this IServiceCollection services, IConfiguration configuration, IEnumerable<Assembly> hostAssemblies, IEnumerable<PluginValidator>? validators = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
@@ -36,17 +37,18 @@ public static class PluginRegistration
 
         var requireApproval = !bool.TryParse(configuration[RequireApprovalSetting], out var parsed) || parsed;
         var result = PluginDiscovery.Discover(hostAssemblies, new PluginDirectoryOptions(directory, requireApproval));
-        services.AddSingleton(Register(services, result));
+        services.AddSingleton(Register(services, result, validators));
         return services;
     }
 
-    /// <summary>Registers each discovered plug-in. A module that throws while configuring contributes nothing (its services are collected apart and dropped).</summary>
-    public static PluginLoadReport Register(IServiceCollection services, PluginDiscoveryResult result)
+    /// <summary>Registers each discovered plug-in. A module that throws while configuring, or that a validator refuses, contributes nothing (its services are collected apart and dropped).</summary>
+    public static PluginLoadReport Register(IServiceCollection services, PluginDiscoveryResult result, IEnumerable<PluginValidator>? validators = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(result);
 
         var loaded = new List<LoadedPlugin>();
+        var assemblies = new List<LoadedPluginAssembly>();
         var failures = result.Failures.ToList();
         foreach (var plugin in result.Plugins)
         {
@@ -61,6 +63,13 @@ public static class PluginRegistration
                 continue;
             }
 
+            var refusal = Refusal(plugin, own, validators);
+            if (refusal is not null)
+            {
+                failures.Add(new PluginLoadFailure(plugin.Source, $"The plug-in '{plugin.Definition.Key}' was refused: {refusal}"));
+                continue;
+            }
+
             services.AddPlugin(plugin.Definition);
             foreach (var descriptor in own)
             {
@@ -68,8 +77,39 @@ public static class PluginRegistration
             }
 
             loaded.Add(new LoadedPlugin(plugin.Definition.Key, plugin.Definition.Title, plugin.Definition.Version, plugin.Source));
+            assemblies.Add(new LoadedPluginAssembly(plugin.Definition.Key, plugin.Module.GetType().Assembly));
         }
 
+        services.AddSingleton(new PluginAssemblies(assemblies));
         return new PluginLoadReport(loaded, failures);
     }
+
+    /// <summary>The first reason a validator gives to refuse the plug-in (a validator that throws refuses it too), or null.</summary>
+    private static string? Refusal(DiscoveredPlugin plugin, IServiceCollection moduleServices, IEnumerable<PluginValidator>? validators)
+    {
+        foreach (var validator in validators ?? [])
+        {
+            try
+            {
+                if (validator(plugin, moduleServices) is { Length: > 0 } reason)
+                {
+                    return reason;
+                }
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                return $"a check failed ({ex.GetType().Name}: {ex.Message})";
+            }
+        }
+
+        return null;
+    }
 }
+
+/// <summary>A host's own check of a discovered plug-in before it is accepted: it gets the plug-in and the services the module registered, and returns the reason to refuse it, or null.</summary>
+public delegate string? PluginValidator(DiscoveredPlugin plugin, IServiceCollection moduleServices);
+
+/// <summary>The assembly of every plug-in that was accepted, so the host can add its controllers.</summary>
+public sealed record PluginAssemblies(IReadOnlyList<LoadedPluginAssembly> Loaded);
+
+public sealed record LoadedPluginAssembly(string Key, System.Reflection.Assembly Assembly);

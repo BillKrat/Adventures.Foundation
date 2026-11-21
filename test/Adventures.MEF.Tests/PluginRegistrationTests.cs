@@ -130,4 +130,46 @@ public sealed class PluginRegistrationTests : IDisposable
         Assert.DoesNotContain(services, d => d.ServiceType == typeof(string));
         Assert.DoesNotContain(services, d => d.ServiceType == typeof(PluginDefinition));
     }
+
+    private sealed class WellBehavedModule : IPluginModule
+    {
+        public PluginDefinition Definition => new("well", "Well", "d", "1.0.0", 2);
+
+        public void ConfigureServices(IServiceCollection services) => services.AddSingleton("from the module");
+    }
+
+    [Fact]
+    public void AValidatorThatRefuses_KeepsThePluginOut_AndItsServicesToo_AndSaysWhy()
+    {
+        var services = new ServiceCollection();
+        var result = new PluginDiscoveryResult([new DiscoveredPlugin(new WellBehavedModule().Definition, new WellBehavedModule(), "directory:Well.dll")], []);
+        IServiceCollection? seen = null;
+
+        var report = PluginRegistration.Register(services, result, [(plugin, moduleServices) =>
+        {
+            seen = moduleServices;
+            return "a rule was broken";
+        }]);
+
+        Assert.Empty(report.Loaded);
+        var failure = Assert.Single(report.Failures);
+        Assert.Equal(("directory:Well.dll", "The plug-in 'well' was refused: a rule was broken"), (failure.Source, failure.Reason));
+        Assert.DoesNotContain(services, d => d.ServiceType == typeof(string));
+        Assert.DoesNotContain(services, d => d.ServiceType == typeof(PluginDefinition));
+        Assert.Contains(seen!, d => d.ServiceType == typeof(string));
+    }
+
+    [Fact]
+    public void AValidatorThatAccepts_LetsThePluginIn_AndItsAssemblyIsRemembered()
+    {
+        var services = new ServiceCollection();
+        var module = new WellBehavedModule();
+        var result = new PluginDiscoveryResult([new DiscoveredPlugin(module.Definition, module, "assembly:test")], []);
+
+        var report = PluginRegistration.Register(services, result, [(_, _) => null]);
+
+        Assert.Equal("well", Assert.Single(report.Loaded).Key);
+        var assemblies = services.Single(d => d.ServiceType == typeof(PluginAssemblies)).ImplementationInstance as PluginAssemblies;
+        Assert.Equal([("well", typeof(WellBehavedModule).Assembly)], assemblies!.Loaded.Select(a => (a.Key, a.Assembly)));
+    }
 }

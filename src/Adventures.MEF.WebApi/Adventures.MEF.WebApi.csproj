@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<TargetFramework>net10.0</TargetFramework>
+	<Nullable>enable</Nullable>
+	<ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+	<PackageId>Adventures.MEF.WebApi</PackageId>
+	<Version>0.1.0</Version>
+	<Authors>Adventures On The Edge</Authors>
+	<Description>Lets a plug-in bring its own API controllers and tools into an ASP.NET Core host under rules: routes under api/plugins/{key}/, never anonymous, tools tied to the plug-in, a 404 while the plug-in is switched off for the tenant.</Description>
+	<PackageLicenseExpression>BUSL-1.1</PackageLicenseExpression>
+	<RepositoryUrl>https://github.com/BillKrat/Adventures.Foundation</RepositoryUrl>
+	<PackageTags>plugins;webapi;controllers</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Adventures.MEF\Adventures.MEF.csproj" />
+    <ProjectReference Include="..\Adventures.Tools\Adventures.Tools.csproj" />
+  </ItemGroup>
+
+</Project>

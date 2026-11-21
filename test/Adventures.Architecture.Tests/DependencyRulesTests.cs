@@ -62,6 +62,8 @@ public class DependencyRulesTests
         "Adventures.Identity.WebApi -> Adventures.Security",
         "Adventures.Identity.WebApi -> Adventures.WebApi",
         "Adventures.MEF -> Adventures.Entities",
+        "Adventures.MEF.WebApi -> Adventures.MEF",
+        "Adventures.MEF.WebApi -> Adventures.Tools",
         "Adventures.Security.AspNetCore -> Adventures.Security",
         "Adventures.Tools.WebApi -> Adventures.MEF",
         "Adventures.Tools.WebApi -> Adventures.Tools",
@@ -187,7 +189,7 @@ public class DependencyRulesTests
         Assert.Equal(["Adventures.Blog", "Adventures.Security", "Adventures.Tools", "Adventures.WebApi"], Graph.Projects["Adventures.Blog.WebApi"].ProjectReferences);
     }
 
-    // Tools: the tool seam stands alone (no references at all); only the controller libraries that declare tools, and the manifest endpoint, build on it.
+    // Tools: the tool seam stands alone (no references at all); only the controller libraries that declare tools, the plug-in web rules that check them, and the manifest endpoint, build on it.
     [Fact]
     public void The_tool_seam_references_nothing_and_only_controller_libraries_build_on_it()
     {
@@ -196,7 +198,7 @@ public class DependencyRulesTests
             .Where(p => p.ProjectReferences.Contains("Adventures.Tools"))
             .Select(p => p.Name)
             .OrderBy(n => n, StringComparer.Ordinal);
-        Assert.Equal(["Adventures.Blog.WebApi", "Adventures.Collaboration.WebApi", "Adventures.Diagnostics.WebApi", "Adventures.Tools.WebApi"], referrers);
+        Assert.Equal(["Adventures.Blog.WebApi", "Adventures.Collaboration.WebApi", "Adventures.Diagnostics.WebApi", "Adventures.MEF.WebApi", "Adventures.Tools.WebApi"], referrers);
     }
 
     // S3: nothing below the Blog (Entities and the other libraries) references it, so Entities holds no blog types.
