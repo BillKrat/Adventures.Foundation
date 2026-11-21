@@ -10,7 +10,7 @@ namespace Adventures.Blog;
 /// from its title when it has none and a date; <see cref="PublishAsync"/> and <see cref="UnpublishAsync"/> are the only ways the
 /// published state changes; a draft can be marked as a revision of a published post and later applied or discarded.
 /// </summary>
-public sealed class PostBll(IEntityDal<Post> posts, IHtmlContentSanitizer? sanitizer = null) : EntityBll<Post>(posts), IPostBll
+public sealed class PostBll(IEntityDal<Post> posts, IHtmlContentSanitizer? sanitizer = null, Adventures.MEF.IPluginEvents? events = null) : EntityBll<Post>(posts), IPostBll
 {
     private static readonly string[] CopiedByRevision = ["Title", "Content", "ContentFormat", "Description", "EnableComments"];
 
@@ -178,6 +178,18 @@ public sealed class PostBll(IEntityDal<Post> posts, IHtmlContentSanitizer? sanit
             return true;
         }
 
+        var slug = post.GetValue("Slug") as string ?? string.Empty;
+        var title = post.GetValue("Title") as string ?? string.Empty;
+        if (published && events is not null)
+        {
+            // a plug-in may refuse (a review rule, a legal check): the post stays a draft and the person is told why
+            var verdict = await events.InterceptAsync(new Adventures.MEF.PostPublishingEvent(postId, slug, title), cancellationToken).ConfigureAwait(false);
+            if (verdict.Cancelled)
+            {
+                throw new BusinessRuleException($"A plug-in refused to publish this post: {verdict.Reason}");
+            }
+        }
+
         post.Set("IsPublished", Guid.NewGuid().ToString(), published);
         if (published && post.GetValue("DatePublished") is null)
         {
@@ -185,6 +197,19 @@ public sealed class PostBll(IEntityDal<Post> posts, IHtmlContentSanitizer? sanit
         }
 
         await Dal.UpdateAsync(post, cancellationToken).ConfigureAwait(false);
+        if (published && events is not null)
+        {
+            // tell the plug-ins after it is visible; a bus that fails never undoes a publish (the bus itself never throws, this is a second guard)
+            try
+            {
+                await events.PublishAsync(new Adventures.MEF.PostPublishedEvent(postId, slug, title, DateTimeOffset.UtcNow), cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // intentionally ignored: the post is published
+            }
+        }
+
         return true;
     }
 

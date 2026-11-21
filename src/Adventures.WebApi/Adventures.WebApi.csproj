@@ -24,6 +24,7 @@
     <ProjectReference Include="..\Adventures.Entities\Adventures.Entities.csproj" />
     <ProjectReference Include="..\Adventures.Entities.Diagnostics\Adventures.Entities.Diagnostics.csproj" />
     <ProjectReference Include="..\Adventures.Entities.Identity\Adventures.Entities.Identity.csproj" />
+    <ProjectReference Include="..\Adventures.MEF\Adventures.MEF.csproj" />
     <ProjectReference Include="..\Adventures.Security\Adventures.Security.csproj" />
   </ItemGroup>
 

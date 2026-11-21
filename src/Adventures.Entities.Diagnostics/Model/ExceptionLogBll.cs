@@ -9,7 +9,8 @@ public sealed class ExceptionLogBll(
     IEntityDal<ExceptionLogEntry> repository,
     EntitySchemaOf<ExceptionLogEntry> schema,
     ILogger<ExceptionLogBll>? logger = null,
-    IExceptionSignatureBll? signatures = null)
+    IExceptionSignatureBll? signatures = null,
+    Adventures.MEF.IPluginEvents? events = null)
     : EntityBll<ExceptionLogEntry>(repository), IExceptionLogBll
 {
     /// <summary>Exceptions are rare and their whole payload is what triage needs, so the cap is far above any real stack trace (250,000 characters); it only stops a runaway from bloating the store, and a cut says how much was removed.</summary>
@@ -60,6 +61,7 @@ public sealed class ExceptionLogBll(
             }
 
             await CreateAsync(entry, cancellationToken).ConfigureAwait(false);
+            await RaiseRecordedAsync(id, exception, correlationId, cancellationToken).ConfigureAwait(false);
             return id;
         }
         catch (Exception loggingFailure)
@@ -115,6 +117,34 @@ public sealed class ExceptionLogBll(
             .ToArray();
 
         return await DeleteManyAsync(ids, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Tells the plug-ins an exception was recorded (plain text, scrubbed of secrets and shortened). A bus that fails never breaks the recording, and
+    /// an event raised while a plug-in handler is running is ignored by the bus, so a failing plug-in cannot trigger itself.
+    /// </summary>
+    private async Task RaiseRecordedAsync(string entryId, Exception exception, string? correlationId, CancellationToken cancellationToken)
+    {
+        if (events is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await events.PublishAsync(
+                new Adventures.MEF.ExceptionRecordedEvent(
+                    entryId,
+                    exception.GetType().FullName ?? exception.GetType().Name,
+                    Adventures.Common.Diagnostics.Redactor.ScrubAndLimit(exception.Message, 500),
+                    string.IsNullOrWhiteSpace(correlationId) ? null : correlationId,
+                    DateTimeOffset.UtcNow),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception busFailure) when (busFailure is not OperationCanceledException)
+        {
+            _logger.LogWarning(busFailure, "Could not tell the plug-ins about exception {EntryId}", entryId);
+        }
     }
 
     private static string NewId() => Guid.NewGuid().ToString();

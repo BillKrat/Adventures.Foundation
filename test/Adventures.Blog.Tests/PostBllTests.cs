@@ -292,4 +292,74 @@ public sealed class PostBllTests : IAsyncLifetime
 
         Assert.Equal("<p>mine</p><script>site.owner.wants.this()</script>", made.GetValue("Content"));
     }
+
+    private sealed class FakeEvents(string? refuseWith = null) : Adventures.MEF.IPluginEvents
+    {
+        public List<Adventures.MEF.IPluginEvent> Published { get; } = [];
+
+        public List<Adventures.MEF.IPluginEvent> Intercepted { get; } = [];
+
+        public Task PublishAsync<TEvent>(TEvent pluginEvent, CancellationToken cancellationToken = default)
+            where TEvent : Adventures.MEF.IPluginEvent
+        {
+            Published.Add(pluginEvent);
+            return Task.CompletedTask;
+        }
+
+        public Task<Adventures.MEF.InterceptResult> InterceptAsync<TEvent>(TEvent pluginEvent, CancellationToken cancellationToken = default)
+            where TEvent : Adventures.MEF.IPluginEvent
+        {
+            Intercepted.Add(pluginEvent);
+            return Task.FromResult(refuseWith is null ? Adventures.MEF.InterceptResult.Allow : Adventures.MEF.InterceptResult.Cancel(refuseWith));
+        }
+    }
+
+    private async Task<(PostBll Bll, string Id)> DraftWithEventsAsync(FakeEvents events)
+    {
+        var created = await _posts.CreateAsync(Data(("Title", "Event post"), ("ContentFormat", "Markdown"), ("Content", "body")));
+        return (ActivatorUtilities.CreateInstance<PostBll>(_services, events), created.Entity.EntityId);
+    }
+
+    [Fact]
+    public async Task Publishing_AsksTheInterceptors_ThenTellsThePlugins()
+    {
+        var events = new FakeEvents();
+        var (bll, id) = await DraftWithEventsAsync(events);
+
+        Assert.True(await bll.PublishAsync(id));
+
+        var asking = Assert.IsType<Adventures.MEF.PostPublishingEvent>(Assert.Single(events.Intercepted));
+        var told = Assert.IsType<Adventures.MEF.PostPublishedEvent>(Assert.Single(events.Published));
+        Assert.Equal(("event-post", "Event post"), (asking.Slug, asking.Title));
+        Assert.Equal((id, "event-post", "Event post"), (told.PostId, told.Slug, told.Title));
+    }
+
+    [Fact]
+    public async Task AnInterceptorThatRefuses_KeepsThePostADraft_WithItsReasonShown()
+    {
+        var events = new FakeEvents(refuseWith: "Legal has not signed off.");
+        var (bll, id) = await DraftWithEventsAsync(events);
+
+        var refused = await Assert.ThrowsAsync<BusinessRuleException>(() => bll.PublishAsync(id));
+
+        Assert.Contains("Legal has not signed off.", refused.Message);
+        Assert.Empty(events.Published);
+        Assert.NotEqual(true, (await bll.GetAsync(id))!.GetValue("IsPublished"));
+    }
+
+    [Fact]
+    public async Task UnpublishingAndRepublishing_RaiseNothingExtra()
+    {
+        var events = new FakeEvents();
+        var (bll, id) = await DraftWithEventsAsync(events);
+        await bll.PublishAsync(id);
+        events.Published.Clear();
+        events.Intercepted.Clear();
+
+        await bll.PublishAsync(id);
+        await bll.UnpublishAsync(id);
+
+        Assert.Empty(events.Published);
+        Assert.Empty(events.Intercepted);
+    }
 }

@@ -50,6 +50,7 @@ public class DependencyRulesTests
         "Adventures.Entities -> Adventures.Common",
         "Adventures.Entities.Diagnostics -> Adventures.Common",
         "Adventures.Entities.Diagnostics -> Adventures.Entities",
+        "Adventures.Entities.Diagnostics -> Adventures.MEF",
         "Adventures.Entities.Identity -> Adventures.Common",
         "Adventures.Entities.Identity -> Adventures.Entities",
         "Adventures.Identity -> Adventures.Data",
@@ -67,6 +68,7 @@ public class DependencyRulesTests
         "Adventures.WebApi -> Adventures.Entities",
         "Adventures.WebApi -> Adventures.Entities.Diagnostics",
         "Adventures.WebApi -> Adventures.Entities.Identity",
+        "Adventures.WebApi -> Adventures.MEF",
         "Adventures.WebApi -> Adventures.Security",
     ];
 
@@ -306,7 +308,7 @@ public class DependencyRulesTests
         }
 
         Assert.Equal(["Adventures.Common", "Adventures.Entities"], Graph.Projects["Adventures.Entities.Identity"].ProjectReferences.Order().ToArray());
-        Assert.Equal(["Adventures.Common", "Adventures.Entities"], Graph.Projects["Adventures.Entities.Diagnostics"].ProjectReferences.Order().ToArray());
+        Assert.Equal(["Adventures.Common", "Adventures.Entities", "Adventures.MEF"], Graph.Projects["Adventures.Entities.Diagnostics"].ProjectReferences.Order().ToArray());
     }
 
     // F3 (pre-beta structure review): the store project holds the store, the repository and the relation machinery, not the rules about who may be an

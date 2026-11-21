@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Adventures.Common\Adventures.Common.csproj" />
     <ProjectReference Include="..\Adventures.Entities\Adventures.Entities.csproj" />
+    <ProjectReference Include="..\Adventures.MEF\Adventures.MEF.csproj" />
   </ItemGroup>
 
   <ItemGroup>
