@@ -18,13 +18,19 @@ public static class PluginConstants
     public const string SchemaIri = "https://schema.global-webnet.com/collaboration/Plugin";
     public const string BaseIri = "https://global-webnet.com/id/plugin/";
     public const string TypeIri = "https://global-webnet.com/ontology/collaboration#Plugin";
+
+    /// <summary>The per-plug-in settings an administrator customizes (one row per plug-in and setting name).</summary>
+    public const string SettingSeedName = "024-plugin-settings";
+    public const string SettingSchemaIri = "https://schema.global-webnet.com/collaboration/PluginSetting";
+    public const string SettingBaseIri = "https://global-webnet.com/id/plugin-setting/";
+    public const string SettingTypeIri = "https://global-webnet.com/ontology/collaboration#PluginSetting";
 }
 
 /// <summary>One built-in plug-in as the code declares it: what it is, and what it contributes to the admin.</summary>
-public sealed record PluginDefinition(string Key, string Title, string Description, string Version, int Priority);
+public sealed record PluginDefinition(string Key, string Title, string Description, string Version, int Priority, IReadOnlyList<PluginSettingDefinition>? Settings = null);
 
 /// <summary>A built-in plug-in with its current state, as the Plugins page shows it.</summary>
-public sealed record PluginState(string Key, string Title, string Description, string Version, int Priority, bool Enabled);
+public sealed record PluginState(string Key, string Title, string Description, string Version, int Priority, bool Enabled, bool HasSettings = false);
 
 /// <summary>Reads and changes which built-in plug-ins are on. The host decides who may change them.</summary>
 public interface IPlugins
@@ -48,7 +54,7 @@ public sealed class Plugins(IEntityBll<Plugin> states, EntitySchemaOf<Plugin> sc
     {
         var stored = await StoredAsync(cancellationToken).ConfigureAwait(false);
         return definitions
-            .Select(p => new PluginState(p.Key, p.Title, p.Description, p.Version, p.Priority, !stored.TryGetValue(p.Key, out var state) || IsOn(state)))
+            .Select(p => new PluginState(p.Key, p.Title, p.Description, p.Version, p.Priority, !stored.TryGetValue(p.Key, out var state) || IsOn(state), p.Settings is { Count: > 0 }))
             .OrderBy(p => p.Priority)
             .ToList();
     }

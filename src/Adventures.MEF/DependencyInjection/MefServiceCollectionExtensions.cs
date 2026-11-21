@@ -10,6 +10,8 @@ public static class MefServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddScoped<IPlugins, Plugins>();
+        services.TryAddScoped<IPluginSettings, PluginSettings>();
+        services.TryAddScoped<Adventures.Entities.IEntityBll<PluginSetting>>(p => new Adventures.Entities.EntityBll<PluginSetting>(p.GetRequiredService<Adventures.Entities.IEntityDal<PluginSetting>>()));
         services.TryAddScoped<Adventures.Entities.IEntityBll<Plugin>>(p => new Adventures.Entities.EntityBll<Plugin>(p.GetRequiredService<Adventures.Entities.IEntityDal<Plugin>>()));
         return services;
     }

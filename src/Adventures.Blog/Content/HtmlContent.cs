@@ -12,7 +12,10 @@ namespace Adventures.Blog;
 public static class HtmlContent
 {
     /// <summary>Returns the safe form of the HTML; empty for nothing.</summary>
-    public static string Sanitize(string? html)
+    public static string Sanitize(string? html) => Sanitize(html, HtmlAllowList.Default);
+
+    /// <summary>The safe form of the HTML under an owner's allow-list (extra tags, attributes and schemes within the limits of <see cref="HtmlAllowList"/>).</summary>
+    public static string Sanitize(string? html, HtmlAllowList allow)
     {
         if (string.IsNullOrWhiteSpace(html))
         {
@@ -22,7 +25,7 @@ public static class HtmlContent
         // a new instance per call: the sanitiser is configurable and not meant to be shared while it is in use
         var sanitizer = new HtmlSanitizer();
         sanitizer.AllowedSchemes.Clear();
-        foreach (var scheme in new[] { "http", "https", "mailto" })
+        foreach (var scheme in allow.Schemes)
         {
             sanitizer.AllowedSchemes.Add(scheme);
         }
@@ -35,6 +38,15 @@ public static class HtmlContent
             }
         };
         sanitizer.AllowedAttributes.Add("target");
+        foreach (var tag in allow.Tags)
+        {
+            sanitizer.AllowedTags.Add(tag);
+        }
+
+        foreach (var attribute in allow.Attributes)
+        {
+            sanitizer.AllowedAttributes.Add(attribute);
+        }
 
         // interactive and form elements have no place in a post; and a CSS property that can fetch a resource (a background image, a list marker image) is dropped
         foreach (var tag in new[] { "form", "input", "button", "select", "option", "optgroup", "textarea", "fieldset", "legend", "label", "output", "datalist" })

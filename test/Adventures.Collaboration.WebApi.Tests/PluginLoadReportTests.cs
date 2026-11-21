@@ -13,7 +13,16 @@ namespace Adventures.Collaboration.WebApi.Tests;
 /// <summary>The Plugins page shows what discovery loaded and what it refused, to administrators only.</summary>
 public sealed class PluginLoadReportTests
 {
-    private sealed class NoPlugins : IPlugins
+    private sealed class NoSettings : IPluginSettings
+    {
+        public IReadOnlyList<PluginSettingDefinition> DefinitionsOf(string pluginKey) => [];
+
+        public Task<IReadOnlyDictionary<string, string>> GetAsync(string pluginKey, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyDictionary<string, string>>(new Dictionary<string, string>());
+
+        public Task SetAsync(string pluginKey, IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    internal sealed class NoPlugins : IPlugins
     {
         public Task<IReadOnlyList<PluginState>> ListAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<PluginState>>([]);
 
@@ -29,7 +38,7 @@ public sealed class PluginLoadReportTests
     {
         var report = new PluginLoadReport([new LoadedPlugin("sample", "Sample", "0.1.0", "directory:Sample.dll")], [new PluginLoadFailure("directory:Bad.dll", "not on the approved list")]);
 
-        var result = new PluginsController(new NoPlugins(), [report]).LoadReport();
+        var result = new PluginsController(new NoPlugins(), [report], new NoSettings()).LoadReport();
 
         var answered = Assert.IsType<PluginLoadReport>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Equal("sample", Assert.Single(answered.Loaded).Key);
@@ -39,7 +48,7 @@ public sealed class PluginLoadReportTests
     [Fact]
     public void WithNoDiscoveryRegistered_TheReportIsEmpty_NotAnError()
     {
-        var result = new PluginsController(new NoPlugins(), []).LoadReport();
+        var result = new PluginsController(new NoPlugins(), [], new NoSettings()).LoadReport();
 
         var answered = Assert.IsType<PluginLoadReport>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Empty(answered.Loaded);

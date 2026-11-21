@@ -1,4 +1,5 @@
 // Assessed 2026-10-24 17:37 CT (Claude): automated scan for secrets, injection and unsafe patterns - no finding in this file. See docs/artifacts/Claude-2026-10-24-security-practices-patterns-review.md (ai-research-blog).
+using Adventures.Common.Exceptions;
 using Adventures.Entities;
 using Adventures.Security;
 using Adventures.WebApi;
@@ -33,7 +34,7 @@ public sealed class RequiresPluginAttribute(params string[] keys) : Attribute, I
 [ApiController]
 [Route("api/plugins")]
 [RequireRight(Rights.PluginsManage)]
-public sealed class PluginsController(IPlugins plugins, IEnumerable<PluginLoadReport> reports) : ApiControllerBase
+public sealed class PluginsController(IPlugins plugins, IEnumerable<PluginLoadReport> reports, IPluginSettings settings) : ApiControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<PluginState>>> List(CancellationToken cancellationToken) =>
@@ -43,6 +44,40 @@ public sealed class PluginsController(IPlugins plugins, IEnumerable<PluginLoadRe
     [HttpGet("load-report")]
     public ActionResult<PluginLoadReport> LoadReport() =>
         Ok(reports.FirstOrDefault() ?? new PluginLoadReport([], []));
+
+    /// <summary>The Customize screen of one plug-in: the settings it declares and their current values (404 for an unknown plug-in).</summary>
+    [HttpGet("{key}/settings")]
+    public async Task<ActionResult<PluginSettingsModel>> GetSettings(string key, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(new PluginSettingsModel(settings.DefinitionsOf(key), await settings.GetAsync(key, cancellationToken)));
+        }
+        catch (BusinessRuleException)
+        {
+            return NotFound();
+        }
+    }
+
+    /// <summary>Saves the given values of one plug-in; a value its rules refuse saves nothing and comes back as the reason (409).</summary>
+    [HttpPut("{key}/settings")]
+    public async Task<IActionResult> UpdateSettings(string key, [FromBody] PluginSettingsUpdate update, CancellationToken cancellationToken)
+    {
+        try
+        {
+            _ = settings.DefinitionsOf(key);
+        }
+        catch (BusinessRuleException)
+        {
+            return NotFound();
+        }
+
+        return await GuardedAsync(async () =>
+        {
+            await settings.SetAsync(key, update.Values, cancellationToken);
+            return NoContent();
+        });
+    }
 
     [HttpPost("{key}/enable")]
     public Task<IActionResult> Enable(string key, CancellationToken cancellationToken) => SetAsync(key, true, cancellationToken);
@@ -57,3 +92,9 @@ public sealed class PluginsController(IPlugins plugins, IEnumerable<PluginLoadRe
             return NoContent();
         });
 }
+
+/// <summary>A plug-in's settings for its Customize screen: what it declares, and the value of each now (the default where none is stored).</summary>
+public sealed record PluginSettingsModel(IReadOnlyList<PluginSettingDefinition> Definitions, IReadOnlyDictionary<string, string> Values);
+
+/// <summary>The values an administrator saves; only settings the plug-in declares are accepted, and a bad value saves nothing.</summary>
+public sealed record PluginSettingsUpdate(Dictionary<string, string?> Values);

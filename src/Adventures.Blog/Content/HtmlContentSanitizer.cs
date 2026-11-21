@@ -18,13 +18,25 @@ public static class HtmlSanitizerPlugin
 {
     public const string Key = "html-sanitizer";
 
+    /// <summary>The Customize settings: what the owner adds to the allow-list (see <see cref="HtmlAllowList"/> for the line it cannot cross).</summary>
+    public const string ExtraAllowedTags = "ExtraAllowedTags";
+
+    public const string ExtraAllowedAttributes = "ExtraAllowedAttributes";
+
+    public const string AllowedUrlSchemes = "AllowedUrlSchemes";
+
     public static readonly PluginDefinition Definition = new(
         Key,
         "HTML sanitising",
         "Makes the HTML of posts and pages safe when it is saved and again when it is served: scripts, event handlers, frames, forms and unsafe addresses are removed. "
         + "Switching it off lets HTML through exactly as written (for a site only you write for); anyone who can edit a post could then run script for every visitor.",
         "1.0.0",
-        5);
+        5,
+        [
+            new PluginSettingDefinition(ExtraAllowedTags, "Extra allowed tags", "Tags to keep in addition to what the editor produces, separated by commas, spaces or lines (for example details, summary, mark). Scripts, frames, forms and other loaders cannot be allowed here.", PluginSettingKind.Lines, string.Empty, 1000, HtmlAllowList.ValidateTags),
+            new PluginSettingDefinition(ExtraAllowedAttributes, "Extra allowed attributes", "Attributes to keep on any tag, separated by commas, spaces or lines (for example data-note, id, title). Event handlers such as onclick cannot be allowed here.", PluginSettingKind.Lines, string.Empty, 1000, HtmlAllowList.ValidateAttributes),
+            new PluginSettingDefinition(AllowedUrlSchemes, "Allowed link and picture schemes", "The address schemes a link or picture may use. http, https and mailto are the default; tel, ftp and sms can be added. javascript and data can never be allowed.", PluginSettingKind.Text, "http,https,mailto", 200, HtmlAllowList.ValidateSchemes),
+        ]);
 }
 
 /// <summary>
@@ -47,6 +59,25 @@ public sealed class HtmlContentSanitizer(IServiceProvider services) : IHtmlConte
             on = true;
         }
 
-        return on ? HtmlContent.Sanitize : html => html ?? string.Empty;
+        if (!on)
+        {
+            return html => html ?? string.Empty;
+        }
+
+        // The owner's allow-list (Customize); if it cannot be read, today's fixed rules apply (never a looser list).
+        var allow = HtmlAllowList.Default;
+        try
+        {
+            if (services.GetService<IPluginSettings>() is { } settings)
+            {
+                allow = HtmlAllowList.From(await settings.GetAsync(HtmlSanitizerPlugin.Key, cancellationToken).ConfigureAwait(false));
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            allow = HtmlAllowList.Default;
+        }
+
+        return html => HtmlContent.Sanitize(html, allow);
     }
 }
