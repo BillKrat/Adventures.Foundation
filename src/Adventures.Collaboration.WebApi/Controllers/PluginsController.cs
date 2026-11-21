@@ -29,15 +29,20 @@ public sealed class RequiresPluginAttribute(params string[] keys) : Attribute, I
     }
 }
 
-/// <summary>The Plugins page for administrators: the built-in plug-ins with their state, and switching one on or off (the admin menu follows).</summary>
+/// <summary>The Plugins page for administrators: the plug-ins with their state (built-in and discovered), the discovery report, and switching one on or off (the admin menu follows).</summary>
 [ApiController]
 [Route("api/plugins")]
 [RequireRight(Rights.PluginsManage)]
-public sealed class PluginsController(IPlugins plugins) : ApiControllerBase
+public sealed class PluginsController(IPlugins plugins, IEnumerable<PluginLoadReport> reports) : ApiControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<PluginState>>> List(CancellationToken cancellationToken) =>
         Ok(await plugins.ListAsync(cancellationToken));
+
+    /// <summary>What plug-in discovery loaded at start-up and what it refused (an unapproved or broken DLL), so a refusal is visible and never silent.</summary>
+    [HttpGet("load-report")]
+    public ActionResult<PluginLoadReport> LoadReport() =>
+        Ok(reports.FirstOrDefault() ?? new PluginLoadReport([], []));
 
     [HttpPost("{key}/enable")]
     public Task<IActionResult> Enable(string key, CancellationToken cancellationToken) => SetAsync(key, true, cancellationToken);

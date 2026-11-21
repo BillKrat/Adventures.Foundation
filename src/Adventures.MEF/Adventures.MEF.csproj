@@ -19,6 +19,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
     <PackageReference Include="System.Composition.TypedParts" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup>
