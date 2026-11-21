@@ -172,7 +172,7 @@ public sealed class WidgetPlacements(IEntityBll<WidgetPlacement> store, EntitySc
             }
 
             var html = await renderer.RenderAsync(key, normalised, SettingsOf(row), cancellationToken).ConfigureAwait(false);
-            if (html is null)
+            if (string.IsNullOrWhiteSpace(html))
             {
                 continue;
             }

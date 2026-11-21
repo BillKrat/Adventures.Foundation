@@ -25,6 +25,11 @@ public sealed class WidgetPlacementTests : IAsyncLifetime
         public Task<string> RenderAsync(WidgetContext context, CancellationToken cancellationToken) => Task.FromResult("<p>plain</p>");
     }
 
+    private sealed class EmptyWidget : IWidget
+    {
+        public Task<string> RenderAsync(WidgetContext context, CancellationToken cancellationToken) => Task.FromResult("   ");
+    }
+
     private sealed class BrokenWidget : IWidget
     {
         public Task<string> RenderAsync(WidgetContext context, CancellationToken cancellationToken) => throw new InvalidOperationException("broken");
@@ -65,6 +70,7 @@ public sealed class WidgetPlacementTests : IAsyncLifetime
             [new PluginSettingDefinition("Text", "Text", "What to show.", PluginSettingKind.Text, "default text", 40), new PluginSettingDefinition("Count", "Count", "How many.", PluginSettingKind.Number, "5")]));
         services.AddWidget<PlainWidget>("p", new WidgetDefinition("plain", "Plain", "Plain."));
         services.AddWidget<BrokenWidget>("p", new WidgetDefinition("broken", "Broken", "Always fails."));
+        services.AddWidget<EmptyWidget>("p", new WidgetDefinition("empty", "Empty", "Has nothing to show."));
         services.AddWidget<PlainWidget>("off", new WidgetDefinition("hidden", "Hidden", "Belongs to a plug-in that is off."));
         _services = services.BuildServiceProvider();
     }
@@ -181,5 +187,14 @@ public sealed class WidgetPlacementTests : IAsyncLifetime
         await Placements().AddAsync("left", "plain", null, null);
 
         Assert.Empty(await Placements().RenderZoneAsync("sidebar"));
+    }
+
+    [Fact]
+    public async Task AWidgetWithNothingToShow_IsLeftOutOfTheZone_SoNoEmptyBoxIsDrawn()
+    {
+        await Placements().AddAsync("left", "empty", null, null);
+        await Placements().AddAsync("left", "plain", null, null);
+
+        Assert.Equal(["plain"], (await Placements().RenderZoneAsync("left")).Select(r => r.WidgetKey));
     }
 }
