@@ -90,6 +90,24 @@ public class TenancyTests
         return (context, reached, seen, resolver, log);
     }
 
+    [Fact]
+    public async Task SavingAHostName_ClearsTheKeptAnswers_SoTheResolverIsAskedAgainAtOnce()
+    {
+        var invalidator = new TenantCacheInvalidator();
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var resolver = new FakeResolver(Acme);
+        var middleware = new TenantMiddleware(_ => Task.CompletedTask, Microsoft.Extensions.Options.Options.Create(Options(TenancyEnforcement.Report, cacheSeconds: 600)), cache, new CapturingLogger(), invalidator);
+
+        await middleware.InvokeAsync(Request(Acme), resolver, new RequestTenant());
+        await middleware.InvokeAsync(Request(Acme), resolver, new RequestTenant());
+        Assert.Single(resolver.Asked);
+
+        invalidator.Invalidate();
+        await middleware.InvokeAsync(Request(Acme), resolver, new RequestTenant());
+
+        Assert.Equal(2, resolver.Asked.Count);
+    }
+
     // ---- no tenant, no content (T2: there is no shared graph to fall back to) ----
 
     [Fact]

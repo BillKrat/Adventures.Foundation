@@ -31,10 +31,10 @@ public sealed class TenantCorsTests
         }
     }
 
-    private static TenantCorsPolicyProvider Provider(FakeHosts hosts, string[]? fixedOrigins = null, int cacheSeconds = 60)
+    private static TenantCorsPolicyProvider Provider(FakeHosts hosts, string[]? fixedOrigins = null, int cacheSeconds = 60, TenantCacheInvalidator? invalidator = null)
     {
         var services = new ServiceCollection().AddSingleton<ITenantHostSource>(hosts).BuildServiceProvider();
-        return new TenantCorsPolicyProvider(services.GetRequiredService<IServiceScopeFactory>(), new MemoryCache(new MemoryCacheOptions()), NullLogger<TenantCorsPolicyProvider>.Instance, "Angular", fixedOrigins ?? [], cacheSeconds);
+        return new TenantCorsPolicyProvider(services.GetRequiredService<IServiceScopeFactory>(), new MemoryCache(new MemoryCacheOptions()), NullLogger<TenantCorsPolicyProvider>.Instance, "Angular", fixedOrigins ?? [], cacheSeconds, invalidator);
     }
 
     private static async Task<bool> AllowsAsync(TenantCorsPolicyProvider provider, string origin)
@@ -142,6 +142,21 @@ public sealed class TenantCorsTests
         var uncached = Provider(hosts, cacheSeconds: 0);
         hosts.Names.Add("new.test");
         Assert.True(await AllowsAsync(uncached, "https://new.test"));
+    }
+
+    [Fact]
+    public async Task SavingAHostName_ClearsTheKeptList_SoTheNewSiteWorksAtOnce()
+    {
+        var hosts = new FakeHosts("example.com");
+        var invalidator = new TenantCacheInvalidator();
+        var provider = Provider(hosts, cacheSeconds: 600, invalidator: invalidator);
+        Assert.False(await AllowsAsync(provider, "https://new.test"));
+
+        hosts.Names.Add("new.test");
+        Assert.False(await AllowsAsync(provider, "https://new.test")); // still kept
+        invalidator.Invalidate();
+
+        Assert.True(await AllowsAsync(provider, "https://new.test"));
     }
 
     [Fact]

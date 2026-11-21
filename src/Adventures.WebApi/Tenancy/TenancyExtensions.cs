@@ -21,6 +21,7 @@ public static class TenancyExtensions
             .Bind(configuration.GetSection(TenancyOptions.SectionName))
             .PostConfigure(options => options.AllowFallback = isDevelopment);
         services.AddMemoryCache();
+        services.TryAddSingleton<TenantCacheInvalidator>();
         services.AddScoped<RequestTenant>();
         services.AddScoped<IRequestTenant>(provider => provider.GetRequiredService<RequestTenant>());
         return services;
@@ -33,6 +34,7 @@ public static class TenancyExtensions
     public static IServiceCollection AddTenantCors(this IServiceCollection services, string policyName, IReadOnlyCollection<string> fixedOrigins, int cacheSeconds = 60)
     {
         services.AddMemoryCache();
+        services.TryAddSingleton<TenantCacheInvalidator>();
         services.AddCors();
         services.Replace(ServiceDescriptor.Singleton<ICorsPolicyProvider>(provider => new TenantCorsPolicyProvider(
             provider.GetRequiredService<IServiceScopeFactory>(),
@@ -40,7 +42,8 @@ public static class TenancyExtensions
             provider.GetRequiredService<ILoggerFactory>().CreateLogger<TenantCorsPolicyProvider>(),
             policyName,
             fixedOrigins,
-            cacheSeconds)));
+            cacheSeconds,
+            provider.GetRequiredService<TenantCacheInvalidator>())));
         return services;
     }
 

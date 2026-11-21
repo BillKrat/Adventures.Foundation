@@ -45,6 +45,22 @@ public sealed class TenantAliasEndpointsTests
         Assert.IsType<NotFoundResult>(await Controller().AddAlias("nope", new AliasRequest("temp.example"), aliases, CancellationToken.None));
     }
 
+    [Fact]
+    public async Task AddingOrRemovingAnAlias_ClearsTheTenantCaches_SoTheChangeWorksAtOnce()
+    {
+        var invalidator = new TenantCacheInvalidator();
+        var controller = new TenantController(new FixedRequestTenant(new CurrentTenant(null, null, null, "h", TenantMatch.None)), invalidator);
+        var aliases = new Aliases((_, host) => [host]);
+        var before = invalidator.Token;
+
+        await controller.AddAlias("t1", new AliasRequest("temp.example"), aliases, CancellationToken.None);
+        Assert.True(before.HasChanged);
+
+        var afterAdd = invalidator.Token;
+        await controller.RemoveAlias("t1", "temp.example", aliases, CancellationToken.None);
+        Assert.True(afterAdd.HasChanged);
+    }
+
     private sealed class Acting(params TenantHostInfo[] allowed) : IActingTenants
     {
         public string? AskedFor;

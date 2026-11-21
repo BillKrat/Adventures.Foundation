@@ -22,7 +22,8 @@ public sealed partial class TenantCorsPolicyProvider(
     ILogger<TenantCorsPolicyProvider> logger,
     string policyName,
     IReadOnlyCollection<string> fixedOrigins,
-    int cacheSeconds) : ICorsPolicyProvider
+    int cacheSeconds,
+    TenantCacheInvalidator? invalidator = null) : ICorsPolicyProvider
 {
     private const string CacheKey = "tenant-cors-origins";
     private static readonly string[] TemporarySuffixes = [".atempurl.com", ".dtempurl.com"];
@@ -72,7 +73,13 @@ public sealed partial class TenantCorsPolicyProvider(
 
         if (ttl > 0)
         {
-            cache.Set(CacheKey, allowed, TimeSpan.FromSeconds(ttl));
+            var entry = new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(ttl) };
+            if (invalidator is not null)
+            {
+                entry.AddExpirationToken(invalidator.Token);
+            }
+
+            cache.Set(CacheKey, allowed, entry);
         }
 
         return allowed;

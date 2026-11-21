@@ -13,7 +13,7 @@ namespace Adventures.WebApi;
 /// infrastructure paths; while a site is being switched over it is only reported. The answer is kept briefly per host so the tenant store is not read on
 /// every request.
 /// </summary>
-public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptions> options, IMemoryCache cache, ILogger<TenantMiddleware> logger)
+public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptions> options, IMemoryCache cache, ILogger<TenantMiddleware> logger, TenantCacheInvalidator? invalidator = null)
 {
     public async Task InvokeAsync(HttpContext context, ITenantResolver resolver, RequestTenant holder)
     {
@@ -64,7 +64,13 @@ public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptio
 
         if (settings.CacheSeconds > 0)
         {
-            cache.Set(CacheKey(host), current, TimeSpan.FromSeconds(settings.CacheSeconds));
+            var entry = new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(settings.CacheSeconds) };
+            if (invalidator is not null)
+            {
+                entry.AddExpirationToken(invalidator.Token);
+            }
+
+            cache.Set(CacheKey(host), current, entry);
         }
 
         return current;

@@ -14,7 +14,7 @@ namespace Adventures.Identity.WebApi;
 [ApiController]
 [Route("api/tenant")]
 [Authorize]
-public sealed class TenantController(IRequestTenant requestTenant) : ApiControllerBase
+public sealed class TenantController(IRequestTenant requestTenant, TenantCacheInvalidator? caches = null) : ApiControllerBase
 {
     [HttpGet("current")]
     public IActionResult Current()
@@ -41,13 +41,23 @@ public sealed class TenantController(IRequestTenant requestTenant) : ApiControll
     [HttpPut("{id}/aliases")]
     [RequireRight(Rights.PlatformManage)]
     public Task<IActionResult> AddAlias(string id, [FromBody] AliasRequest request, [FromServices] ITenantAliasEditor aliases, CancellationToken cancellationToken) =>
-        GuardedAsync(async () => await aliases.AddAsync(id, request.Host, cancellationToken) is { } updated ? Ok(updated) : NotFound());
+        GuardedAsync(async () =>
+        {
+            var updated = await aliases.AddAsync(id, request.Host, cancellationToken);
+            caches?.Invalidate(); // the new name works at once, not after the kept answers expire
+            return updated is null ? NotFound() : Ok(updated);
+        });
 
-    /// <summary>Takes the alias away; the host stops reaching the tenant (it may take up to a minute: the answer per host is cached briefly).</summary>
+    /// <summary>Takes the alias away; the host stops reaching the tenant (at once: the kept answers are cleared).</summary>
     [HttpDelete("{id}/aliases/{host}")]
     [RequireRight(Rights.PlatformManage)]
     public Task<IActionResult> RemoveAlias(string id, string host, [FromServices] ITenantAliasEditor aliases, CancellationToken cancellationToken) =>
-        GuardedAsync(async () => await aliases.RemoveAsync(id, host, cancellationToken) is { } updated ? Ok(updated) : NotFound());
+        GuardedAsync(async () =>
+        {
+            var updated = await aliases.RemoveAsync(id, host, cancellationToken);
+            caches?.Invalidate();
+            return updated is null ? NotFound() : Ok(updated);
+        });
 }
 
 /// <summary>The host name to add as an alias.</summary>
