@@ -43,6 +43,7 @@ public static class PluginWebRules
         }
 
         problems.AddRange(CheckTools(moduleServices, pluginKey));
+        problems.AddRange(CheckWidgets(moduleServices, pluginKey));
         return problems.Count == 0 ? null : string.Join(" ", problems);
     }
 
@@ -115,6 +116,31 @@ public static class PluginWebRules
             if (!tool.PathTemplate.TrimStart('/').StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
                 problems.Add($"The tool '{tool.Name}' calls '{tool.PathTemplate}', which is not under '{prefix}'.");
+            }
+        }
+
+        return problems;
+    }
+
+    /// <summary>The problems of the widgets the module registered: owned by this plug-in (so they go with its switch) and keyed <c>{key}.name</c> (so they cannot shadow another widget).</summary>
+    public static IReadOnlyList<string> CheckWidgets(IServiceCollection moduleServices, string pluginKey)
+    {
+        var problems = new List<string>();
+        foreach (var descriptor in moduleServices.Where(d => d.ServiceType == typeof(WidgetRegistration)))
+        {
+            if (descriptor.ImplementationInstance is not WidgetRegistration registration)
+            {
+                continue;
+            }
+
+            if (!string.Equals(registration.PluginKey, pluginKey, StringComparison.Ordinal))
+            {
+                problems.Add($"The widget '{registration.Definition.Key}' is registered for the plug-in '{registration.PluginKey}', not '{pluginKey}', so it would not go with this plug-in's switch.");
+            }
+
+            if (!registration.Definition.Key.StartsWith(pluginKey + ".", StringComparison.Ordinal) || registration.Definition.Key.Length <= pluginKey.Length + 1)
+            {
+                problems.Add($"The widget key '{registration.Definition.Key}' must start with '{pluginKey}.' (for example '{pluginKey}.note') so it cannot shadow another widget.");
             }
         }
 

@@ -189,4 +189,38 @@ public sealed class PluginWebRulesTests
         Assert.False(reached);
         Assert.IsType<NotFoundResult>(result);
     }
+
+    // ---- widgets
+
+    private sealed class NoWidget : IWidget
+    {
+        public Task<string> RenderAsync(WidgetContext context, CancellationToken cancellationToken) => Task.FromResult("<p>x</p>");
+    }
+
+    [Fact]
+    public void AWidgetWhoseKeyStartsWithThePluginsKey_AndIsOwnedByIt_Passes()
+    {
+        var services = new ServiceCollection().AddWidget<NoWidget>("bad", new WidgetDefinition("bad.note", "Note", "d"));
+
+        Assert.Empty(PluginWebRules.CheckWidgets(services, "bad"));
+    }
+
+    [Theory]
+    [InlineData("text-box")]
+    [InlineData("other.note")]
+    [InlineData("bad")]
+    public void AWidgetKeyThatCouldShadowAnotherWidget_IsRefused(string key)
+    {
+        var services = new ServiceCollection().AddWidget<NoWidget>("bad", new WidgetDefinition(key, "Note", "d"));
+
+        Assert.NotEmpty(PluginWebRules.CheckWidgets(services, "bad"));
+    }
+
+    [Fact]
+    public void AWidgetRegisteredForAnotherPlugin_IsRefused()
+    {
+        var services = new ServiceCollection().AddWidget<NoWidget>("other", new WidgetDefinition("bad.note", "Note", "d"));
+
+        Assert.Contains(PluginWebRules.CheckWidgets(services, "bad"), p => p.Contains("other", StringComparison.Ordinal));
+    }
 }

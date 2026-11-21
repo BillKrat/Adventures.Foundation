@@ -27,6 +27,9 @@ public sealed class SampleWebPluginModule : IPluginModule
     public void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<SampleExceptionCounter>();
+        services.AddWidget<SampleNoteWidget>(Key, new WidgetDefinition(
+            "sample-web.note", "Sample note", "Shows a line of text in a zone.",
+            [new PluginSettingDefinition("Text", "Text", "The line to show.", PluginSettingKind.Text, "a note from the sample plug-in", 120)]));
         services.AddPluginEventHandler<ExceptionRecordedEvent, SampleExceptionHandler>(Key);
         services.AddSingleton<IAppTool>(new AppTool(
             "sample_hello",
@@ -68,4 +71,11 @@ public sealed class SampleWebController(IPluginSettings settings, SampleExceptio
     [HttpGet("hello")]
     public async Task<IActionResult> Hello(CancellationToken cancellationToken) =>
         Ok(new { greeting = (await settings.GetAsync(SampleWebPluginModule.Key, cancellationToken))["Greeting"], exceptionsHeard = counter.Seen });
+}
+
+/// <summary>A widget: returns a line of text for whichever zone an owner puts it in. Its key starts with the plug-in key, which the host requires.</summary>
+public sealed class SampleNoteWidget : IWidget
+{
+    public Task<string> RenderAsync(WidgetContext context, CancellationToken cancellationToken) =>
+        Task.FromResult($"<p class=\"sample-note\">{System.Net.WebUtility.HtmlEncode(context.Settings["Text"])}</p>");
 }

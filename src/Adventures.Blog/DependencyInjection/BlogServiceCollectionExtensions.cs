@@ -28,6 +28,11 @@ public static class BlogServiceCollectionExtensions
         services.AddPlugin(HtmlSanitizerPlugin.Definition);
         services.AddScoped<IHtmlContentSanitizer, HtmlContentSanitizer>();
 
+        // Widgets: code that returns HTML for one of the four zones; where each sits is stored per tenant (the host registers the placement repository).
+        services.AddWidgets();
+        services.AddScoped<IEntityBll<WidgetPlacement>>(p => new EntityBll<WidgetPlacement>(p.GetRequiredService<IEntityDal<WidgetPlacement>>()));
+        services.AddScoped<IWidgetPlacements, WidgetPlacements>();
+
         services.AddScoped<IEntityPresenter<SiteSetting>, SiteSettingPresenter>();
         services.AddScoped<IEntityPresenter<Post>, PostPresenter>();
         services.AddScoped<IEntityBll<SiteSetting>>(p => new EntityBll<SiteSetting>(p.GetRequiredService<IEntityDal<SiteSetting>>()));
