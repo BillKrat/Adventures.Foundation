@@ -30,7 +30,7 @@ public interface IWidgetRenderer
     Task<string?> RenderAsync(string widgetKey, string zone, IReadOnlyDictionary<string, string> settings, CancellationToken cancellationToken = default);
 }
 
-public static class WidgetServiceCollectionExtensions
+public static class WidgetRenderingServiceCollectionExtensions
 {
     /// <summary>Registers the widget renderer. Safe to call more than once.</summary>
     public static IServiceCollection AddWidgets(this IServiceCollection services, Action<WidgetRenderOptions>? configure = null)
