@@ -28,6 +28,23 @@ public sealed class LanguagesController(ILanguageFiles files, IServerTextCatalog
     [HttpGet("catalog")]
     public ActionResult<IReadOnlyDictionary<string, string>> Catalog() => Ok(catalog.Defaults);
 
+    /// <summary>The proposed files waiting for review (Claude proposes through MCP; nothing is served until an administrator applies one).</summary>
+    [HttpGet("proposals")]
+    public async Task<ActionResult<IReadOnlyList<LanguageSummary>>> Proposals(CancellationToken cancellationToken) => Ok(await files.ListProposalsAsync(cancellationToken));
+
+    [HttpGet("{language}/proposal")]
+    public async Task<IActionResult> ReadProposal(string language, CancellationToken cancellationToken) =>
+        await files.GetProposalAsync(language, cancellationToken) is { } table ? Ok(new PublicLabels(language.Trim().ToLowerInvariant(), table)) : NotFound();
+
+    /// <summary>Makes the proposal the served file of its language.</summary>
+    [HttpPost("{language}/proposal/apply")]
+    public Task<IActionResult> ApplyProposal(string language, CancellationToken cancellationToken) =>
+        GuardedAsync(async () => await files.ApplyProposalAsync(language, cancellationToken) ? NoContent() : NotFound());
+
+    [HttpDelete("{language}/proposal")]
+    public Task<IActionResult> DiscardProposal(string language, CancellationToken cancellationToken) =>
+        GuardedAsync(async () => await files.DiscardProposalAsync(language, cancellationToken) ? NoContent() : NotFound());
+
     [HttpGet("{language}")]
     public async Task<IActionResult> Read(string language, CancellationToken cancellationToken)
     {
@@ -60,4 +77,44 @@ public sealed class PublicLabelsController(ISiteSettings settings, ILanguageFile
         var language = (await settings.GetPublicAsync(cancellationToken)).Language;
         return Ok(new PublicLabels(language, await files.GetAsync(language, cancellationToken)));
     }
+}
+
+/// <summary>Every key a language file can translate with its English text, and a note when that list is incomplete.</summary>
+public sealed record LanguageCatalog(IReadOnlyDictionary<string, string> Keys, string? Note);
+
+/// <summary>
+/// What Claude may do with language files, through MCP: read the keys to translate and PROPOSE a file. A proposal is checked like any file but never served:
+/// an administrator reviews it on Admin > Languages and applies or discards it. There is no route here that applies a file.
+/// </summary>
+[ApiController]
+[Route("api/author/languages")]
+[Authorize(Policy = "Scope:" + RequiredScope)]
+public sealed class AuthorLanguagesController(ILanguageFiles files, IServerTextCatalog catalog) : ApiControllerBase
+{
+    public const string RequiredScope = AuthoringController.RequiredScope;
+
+    /// <summary>The server's texts with their English defaults, over which the stored English table (the screens' keys, saved once from Admin > Languages) is laid.</summary>
+    [HttpGet("catalog")]
+    public async Task<ActionResult<LanguageCatalog>> Catalog(CancellationToken cancellationToken)
+    {
+        var keys = new Dictionary<string, string>(catalog.Defaults, StringComparer.Ordinal);
+        var english = await files.GetAsync("en", cancellationToken);
+        foreach (var (key, text) in english)
+        {
+            keys[key] = text;
+        }
+
+        var note = english.Count == 0
+            ? "The list holds only the server's texts. Ask the administrator to open Admin > Languages, choose Load the English texts and save them as the language en, so the screens' own keys are listed here too."
+            : null;
+        return Ok(new LanguageCatalog(keys, note));
+    }
+
+    [HttpPut("{language}")]
+    public Task<IActionResult> Propose(string language, [FromBody] LanguageBody body, CancellationToken cancellationToken) =>
+        GuardedAsync(async () =>
+        {
+            await files.ProposeAsync(language, body.Labels!, cancellationToken);
+            return NoContent();
+        });
 }

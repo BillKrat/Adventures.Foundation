@@ -16,3 +16,8 @@
 <https://schema.global-webnet.com/i18n/LanguageFile/Labels> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/i18n> .
 <https://schema.global-webnet.com/i18n/LanguageFile/Labels> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/i18n#languageLabels> <https://global-webnet.com/graph/i18n> .
 <https://schema.global-webnet.com/i18n/LanguageFile/Labels> <https://global-webnet.com/ontology/schema#order> "2" <https://global-webnet.com/graph/i18n> .
+<https://schema.global-webnet.com/i18n/LanguageFile> <https://global-webnet.com/ontology/schema#field> <https://schema.global-webnet.com/i18n/LanguageFile/Status> <https://global-webnet.com/graph/i18n> .
+<https://schema.global-webnet.com/i18n/LanguageFile/Status> <https://global-webnet.com/ontology/schema#name> "Status" <https://global-webnet.com/graph/i18n> .
+<https://schema.global-webnet.com/i18n/LanguageFile/Status> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/i18n> .
+<https://schema.global-webnet.com/i18n/LanguageFile/Status> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/i18n#languageStatus> <https://global-webnet.com/graph/i18n> .
+<https://schema.global-webnet.com/i18n/LanguageFile/Status> <https://global-webnet.com/ontology/schema#order> "3" <https://global-webnet.com/graph/i18n> .

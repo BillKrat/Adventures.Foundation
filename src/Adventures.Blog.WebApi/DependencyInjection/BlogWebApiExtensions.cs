@@ -13,7 +13,7 @@ public static class BlogWebApiExtensions
     public static IMvcBuilder AddBlogControllers(this IMvcBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        foreach (var tool in AuthoringTools.All)
+        foreach (var tool in AuthoringTools.All.Concat(LanguageTools.All))
         {
             builder.Services.AddSingleton<IAppTool>(tool);
         }

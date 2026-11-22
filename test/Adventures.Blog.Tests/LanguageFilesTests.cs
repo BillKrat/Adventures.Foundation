@@ -117,4 +117,80 @@ public sealed class LanguageFilesTests : IAsyncLifetime
 
         Assert.Equal("Store", (await Files().GetAsync("en"))["save"]);
     }
+
+    [Fact]
+    public async Task AProposal_IsKeptApart_ItNeverChangesWhatTheSiteServes()
+    {
+        await Files().SaveAsync("de", new Dictionary<string, string> { ["save"] = "Speichern" });
+
+        await Files().ProposeAsync("de", new Dictionary<string, string> { ["save"] = "Sichern", ["delete"] = "Loeschen" });
+
+        Assert.Equal("Speichern", (await Files().GetAsync("de"))["save"]);
+        Assert.Equal([("de", 1)], (await Files().ListAsync()).Select(f => (f.Language, f.Count)));
+        var proposal = Assert.Single(await Files().ListProposalsAsync());
+        Assert.Equal(("de", 2), (proposal.Language, proposal.Count));
+        Assert.Equal("Sichern", (await Files().GetProposalAsync("de"))!["save"]);
+    }
+
+    [Fact]
+    public async Task AProposalForALanguageWithNoFile_IsNotServedEither()
+    {
+        await Files().ProposeAsync("fr", new Dictionary<string, string> { ["save"] = "Enregistrer" });
+
+        Assert.Empty(await Files().GetAsync("fr"));
+        Assert.Empty(await Files().ListAsync());
+        Assert.Single(await Files().ListProposalsAsync());
+    }
+
+    [Fact]
+    public async Task ProposingAgain_ReplacesTheProposal_AndTheSameChecksApply()
+    {
+        await Files().ProposeAsync("fr", new Dictionary<string, string> { ["save"] = "a" });
+        await Files().ProposeAsync("fr", new Dictionary<string, string> { ["save"] = "b", ["delete"] = "c" });
+
+        Assert.Equal(2, Assert.Single(await Files().ListProposalsAsync()).Count);
+        await Assert.ThrowsAsync<BusinessRuleException>(() => Files().ProposeAsync("bad code", new Dictionary<string, string> { ["save"] = "a" }));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => Files().ProposeAsync("fr", new Dictionary<string, string> { ["save"] = "  " }));
+        Assert.Equal(2, Assert.Single(await Files().ListProposalsAsync()).Count);   // the refused ones changed nothing
+    }
+
+    [Fact]
+    public async Task ApplyingAProposal_MakesItTheServedFile_AndRemovesTheProposal()
+    {
+        await Files().SaveAsync("de", new Dictionary<string, string> { ["save"] = "Speichern" });
+        await Files().ProposeAsync("de", new Dictionary<string, string> { ["save"] = "Sichern" });
+
+        Assert.True(await Files().ApplyProposalAsync("de"));
+
+        Assert.Equal("Sichern", (await Files().GetAsync("de"))["save"]);
+        Assert.Empty(await Files().ListProposalsAsync());
+        Assert.Single(await Files().ListAsync());
+        Assert.False(await Files().ApplyProposalAsync("de"));   // nothing left to apply
+    }
+
+    [Fact]
+    public async Task DiscardingAProposal_LeavesTheServedFileAlone()
+    {
+        await Files().SaveAsync("de", new Dictionary<string, string> { ["save"] = "Speichern" });
+        await Files().ProposeAsync("de", new Dictionary<string, string> { ["save"] = "Sichern" });
+
+        Assert.True(await Files().DiscardProposalAsync("de"));
+
+        Assert.Equal("Speichern", (await Files().GetAsync("de"))["save"]);
+        Assert.Empty(await Files().ListProposalsAsync());
+        Assert.False(await Files().DiscardProposalAsync("de"));
+        Assert.Null(await Files().GetProposalAsync("de"));
+    }
+
+    [Fact]
+    public async Task RemovingAFile_DoesNotRemoveItsProposal()
+    {
+        await Files().SaveAsync("de", new Dictionary<string, string> { ["save"] = "a" });
+        await Files().ProposeAsync("de", new Dictionary<string, string> { ["save"] = "b" });
+
+        Assert.True(await Files().RemoveAsync("de"));
+
+        Assert.Empty(await Files().GetAsync("de"));
+        Assert.Single(await Files().ListProposalsAsync());
+    }
 }

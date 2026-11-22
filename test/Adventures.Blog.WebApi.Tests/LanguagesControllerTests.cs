@@ -35,6 +35,38 @@ public sealed class LanguagesControllerTests
         }
 
         public Task<bool> RemoveAsync(string language, CancellationToken cancellationToken = default) => Task.FromResult(Stored.Remove(language));
+
+        public Dictionary<string, Dictionary<string, string>> Proposals { get; } = new() { ["fr"] = new() { ["save"] = "Enregistrer" } };
+
+        public Task ProposeAsync(string language, IReadOnlyDictionary<string, string> labels, CancellationToken cancellationToken = default)
+        {
+            if (language == "bad")
+            {
+                throw new BusinessRuleException("A language code is two or three letters.");
+            }
+
+            Proposals[language] = new Dictionary<string, string>(labels);
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<LanguageSummary>> ListProposalsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<LanguageSummary>>(Proposals.Select(p => new LanguageSummary(p.Key, p.Value.Count)).ToList());
+
+        public Task<IReadOnlyDictionary<string, string>?> GetProposalAsync(string language, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyDictionary<string, string>?>(Proposals.TryGetValue(language, out var table) ? table : null);
+
+        public Task<bool> ApplyProposalAsync(string language, CancellationToken cancellationToken = default)
+        {
+            if (!Proposals.Remove(language, out var table))
+            {
+                return Task.FromResult(false);
+            }
+
+            Stored[language] = table;
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> DiscardProposalAsync(string language, CancellationToken cancellationToken = default) => Task.FromResult(Proposals.Remove(language));
     }
 
     private sealed class FakeCatalog : IServerTextCatalog
@@ -116,5 +148,62 @@ public sealed class LanguagesControllerTests
         var open = typeof(PublicLabelsController);
         Assert.NotEmpty(open.GetCustomAttributes<AllowAnonymousAttribute>());
         Assert.Contains(open.GetCustomAttributes<RouteAttribute>(), a => a.Template == "api/public/labels");
+    }
+
+    [Fact]
+    public async Task TheScreen_ListsReadsAppliesAndDiscardsProposals()
+    {
+        var files = new FakeFiles();
+        var controller = new LanguagesController(files, new FakeCatalog());
+
+        Assert.Equal("fr", Assert.Single(Assert.IsAssignableFrom<IReadOnlyList<LanguageSummary>>(Assert.IsType<OkObjectResult>((await controller.Proposals(CancellationToken.None)).Result).Value)).Language);
+        Assert.IsType<OkObjectResult>(await controller.ReadProposal("fr", CancellationToken.None));
+        Assert.IsType<NotFoundResult>(await controller.ReadProposal("xx", CancellationToken.None));
+        Assert.IsType<NoContentResult>(await controller.ApplyProposal("fr", CancellationToken.None));
+        Assert.Equal("Enregistrer", files.Stored["fr"]["save"]);
+        Assert.IsType<NotFoundResult>(await controller.ApplyProposal("fr", CancellationToken.None));
+        Assert.IsType<NotFoundResult>(await controller.DiscardProposal("fr", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ClaudesCatalog_IsTheServerTextsPlusTheStoredEnglishTable_AndSaysWhenEnglishWasNeverSaved()
+    {
+        var files = new FakeFiles();
+        files.Stored["en"] = new() { ["save"] = "Save", ["menu.posts"] = "Posts (stored)" };
+        var controller = new AuthorLanguagesController(files, new FakeCatalog());
+
+        var answer = Assert.IsType<LanguageCatalog>(Assert.IsType<OkObjectResult>((await controller.Catalog(CancellationToken.None)).Result).Value);
+
+        Assert.Equal("Save", answer.Keys["save"]);
+        Assert.Equal("Posts (stored)", answer.Keys["menu.posts"]);   // the stored English table wins over the server default
+        Assert.Null(answer.Note);
+
+        files.Stored.Remove("en");
+        var bare = Assert.IsType<LanguageCatalog>(Assert.IsType<OkObjectResult>((await controller.Catalog(CancellationToken.None)).Result).Value);
+        Assert.Equal("Posts", bare.Keys["menu.posts"]);
+        Assert.Contains("en", bare.Note);
+    }
+
+    [Fact]
+    public async Task AnAuthorsFile_BecomesAProposalOnly_NeverTheServedTable()
+    {
+        var files = new FakeFiles();
+        var controller = new AuthorLanguagesController(files, new FakeCatalog());
+
+        Assert.IsType<NoContentResult>(await controller.Propose("it", new LanguageBody(new Dictionary<string, string> { ["save"] = "Salva" }), CancellationToken.None));
+
+        Assert.Equal("Salva", files.Proposals["it"]["save"]);
+        Assert.False(files.Stored.ContainsKey("it"));
+        Assert.IsNotType<NoContentResult>(await controller.Propose("bad", new LanguageBody(new Dictionary<string, string> { ["save"] = "a" }), CancellationToken.None));
+    }
+
+    [Fact]
+    public void TheAuthorApi_NeedsTheDraftScope_AndHasNoRouteThatAppliesAFile()
+    {
+        var author = typeof(AuthorLanguagesController);
+        Assert.Contains(author.GetCustomAttributes<AuthorizeAttribute>(), a => a.Policy == "Scope:content.draft");
+        Assert.Contains(author.GetCustomAttributes<RouteAttribute>(), a => a.Template == "api/author/languages");
+        Assert.DoesNotContain(author.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly), m => m.Name.Contains("Apply") || m.Name.Contains("Save"));
+        Assert.All(author.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly), m => Assert.Empty(m.GetCustomAttributes<AllowAnonymousAttribute>()));
     }
 }

@@ -45,37 +45,81 @@ public interface ILanguageFiles
     /// <summary>Stores the table for a code, replacing any earlier one. A business-rule error (and nothing stored) for a bad code, key or text, too many texts, or no table.</summary>
     Task SaveAsync(string language, IReadOnlyDictionary<string, string> labels, CancellationToken cancellationToken = default);
 
-    /// <summary>Removes the file of a code; false when none was stored.</summary>
+    /// <summary>Removes the file of a code; false when none was stored. A proposal for the code is left alone.</summary>
     Task<bool> RemoveAsync(string language, CancellationToken cancellationToken = default);
+
+    /// <summary>Keeps a proposed table for a code (replacing an earlier proposal) under the same checks as a save. A proposal is never served: it changes nothing until an administrator applies it.</summary>
+    Task ProposeAsync(string language, IReadOnlyDictionary<string, string> labels, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<LanguageSummary>> ListProposalsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>The proposed table for a code, or null when there is none.</summary>
+    Task<IReadOnlyDictionary<string, string>?> GetProposalAsync(string language, CancellationToken cancellationToken = default);
+
+    /// <summary>Makes the proposal the served file of its code and removes the proposal; false when there is none.</summary>
+    Task<bool> ApplyProposalAsync(string language, CancellationToken cancellationToken = default);
+
+    /// <summary>Removes the proposal for a code; false when there is none.</summary>
+    Task<bool> DiscardProposalAsync(string language, CancellationToken cancellationToken = default);
 }
 
 public sealed class LanguageFiles(IEntityBll<LanguageFile> store, EntitySchemaOf<LanguageFile> schema) : ILanguageFiles
 {
+    private const string Applied = "applied";
+    private const string Proposed = "proposed";
+
     public async Task<IReadOnlyDictionary<string, string>> GetAsync(string language, CancellationToken cancellationToken = default)
     {
-        var code = Normalise(language);
-        if (code is null)
-        {
-            return new Dictionary<string, string>();
-        }
-
-        var row = (await StoredAsync(cancellationToken).ConfigureAwait(false)).FirstOrDefault(f => Is(f, code));
+        var row = await FindAsync(language, Applied, cancellationToken).ConfigureAwait(false);
         return row is null ? new Dictionary<string, string>() : TableOf(row);
     }
 
-    public async Task<IReadOnlyList<LanguageSummary>> ListAsync(CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<LanguageSummary>> ListAsync(CancellationToken cancellationToken = default) => SummariesAsync(Applied, cancellationToken);
+
+    public Task SaveAsync(string language, IReadOnlyDictionary<string, string> labels, CancellationToken cancellationToken = default) =>
+        WriteAsync(language, labels, Applied, cancellationToken);
+
+    public async Task<bool> RemoveAsync(string language, CancellationToken cancellationToken = default) => await DeleteAsync(language, Applied, cancellationToken).ConfigureAwait(false);
+
+    public Task ProposeAsync(string language, IReadOnlyDictionary<string, string> labels, CancellationToken cancellationToken = default) =>
+        WriteAsync(language, labels, Proposed, cancellationToken);
+
+    public Task<IReadOnlyList<LanguageSummary>> ListProposalsAsync(CancellationToken cancellationToken = default) => SummariesAsync(Proposed, cancellationToken);
+
+    public async Task<IReadOnlyDictionary<string, string>?> GetProposalAsync(string language, CancellationToken cancellationToken = default)
+    {
+        var row = await FindAsync(language, Proposed, cancellationToken).ConfigureAwait(false);
+        return row is null ? null : TableOf(row);
+    }
+
+    public async Task<bool> ApplyProposalAsync(string language, CancellationToken cancellationToken = default)
+    {
+        var proposal = await GetProposalAsync(language, cancellationToken).ConfigureAwait(false);
+        if (proposal is null)
+        {
+            return false;
+        }
+
+        await WriteAsync(language, proposal, Applied, cancellationToken).ConfigureAwait(false);
+        await DeleteAsync(language, Proposed, cancellationToken).ConfigureAwait(false);
+        return true;
+    }
+
+    public async Task<bool> DiscardProposalAsync(string language, CancellationToken cancellationToken = default) => await DeleteAsync(language, Proposed, cancellationToken).ConfigureAwait(false);
+
+    private async Task<IReadOnlyList<LanguageSummary>> SummariesAsync(string status, CancellationToken cancellationToken) =>
         (await StoredAsync(cancellationToken).ConfigureAwait(false))
+            .Where(f => StatusOf(f) == status)
             .Select(f => new LanguageSummary(f.GetValue("Language") as string ?? string.Empty, TableOf(f).Count))
             .OrderBy(s => s.Language, StringComparer.Ordinal)
             .ToList();
 
-    public async Task SaveAsync(string language, IReadOnlyDictionary<string, string> labels, CancellationToken cancellationToken = default)
+    private async Task WriteAsync(string language, IReadOnlyDictionary<string, string> labels, string status, CancellationToken cancellationToken)
     {
         var code = Normalise(language) ?? throw new BusinessRuleException("A language code is two or three letters, optionally with a region, such as de or pt-br.");
-        var clean = Check(labels);
-        var json = JsonSerializer.Serialize(clean);
+        var json = JsonSerializer.Serialize(Check(labels));
 
-        var row = (await StoredAsync(cancellationToken).ConfigureAwait(false)).FirstOrDefault(f => Is(f, code));
+        var row = await FindAsync(code, status, cancellationToken).ConfigureAwait(false);
         if (row is not null)
         {
             row.Set("Labels", Guid.NewGuid().ToString(), json);
@@ -87,13 +131,13 @@ public sealed class LanguageFiles(IEntityBll<LanguageFile> store, EntitySchemaOf
         created.Set("Id", Guid.NewGuid().ToString(), Guid.NewGuid());
         created.Set("Language", Guid.NewGuid().ToString(), code);
         created.Set("Labels", Guid.NewGuid().ToString(), json);
+        created.Set("Status", Guid.NewGuid().ToString(), status);
         await store.CreateAsync(created, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<bool> RemoveAsync(string language, CancellationToken cancellationToken = default)
+    private async Task<bool> DeleteAsync(string language, string status, CancellationToken cancellationToken)
     {
-        var code = Normalise(language);
-        var row = code is null ? null : (await StoredAsync(cancellationToken).ConfigureAwait(false)).FirstOrDefault(f => Is(f, code));
+        var row = await FindAsync(language, status, cancellationToken).ConfigureAwait(false);
         if (row?.EntityId is null)
         {
             return false;
@@ -103,10 +147,19 @@ public sealed class LanguageFiles(IEntityBll<LanguageFile> store, EntitySchemaOf
         return true;
     }
 
+    private async Task<LanguageFile?> FindAsync(string language, string status, CancellationToken cancellationToken)
+    {
+        var code = Normalise(language);
+        return code is null ? null : (await StoredAsync(cancellationToken).ConfigureAwait(false)).FirstOrDefault(f => Is(f, code) && StatusOf(f) == status);
+    }
+
     private async Task<List<LanguageFile>> StoredAsync(CancellationToken cancellationToken) =>
         (await store.ListAsync(cancellationToken).ConfigureAwait(false)).Where(f => f.EntityId is not null).ToList();
 
     private static bool Is(LanguageFile row, string code) => string.Equals(row.GetValue("Language") as string, code, StringComparison.Ordinal);
+
+    /// <summary>A row with no status is a served file (the field was added after the first rows).</summary>
+    private static string StatusOf(LanguageFile row) => row.GetValue("Status") as string is { Length: > 0 } status ? status : Applied;
 
     /// <summary>The code in stored form (lower case), or null when it is not a language code.</summary>
     internal static string? Normalise(string? language)
