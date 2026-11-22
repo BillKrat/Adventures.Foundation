@@ -24,7 +24,8 @@ public sealed record PublicComment(string Author, string Created, string Body);
 public sealed record ModerationComment(string Id, string PostSlug, string PostTitle, string Author, string? Email, string Created, string Status, string Body);
 
 /// <summary>A published post that may take comments, as far as the comments feature needs to know.</summary>
-public sealed record CommentablePost(string Title, bool CommentsEnabled);
+/// <param name="DatePublished">When the post was published (ISO text), or null; used to close comments on old posts.</param>
+public sealed record CommentablePost(string Title, bool CommentsEnabled, string? DatePublished = null);
 
 /// <summary>Finds a published post by its address. A post that is missing or not published is null.</summary>
 public interface ICommentablePosts
@@ -37,7 +38,7 @@ public sealed class PublicContentCommentablePosts(IPublicContent content) : ICom
 {
     public async Task<CommentablePost?> FindAsync(string slug, CancellationToken cancellationToken = default) =>
         await content.GetPostAsync(slug, cancellationToken, includeDrafts: false).ConfigureAwait(false) is { } post
-            ? new CommentablePost(post.Summary.Title, post.EnableComments)
+            ? new CommentablePost(post.Summary.Title, post.EnableComments, post.Summary.DatePublished)
             : null;
 }
 
@@ -83,6 +84,7 @@ public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntityS
             throw new BusinessRuleException("Comments are closed on this site.");
         }
 
+        var site = await settings.GetPublicAsync(cancellationToken).ConfigureAwait(false);
         var author = Clean(comment.Author);
         var body = Clean(comment.Body);
         var email = Clean(comment.Email ?? string.Empty);
@@ -105,6 +107,13 @@ public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntityS
         if (post is null || !post.CommentsEnabled)
         {
             throw new BusinessRuleException("Comments are not open on this post.");
+        }
+
+        if (site.CommentsCloseAfterDays > 0
+            && DateTimeOffset.TryParse(post.DatePublished, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var published)
+            && DateTimeOffset.UtcNow - published > TimeSpan.FromDays(site.CommentsCloseAfterDays))
+        {
+            throw new BusinessRuleException($"Comments are closed on posts older than {site.CommentsCloseAfterDays.ToString(System.Globalization.CultureInfo.InvariantCulture)} days.");
         }
 
         if (await CountPendingAsync(cancellationToken).ConfigureAwait(false) >= MaxPending)

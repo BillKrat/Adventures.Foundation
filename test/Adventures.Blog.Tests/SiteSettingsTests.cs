@@ -121,6 +121,39 @@ public sealed class SiteSettingsTests : IAsyncLifetime
         Assert.Equal(expected, (await _settings.GetPublicAsync()).Language);
     }
 
+    [Theory]
+    [InlineData("30", 30)]
+    [InlineData(" 7 ", 7)]
+    [InlineData("0", 0)]
+    [InlineData("-5", 0)]
+    [InlineData("many", 0)]
+    [InlineData("99999", 3650)]
+    public async Task CommentsCloseAfterTheDaysSet_ZeroNeverAndAnythingOddMeansNever(string value, int expected)
+    {
+        Assert.Equal(0, (await _settings.GetPublicAsync()).CommentsCloseAfterDays);   // no row yet: never
+        await _presenter.GetGridAsync(new EntityGridQuery());
+        var row = (await _presenter.ListAsync()).Single(r => r.Values["Name"] == "CommentsCloseAfterDays");
+        await _presenter.UpdateAsync(row.EntityId, Row("CommentsCloseAfterDays", value));
+
+        Assert.Equal(expected, (await _settings.GetPublicAsync()).CommentsCloseAfterDays);
+    }
+
+    [Theory]
+    [InlineData("5", 5)]
+    [InlineData("100", 100)]
+    [InlineData("500", 100)]
+    [InlineData("0", 20)]
+    [InlineData("lots", 20)]
+    public async Task TheFeedListsTheItemsSet_BetweenOneAndOneHundred_TwentyWhenUnsetOrOdd(string value, int expected)
+    {
+        Assert.Equal(20, (await _settings.GetPublicAsync()).FeedItems);
+        await _presenter.GetGridAsync(new EntityGridQuery());
+        var row = (await _presenter.ListAsync()).Single(r => r.Values["Name"] == "FeedItems");
+        await _presenter.UpdateAsync(row.EntityId, Row("FeedItems", value));
+
+        Assert.Equal(expected, (await _settings.GetPublicAsync()).FeedItems);
+    }
+
     [Fact]
     public async Task OnlyTheValueIsEditable_ASettingCannotBeRenamed_AndNoneCanBeCreatedFromTheForm()
     {
@@ -165,10 +198,10 @@ public sealed class SiteSettingsTests : IAsyncLifetime
         var recreated = Assert.Single(grid.Rows, r => r.Values["Name"] == "CommentsEnabled");
         Assert.Equal("true", recreated.Values["Value"]);
         Assert.NotEmpty(recreated.Values["Description"] ?? string.Empty);
-        Assert.Equal(7, grid.Rows.Count);                                         // nothing duplicated
+        Assert.Equal(9, grid.Rows.Count);                                         // nothing duplicated
         Assert.Equal(25, (await _settings.GetPublicAsync()).PostsPerPage);        // an edited setting is left alone
         await _presenter.GetGridAsync(new EntityGridQuery());
-        Assert.Equal(7, (await _presenter.ListAsync()).Count);                    // and asking again creates nothing more
+        Assert.Equal(9, (await _presenter.ListAsync()).Count);                    // and asking again creates nothing more
     }
 
     [Fact]
@@ -181,7 +214,7 @@ public sealed class SiteSettingsTests : IAsyncLifetime
 
         var grid = await _presenter.GetGridAsync(new EntityGridQuery());
 
-        Assert.Equal(["ColorMode", "CommentsEnabled", "Language", "PostsPerPage", "SiteTitle", "Tagline", "TimeZone"], grid.Rows.Select(r => r.Values["Name"]).Order());
+        Assert.Equal(["ColorMode", "CommentsCloseAfterDays", "CommentsEnabled", "FeedItems", "Language", "PostsPerPage", "SiteTitle", "Tagline", "TimeZone"], grid.Rows.Select(r => r.Values["Name"]).Order());
         Assert.Equal("AI Research Blog", (await _settings.GetPublicAsync()).Title);
     }
 

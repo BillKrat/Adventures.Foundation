@@ -35,9 +35,9 @@ public sealed class FeedControllerTests
         public Task<IReadOnlyList<PublicTerm>> GetTagsAsync(CancellationToken cancellationToken = default, bool includeDrafts = false) => Task.FromResult<IReadOnlyList<PublicTerm>>([]);
     }
 
-    private sealed class FakeSettings : ISiteSettings
+    private sealed class FakeSettings(int feedItems = SiteSettings.DefaultFeedItems) : ISiteSettings
     {
-        public Task<PublicSiteSettings> GetPublicAsync(CancellationToken cancellationToken = default) => Task.FromResult(new PublicSiteSettings("Site", "Tag", 10));
+        public Task<PublicSiteSettings> GetPublicAsync(CancellationToken cancellationToken = default) => Task.FromResult(new PublicSiteSettings("Site", "Tag", 10, FeedItems: feedItems));
 
         public Task<string> GetLegacyTimeZoneAsync(CancellationToken cancellationToken = default) => Task.FromResult("UTC");
     }
@@ -82,8 +82,19 @@ public sealed class FeedControllerTests
 
         await controller.Get(CancellationToken.None);
 
-        Assert.Equal(FeedController.MaxItems, content.PageSizeAsked);
+        Assert.Equal(FeedController.MaxItems, content.PageSizeAsked);   // the default when the site sets nothing
         Assert.True(FeedController.MaxItems <= 20);
+    }
+
+    [Fact]
+    public async Task TheFeedListsAsManyPostsAsTheSiteSettingSays()
+    {
+        var content = new FakeContent();
+        var controller = new FeedController(content, new FakeSettings(feedItems: 5), new FakeTenant("blog.example.org"));
+
+        await controller.Get(CancellationToken.None);
+
+        Assert.Equal(5, content.PageSizeAsked);
     }
 
     [Fact]

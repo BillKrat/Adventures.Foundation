@@ -17,8 +17,10 @@ public sealed class VisitorCommentsTests : IAsyncLifetime
     {
         public bool CommentsEnabled { get; set; } = true;
 
+        public int CloseAfterDays { get; set; }
+
         public Task<PublicSiteSettings> GetPublicAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new PublicSiteSettings("Site", string.Empty, 10, CommentsEnabled));
+            Task.FromResult(new PublicSiteSettings("Site", string.Empty, 10, CommentsEnabled, CommentsCloseAfterDays: CloseAfterDays));
 
         public Task<string> GetLegacyTimeZoneAsync(CancellationToken cancellationToken = default) => Task.FromResult("UTC");
     }
@@ -29,6 +31,9 @@ public sealed class VisitorCommentsTests : IAsyncLifetime
         {
             ["open-post"] = new("An open post", true),
             ["closed-post"] = new("A closed post", false),
+            ["old-post"] = new("An old post", true, DateTimeOffset.UtcNow.AddDays(-40).ToString("o")),
+            ["new-post"] = new("A new post", true, DateTimeOffset.UtcNow.AddDays(-2).ToString("o")),
+            ["undated-post"] = new("A post with no usable date", true, "not a date"),
         };
 
         public Task<CommentablePost?> FindAsync(string slug, CancellationToken cancellationToken = default) =>
@@ -204,5 +209,36 @@ public sealed class VisitorCommentsTests : IAsyncLifetime
         }
 
         await Assert.ThrowsAsync<BusinessRuleException>(() => _comments.SubmitAsync(Valid("one too many")));
+    }
+
+    private static SubmittedComment On(string slug) => new(slug, "Anna", null, "Nice post");
+
+    [Fact]
+    public async Task WithNoLimit_AnOldPostStillTakesComments()
+    {
+        await _comments.SubmitAsync(On("old-post"));
+
+        Assert.Equal(1, await _comments.CountPendingAsync());
+    }
+
+    [Fact]
+    public async Task CommentsCloseOnAPostOlderThanTheLimit_ButNotOnANewerOne()
+    {
+        _settings.CloseAfterDays = 30;
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _comments.SubmitAsync(On("old-post")));
+        await _comments.SubmitAsync(On("new-post"));
+
+        Assert.Equal(1, await _comments.CountPendingAsync());
+    }
+
+    [Fact]
+    public async Task APostWhoseDateCannotBeRead_IsNeverClosedByTheLimit()
+    {
+        _settings.CloseAfterDays = 1;
+
+        await _comments.SubmitAsync(On("undated-post"));
+
+        Assert.Equal(1, await _comments.CountPendingAsync());
     }
 }

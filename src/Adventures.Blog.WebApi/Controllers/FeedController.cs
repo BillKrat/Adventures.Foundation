@@ -14,8 +14,8 @@ namespace Adventures.Blog.WebApi;
 [AllowAnonymous]
 public sealed class FeedController(IPublicContent content, ISiteSettings settings, IRequestTenant tenant) : ControllerBase
 {
-    /// <summary>How many of the newest posts the feed lists.</summary>
-    public const int MaxItems = 20;
+    /// <summary>How many of the newest posts the feed lists when the site has not set the FeedItems setting.</summary>
+    public const int MaxItems = SiteSettings.DefaultFeedItems;
 
     [HttpGet]
     [ResponseCache(Duration = 300)]
@@ -27,8 +27,8 @@ public sealed class FeedController(IPublicContent content, ISiteSettings setting
             return NotFound();
         }
 
-        var posts = await content.ListPostsAsync(1, MaxItems, category: null, tag: null, cancellationToken, includeDrafts: false);
         var site = await settings.GetPublicAsync(cancellationToken);
+        var posts = await content.ListPostsAsync(1, site.FeedItems, category: null, tag: null, cancellationToken, includeDrafts: false);
         return Content(RssFeed.Build(site, $"https://{SiteHost(domain)}", posts.Posts), RssFeed.ContentType);
     }
 
