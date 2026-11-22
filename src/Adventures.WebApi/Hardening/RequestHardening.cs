@@ -41,6 +41,14 @@ public static class RequestHardening
 
     public const int DefaultCommentsPerMinute = 3;
 
+    /// <summary>Name of the rate-limit policy for the anonymous content search: <c>[EnableRateLimiting(RequestHardening.SearchPolicy)]</c>.</summary>
+    public const string SearchPolicy = "search";
+
+    /// <summary>Configuration key for the number of searches one client address may run per minute.</summary>
+    public const string SearchPerMinuteKey = "RateLimit:SearchPerMinute";
+
+    public const int DefaultSearchPerMinute = 20;
+
     /// <summary>A positive configured number, else the default (a zero or garbled setting must not switch the limit off or lock everyone out).</summary>
     public static int ResolveLimit(IConfiguration configuration, string key, int defaultValue)
     {
@@ -57,6 +65,7 @@ public static class RequestHardening
         var perMinute = ResolveLimit(configuration, TokensPerMinuteKey, DefaultTokensPerMinute);
         var healthPerMinute = ResolveLimit(configuration, HealthPerMinuteKey, DefaultHealthPerMinute);
         var commentsPerMinute = ResolveLimit(configuration, CommentsPerMinuteKey, DefaultCommentsPerMinute);
+        var searchPerMinute = ResolveLimit(configuration, SearchPerMinuteKey, DefaultSearchPerMinute);
 
         services.Configure<AuthorizationOptions>(options =>
             options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
@@ -67,6 +76,7 @@ public static class RequestHardening
             options.AddPolicy(TokenPolicy, context => ClientPartition(context, perMinute));
             options.AddPolicy(HealthPolicy, context => ClientPartition(context, healthPerMinute));
             options.AddPolicy(CommentPolicy, context => ClientPartition(context, commentsPerMinute));
+            options.AddPolicy(SearchPolicy, context => ClientPartition(context, searchPerMinute));
         });
 
         return services;

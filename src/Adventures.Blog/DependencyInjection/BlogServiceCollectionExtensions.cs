@@ -24,6 +24,7 @@ public static class BlogServiceCollectionExtensions
         services.TryAddSingleton<SiteOptions>();
         services.AddScoped<ISiteSettings, SiteSettings>();
         services.AddScoped<IContentExporter, ContentExporter>();
+        services.AddScoped<IContentSearcher, ContentSearcher>();
 
         // HTML sanitising is a plug-in that is on by default, behind a seam an owner can switch off and a developer can replace (register another IHtmlContentSanitizer after this).
         services.AddPlugins();
