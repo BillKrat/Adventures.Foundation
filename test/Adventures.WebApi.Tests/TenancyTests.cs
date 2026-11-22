@@ -309,6 +309,54 @@ public class TenancyTests
         Assert.Empty(services.Asked);
     }
 
+    private sealed class ThrowingFirstSite : IFirstRunSite
+    {
+        public Task<bool> TryCreateFirstSiteAsync(string host, CancellationToken cancellationToken = default) => throw new InvalidOperationException("the sign-in store is not available");
+    }
+
+    private sealed class ThrowingFirstRun : ITenantFirstRun
+    {
+        public Task<bool> TryAliasAsync(string host, string? targetDomain, CancellationToken cancellationToken = default) => throw new InvalidOperationException("the store is not available");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AFirstRunStepThatFails_NeverBecomesA500_TheHostSimplyStaysUnknown(bool firstSiteStep)
+    {
+        var resolver = new LearningResolver(Acme);
+        var holder = new RequestTenant();
+        var reached = false;
+        var options = Options(TenancyEnforcement.Enforce);
+        options.AutoAliasToTenantDomain = Acme;
+        var middleware = new TenantMiddleware(
+            _ =>
+            {
+                reached = true;
+                return Task.CompletedTask;
+            },
+            Microsoft.Extensions.Options.Options.Create(options),
+            new MemoryCache(new MemoryCacheOptions()),
+            new CapturingLogger());
+        var context = Request("temp.example.org", "/api/posts");
+        var services = new ServiceCollection();
+        if (firstSiteStep)
+        {
+            services.AddSingleton<IFirstRunSite>(new ThrowingFirstSite());
+        }
+        else
+        {
+            services.AddSingleton<ITenantFirstRun>(new ThrowingFirstRun());
+        }
+
+        context.RequestServices = services.BuildServiceProvider();
+
+        await middleware.InvokeAsync(context, resolver, holder);
+
+        Assert.False(reached);
+        Assert.Equal(404, context.Response.StatusCode);   // refused as an unknown host, not a server error
+    }
+
     // ---- onboarding stage 2: the first host of an empty install becomes the first site ----
 
     private sealed class FakeFirstSite(LearningResolver resolver, bool succeed = true) : IFirstRunSite

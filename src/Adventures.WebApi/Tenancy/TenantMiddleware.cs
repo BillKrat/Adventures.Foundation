@@ -28,7 +28,7 @@ public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptio
         var host = context.Request.Host.Value ?? string.Empty;
         var current = await ResolveAsync(settings, host, resolver, context.RequestAborted).ConfigureAwait(false);
         if (current.Match == TenantMatch.None && !IsExempt(settings, context.Request.Path) && firstSite.Value is { } site
-            && await site.TryCreateFirstSiteAsync(host, context.RequestAborted).ConfigureAwait(false))
+            && await AttemptAsync(() => site.TryCreateFirstSiteAsync(host, context.RequestAborted), "creating the first site", host, context.RequestAborted).ConfigureAwait(false))
         {
             // a fresh install: this host is its first site (the store held no tenant at all); forget the "unknown" answer for everyone
             logger.LogInformation("Tenancy: the first request on an empty install came on {Host}; it is now the first site.", host);
@@ -38,7 +38,7 @@ public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptio
         }
 
         if (current.Match == TenantMatch.None && !string.IsNullOrWhiteSpace(settings.AutoAliasToTenantDomain) && !IsExempt(settings, context.Request.Path) && firstRun.Value is { } alias
-            && await alias.TryAliasAsync(host, settings.AutoAliasToTenantDomain, context.RequestAborted).ConfigureAwait(false))
+            && await AttemptAsync(() => alias.TryAliasAsync(host, settings.AutoAliasToTenantDomain, context.RequestAborted), "adding the first alias", host, context.RequestAborted).ConfigureAwait(false))
         {
             // the first run on this address: it now belongs to the tenant the operator named; forget the "unknown" answer for everyone
             logger.LogInformation("Tenancy: the host {Host} was added as an alias of {Domain} (Tenancy:AutoAliasToTenantDomain).", host, settings.AutoAliasToTenantDomain);
@@ -64,6 +64,23 @@ public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptio
             // Content is stored per tenant and there is no shared graph, so an address with no tenant has nothing to show (a 404, not a server error).
             context.Response.Clear();
             await RefuseAsync(context).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// A first-run step is a convenience for a fresh install, never a reason to fail a request: if it throws (no sign-in store, a store error) it is logged, the host stays unknown and is
+    /// refused or served as any unknown host is.
+    /// </summary>
+    private async Task<bool> AttemptAsync(Func<Task<bool>> step, string what, string host, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await step().ConfigureAwait(false);
+        }
+        catch (Exception problem) when (problem is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(problem, "Tenancy: {What} for the host {Host} failed; the host stays unknown.", what, host);
+            return false;
         }
     }
 
