@@ -105,6 +105,22 @@ public sealed class SiteSettingsTests : IAsyncLifetime
         Assert.Equal(expected, (await _settings.GetPublicAsync()).ColorMode);
     }
 
+    [Theory]
+    [InlineData("de", "de")]
+    [InlineData(" PT-br ", "pt-br")]
+    [InlineData("klingon speak", "en")]
+    [InlineData("", "en")]
+    public async Task TheSiteLanguageIsEnglishUnlessTheSettingNamesALanguageCode(string value, string expected)
+    {
+        Assert.Equal("en", (await _settings.GetPublicAsync()).Language);   // no row yet: English
+        await _presenter.GetGridAsync(new EntityGridQuery());
+        var row = (await _presenter.ListAsync()).Single(r => r.Values["Name"] == "Language");
+        Assert.Equal("en", row.Values["Value"]);
+        await _presenter.UpdateAsync(row.EntityId, Row("Language", value));
+
+        Assert.Equal(expected, (await _settings.GetPublicAsync()).Language);
+    }
+
     [Fact]
     public async Task OnlyTheValueIsEditable_ASettingCannotBeRenamed_AndNoneCanBeCreatedFromTheForm()
     {
@@ -149,10 +165,10 @@ public sealed class SiteSettingsTests : IAsyncLifetime
         var recreated = Assert.Single(grid.Rows, r => r.Values["Name"] == "CommentsEnabled");
         Assert.Equal("true", recreated.Values["Value"]);
         Assert.NotEmpty(recreated.Values["Description"] ?? string.Empty);
-        Assert.Equal(6, grid.Rows.Count);                                         // nothing duplicated
+        Assert.Equal(7, grid.Rows.Count);                                         // nothing duplicated
         Assert.Equal(25, (await _settings.GetPublicAsync()).PostsPerPage);        // an edited setting is left alone
         await _presenter.GetGridAsync(new EntityGridQuery());
-        Assert.Equal(6, (await _presenter.ListAsync()).Count);                    // and asking again creates nothing more
+        Assert.Equal(7, (await _presenter.ListAsync()).Count);                    // and asking again creates nothing more
     }
 
     [Fact]
@@ -165,7 +181,7 @@ public sealed class SiteSettingsTests : IAsyncLifetime
 
         var grid = await _presenter.GetGridAsync(new EntityGridQuery());
 
-        Assert.Equal(["ColorMode", "CommentsEnabled", "PostsPerPage", "SiteTitle", "Tagline", "TimeZone"], grid.Rows.Select(r => r.Values["Name"]).Order());
+        Assert.Equal(["ColorMode", "CommentsEnabled", "Language", "PostsPerPage", "SiteTitle", "Tagline", "TimeZone"], grid.Rows.Select(r => r.Values["Name"]).Order());
         Assert.Equal("AI Research Blog", (await _settings.GetPublicAsync()).Title);
     }
 

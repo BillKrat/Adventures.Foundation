@@ -6,8 +6,9 @@ namespace Adventures.Blog;
 public sealed class SiteSetting(EntitySchema schema) : DynamicEntity(schema);
 
 /// <summary>The settings a visitor's browser needs: no secrets, nothing about the server.</summary>
+/// <param name="Language">The language code of the site (en unless set): the language file of that code supplies the button and screen texts.</param>
 /// <param name="ColorMode">"dark" or "light": the site default a visitor sees until they use the header toggle themselves.</param>
-public sealed record PublicSiteSettings(string Title, string Tagline, int PostsPerPage, bool CommentsEnabled = true, string ColorMode = "dark");
+public sealed record PublicSiteSettings(string Title, string Tagline, int PostsPerPage, bool CommentsEnabled = true, string ColorMode = "dark", string Language = "en");
 
 /// <summary>Reads the site settings with safe defaults, so a missing or mistyped row never breaks the site.</summary>
 public interface ISiteSettings
@@ -32,9 +33,11 @@ public sealed class SiteSettings(IEntityPresenter<SiteSetting> presenter) : ISit
         var perPage = int.TryParse(values.GetValueOrDefault("PostsPerPage"), out var parsed) ? Math.Clamp(parsed, 1, MaxPostsPerPage) : DefaultPostsPerPage;
         // Comments are on unless the setting says false (a missing or mistyped row never closes them by accident).
         var commentsEnabled = !string.Equals(values.GetValueOrDefault("CommentsEnabled")?.Trim(), "false", StringComparison.OrdinalIgnoreCase);
+        // English unless the setting is a language code (a typo never loads a missing table).
+        var language = LanguageFiles.Normalise(values.GetValueOrDefault("Language")) ?? "en";
         // Dark (how the site always started) unless the setting says light.
         var colorMode = string.Equals(values.GetValueOrDefault("ColorMode")?.Trim(), "light", StringComparison.OrdinalIgnoreCase) ? "light" : "dark";
-        return new PublicSiteSettings(string.IsNullOrWhiteSpace(title) ? DefaultTitle : title.Trim(), values.GetValueOrDefault("Tagline")?.Trim() ?? string.Empty, perPage, commentsEnabled, colorMode);
+        return new PublicSiteSettings(string.IsNullOrWhiteSpace(title) ? DefaultTitle : title.Trim(), values.GetValueOrDefault("Tagline")?.Trim() ?? string.Empty, perPage, commentsEnabled, colorMode, language);
     }
 
     public async Task<string> GetLegacyTimeZoneAsync(CancellationToken cancellationToken = default)
@@ -98,6 +101,7 @@ public sealed class SiteSettingPresenter(IEntityBll<SiteSetting> bll, EntitySche
         ("PostsPerPage", SiteSettings.DefaultPostsPerPage.ToString(System.Globalization.CultureInfo.InvariantCulture), "How many posts the list shows on a page (1 to 50)."),
         ("TimeZone", "UTC", "The time zone the legacy BlogEngine dates were written in (for the migration)."),
         ("ColorMode", "dark", "The look every visitor starts with: dark or light (a visitor who uses the toggle in the header keeps their own choice in their browser)."),
+        ("Language", "en", "The language of the site: a language code such as en, de or pt-br. The texts come from the language file of that code (English where it has none)."),
         ("CommentsEnabled", "true", "Visitor comments on the whole site: true shows the comment form where a post allows comments, false hides it and refuses new comments (existing comments are kept)."),
     ];
 

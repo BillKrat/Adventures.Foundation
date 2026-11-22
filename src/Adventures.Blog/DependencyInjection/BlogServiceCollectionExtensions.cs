@@ -32,6 +32,8 @@ public static class BlogServiceCollectionExtensions
         services.AddWidgets();
         services.AddScoped<IEntityBll<WidgetPlacement>>(p => new EntityBll<WidgetPlacement>(p.GetRequiredService<IEntityDal<WidgetPlacement>>()));
         services.AddScoped<IWidgetPlacements, WidgetPlacements>();
+        services.AddScoped<IEntityBll<LanguageFile>>(p => new EntityBll<LanguageFile>(p.GetRequiredService<IEntityDal<LanguageFile>>()));
+        services.AddScoped<ILanguageFiles, LanguageFiles>();
         services.AddPlugin(WidgetsPlugin.Definition);
         services.AddWidget<TextBoxWidget>(WidgetsPlugin.Key, TextBoxWidget.Definition);
         services.AddWidget<TagCloudWidget>(WidgetsPlugin.Key, TagCloudWidget.Definition);
