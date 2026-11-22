@@ -67,7 +67,7 @@ public interface IVisitorComments
 }
 
 /// <summary>Implementation over the visitor comment repository and the published posts.</summary>
-public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntitySchemaOf<VisitorComment> schema, ICommentablePosts posts, ISiteSettings settings) : IVisitorComments
+public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntitySchemaOf<VisitorComment> schema, ICommentablePosts posts, ISiteSettings settings, ICommentNotifier? notifier = null) : IVisitorComments
 {
     public const int MaxBodyLength = 2000;
     public const int MaxAuthorLength = 80;
@@ -135,6 +135,26 @@ public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntityS
         entity.Set("Status", Guid.NewGuid().ToString(), site.CommentsModerate ? CommentStatuses.Pending : CommentStatuses.Approved);
         entity.Set("Body", Guid.NewGuid().ToString(), body);
         await comments.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
+        await AnnounceAsync(author, post.Title, body).ConfigureAwait(false);
+    }
+
+    /// <summary>Tells the owner, best effort and for a few seconds at most: a mail server that is slow or down must not slow or fail the visitor's comment.</summary>
+    private async Task AnnounceAsync(string author, string postTitle, string body)
+    {
+        if (notifier is null)
+        {
+            return;
+        }
+
+        try
+        {
+            using var limit = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await notifier.NotifyAsync(author, postTitle, body, limit.Token).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // the comment is stored; the notice is a courtesy
+        }
     }
 
     public async Task<IReadOnlyList<PublicComment>> ListApprovedAsync(string postSlug, CancellationToken cancellationToken = default) =>

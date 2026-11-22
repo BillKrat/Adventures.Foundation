@@ -26,6 +26,7 @@ public static class BlogServiceCollectionExtensions
         // HTML sanitising is a plug-in that is on by default, behind a seam an owner can switch off and a developer can replace (register another IHtmlContentSanitizer after this).
         services.AddPlugins();
         services.AddPlugin(HtmlSanitizerPlugin.Definition);
+        services.AddMail();
         services.AddScoped<IHtmlContentSanitizer, HtmlContentSanitizer>();
 
         // Widgets: code that returns HTML for one of the four zones; where each sits is stored per tenant (the host registers the placement repository).
