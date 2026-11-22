@@ -99,5 +99,6 @@ public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptio
     private static string CacheKey(string host) => "tenant:" + host.ToLowerInvariant();
 
     private static bool IsExempt(TenancyOptions settings, PathString path) =>
-        settings.ExemptPaths.Any(exempt => path.Equals(exempt, StringComparison.OrdinalIgnoreCase));
+        settings.ExemptPaths.Any(exempt => path.Equals(exempt, StringComparison.OrdinalIgnoreCase))
+        || settings.ExemptPrefixes.Any(prefix => path.StartsWithSegments(prefix, StringComparison.OrdinalIgnoreCase));
 }

@@ -48,15 +48,7 @@ public sealed class FirstRunSite(
                 return false;   // another request got there first
             }
 
-            await accounts.CreateIfMissingAsync(name, AdminUserName, DefaultPassword, ["TenantAdmin"], "admin@" + name, "Administrator", cancellationToken).ConfigureAwait(false);
-
-            var person = new User(userSchema.Schema);
-            person.Set("UserName", Guid.NewGuid().ToString(), AdminUserName);
-            person.Set("First", Guid.NewGuid().ToString(), "Administrator");
-            var created = await people.CreateInTenantAsync(person, new HashSet<string>(StringComparer.Ordinal), cancellationToken).ConfigureAwait(false);
-
-            var tenant = await creator.CreateAsync(name, name, cancellationToken).ConfigureAwait(false);
-            await membership.AddMemberAsync(created.EntityId!.Value, tenant.Id, cancellationToken).ConfigureAwait(false);
+            await new SiteProvisioner(tenants, creator, accounts, people, membership, userSchema).CreateAsync(name, name, cancellationToken).ConfigureAwait(false);
             await platform.EnsureFirstAsync(cancellationToken).ConfigureAwait(false);
             return true;
         }

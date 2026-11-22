@@ -19,6 +19,12 @@ public static class WellKnownClaims
     /// </summary>
     public const string PasswordChange = "pwd_change";
 
+    /// <summary>"platform" on a setup token: issued to a platform administrator on a host that reaches no tenant, good for the setup API only (see the setup token guard).</summary>
+    public const string Setup = "adv_setup";
+
+    /// <summary>The id of the person a setup token was issued to; the setup API checks that this person is still a platform administrator on every call.</summary>
+    public const string SetupPerson = "adv_setup_person";
+
     /// <summary>Tenant-wide administrator: full user management (seed account "Admin").</summary>
     public const string TenantAdminRole = "TenantAdmin";
 

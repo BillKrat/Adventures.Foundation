@@ -247,6 +247,28 @@ public class TenancyTests
         Assert.True(before.HasChanged);
     }
 
+    [Theory]
+    [InlineData("/api/setup/status")]
+    [InlineData("/api/setup/token")]
+    [InlineData("/API/SETUP/attach")]
+    public async Task TheSetupApi_IsNeverRefusedForAnUnknownHost_ItIsHowAnUnknownHostGetsSetUp(string path)
+    {
+        var run = await RunAsync(Request("unknown.example.org", path), Options(TenancyEnforcement.Enforce));
+
+        Assert.True(run.Reached);
+    }
+
+    [Theory]
+    [InlineData("/api/setupx")]
+    [InlineData("/api/posts")]
+    [InlineData("/api/setups/status")]
+    public async Task OnlyTheSetupApiItself_IsExempt_NotANeighbourOfIt(string path)
+    {
+        var run = await RunAsync(Request("unknown.example.org", path), Options(TenancyEnforcement.Enforce));
+
+        Assert.False(run.Reached);
+    }
+
     // ---- onboarding stage 2: the first host of an empty install becomes the first site ----
 
     private sealed class FakeFirstSite(LearningResolver resolver, bool succeed = true) : IFirstRunSite

@@ -38,4 +38,7 @@ public sealed class TenancyOptions
 
     /// <summary>Paths never refused, even for an unknown host: the domain root (the hosting provider's certificate request needs a 200 there) and the public health check (the deploy smoke test).</summary>
     public IReadOnlyList<string> ExemptPaths { get; } = ["/", "/api/health"];
+
+    /// <summary>Paths (and everything under them) never refused for an unknown host and never the trigger of a first site: the setup API is how an unknown host gets set up.</summary>
+    public IReadOnlyList<string> ExemptPrefixes { get; } = ["/api/setup"];
 }
