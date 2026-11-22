@@ -15,6 +15,11 @@ public static class DiagnosticsTools
             """{ "type": "object", "properties": { "correlationId": { "type": "string", "description": "The request's correlation id." } }, "required": ["correlationId"] }""",
             Scope, "GET", "api/diagnostics/{correlationId}"),
         new AppTool(
+            "get_exception",
+            "One recorded exception by the id of its row in the admin exception list (works for a row that has no correlation id): when, type, message, request, user, its correlation id and the kind of failure with how often it was seen. Follow with diagnose_request using its correlation id for the full picture.",
+            """{ "type": "object", "properties": { "id": { "type": "string", "description": "The exception entry id (letters, digits and dashes)." } }, "required": ["id"] }""",
+            Scope, "GET", "api/diagnostics/exception/{id}"),
+        new AppTool(
             "recent_exceptions",
             "The most recent active exceptions, newest first.",
             """{ "type": "object", "properties": { "max": { "type": "integer", "description": "How many (1-500, default 50)." } } }""",

@@ -223,6 +223,37 @@ public sealed class ExceptionSignatureTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Diagnostics_finds_one_exception_by_its_entry_id_with_its_kind_even_without_a_correlation_id()
+    {
+        var reader = new DiagnosticsReader(_log, _signatures);
+        var withId = await _log.RecordAsync(Throw("by id one"), "GET /a", "Admin", "req-Z");
+        await _log.RecordAsync(Throw("by id one"), "GET /b", "Admin", "req-Y");
+        var bare = await _log.RecordAsync(Throw("no correlation"), null, null);
+
+        var found = await reader.FindByEntryIdAsync(withId!);
+        var bareFound = await reader.FindByEntryIdAsync(bare!);
+
+        Assert.Equal(("by id one", "req-Z"), (found!.Occurrence.Message, found.Occurrence.CorrelationId));
+        Assert.Equal(2, found.Kind!.OccurrenceCount);
+        Assert.Null(bareFound!.Occurrence.CorrelationId);
+        Assert.NotNull(bareFound.Kind);
+    }
+
+    [Theory]
+    [InlineData("no-such-entry")]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("../etc/passwd")]
+    [InlineData("a b")]
+    public async Task An_unknown_or_malformed_entry_id_is_simply_not_found(string id)
+    {
+        var reader = new DiagnosticsReader(_log, _signatures);
+        await _log.RecordAsync(Throw("x"), "GET /a", "Admin", "req-A");
+
+        Assert.Null(await reader.FindByEntryIdAsync(id));
+    }
+
+    [Fact]
     public async Task Without_a_correlation_id_the_entry_is_still_recorded()
     {
         var id = await _log.RecordAsync(Throw("boom"), null, null);

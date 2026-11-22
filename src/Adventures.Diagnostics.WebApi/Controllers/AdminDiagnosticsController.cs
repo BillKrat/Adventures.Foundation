@@ -16,6 +16,10 @@ internal static class DiagnosticsLookup
 {
     public const string BadIdMessage = "The correlation id may only contain letters, digits, '-' and '_' (at most 64 characters).";
 
+    public const string BadEntryIdMessage = "The exception id may only contain letters, digits and '-' (at most 64 characters).";
+
+    public static bool IsWellFormedEntryId(string id) => System.Text.RegularExpressions.Regex.IsMatch(id ?? string.Empty, "^[A-Za-z0-9-]{1,64}$");
+
     public static async Task<RequestDiagnostics> ForRequestAsync(IDiagnosticsReader reader, string correlationId, CancellationToken cancellationToken)
     {
         var report = await reader.FindByCorrelationIdAsync(correlationId, cancellationToken);
@@ -101,6 +105,13 @@ public sealed class McpDiagnosticsController(IDiagnosticsReader reader) : Contro
     [HttpGet("recent")]
     public async Task<ActionResult<IReadOnlyList<ExceptionOccurrence>>> Recent([FromQuery] int max = 50, CancellationToken cancellationToken = default) =>
         Ok(await reader.ListRecentAsync(max, cancellationToken));
+
+    /// <summary>One exception by the id of its row in the exception list: for a row with no correlation id, and the first step before tracing the request.</summary>
+    [HttpGet("exception/{id}")]
+    public async Task<ActionResult<ExceptionDetail>> Exception(string id, CancellationToken cancellationToken) =>
+        !DiagnosticsLookup.IsWellFormedEntryId(id)
+            ? BadRequest(DiagnosticsLookup.BadEntryIdMessage)
+            : await reader.FindByEntryIdAsync(id, cancellationToken) is { } found ? Ok(found) : NotFound();
 
     [HttpGet("signatures")]
     public async Task<ActionResult<IReadOnlyList<ExceptionSignatureSummary>>> Signatures(CancellationToken cancellationToken) =>

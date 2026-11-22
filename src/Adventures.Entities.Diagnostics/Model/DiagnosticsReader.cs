@@ -24,6 +24,26 @@ public sealed class DiagnosticsReader(IExceptionLogBll log, IExceptionSignatureB
         return new CorrelationReport(correlationId, matches, kinds);
     }
 
+    public async Task<ExceptionDetail?> FindByEntryIdAsync(string entryId, CancellationToken cancellationToken = default)
+    {
+        if (!System.Text.RegularExpressions.Regex.IsMatch(entryId ?? string.Empty, "^[A-Za-z0-9-]{1,64}$"))
+        {
+            return null;
+        }
+
+        var entry = await log.GetAsync(entryId!, cancellationToken).ConfigureAwait(false);
+        if (entry?.EntityId is null)
+        {
+            return null;
+        }
+
+        var occurrence = ToOccurrence(entry);
+        var kind = occurrence.SignatureId is null
+            ? null
+            : (await signatures.ListSummariesAsync(cancellationToken).ConfigureAwait(false)).FirstOrDefault(k => k.Id == occurrence.SignatureId);
+        return new ExceptionDetail(occurrence, kind);
+    }
+
     public async Task<IReadOnlyList<ExceptionOccurrence>> ListRecentAsync(int max = 50, CancellationToken cancellationToken = default) =>
         (await log.ListAsync(cancellationToken).ConfigureAwait(false))
             .Select(ToOccurrence)
