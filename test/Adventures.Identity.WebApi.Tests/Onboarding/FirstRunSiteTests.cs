@@ -49,12 +49,20 @@ public sealed class FirstRunSiteTests
     {
         public List<(string Name, IReadOnlySet<string> Among)> Created { get; } = [];
 
+        public List<string> CreatedIds { get; } = [];
+
         public Task<User?> FindByUserNameAsync(string userName, CancellationToken cancellationToken = default) => Task.FromResult<User?>(null);
 
         public Task<User> CreateInTenantAsync(User entity, IReadOnlySet<string> tenantPeopleIds, CancellationToken cancellationToken = default)
         {
             Created.Add((entity.GetValue("UserName")?.ToString() ?? string.Empty, tenantPeopleIds));
-            entity.Set(DynamicEntity.EntityIdPropertyName, "person-1", "person-1");
+            // like the real repository: a person without an Id is refused (the first run on a real store failed on exactly this, and a fake that gave the Id itself hid it)
+            if (entity.EntityId is null)
+            {
+                throw new ArgumentException("Id is required.", nameof(entity));
+            }
+
+            CreatedIds.Add(entity.EntityId.Value);
             return Task.FromResult(entity);
         }
 
@@ -127,7 +135,7 @@ public sealed class FirstRunSiteTests
         var tenant = Assert.Single(run.Tenants.All);
         Assert.Equal(("billkrat-001-site1.atempurl.com", "billkrat-001-site1.atempurl.com"), (tenant.Name, tenant.Domain));
         Assert.Equal(("Admin", true), (Assert.Single(run.People.Created).Name, run.People.Created[0].Among.Count == 0));
-        Assert.Equal(("person-1", tenant.Id), Assert.Single(run.Membership.Added));
+        Assert.Equal((Assert.Single(run.People.CreatedIds), tenant.Id), Assert.Single(run.Membership.Added));
         var account = Assert.Single(run.Accounts.Created);
         Assert.Equal((tenant.Domain, "Admin", "Admin"), (account.Tenant, account.User, account.Password));
         Assert.Equal(["TenantAdmin"], account.Roles);

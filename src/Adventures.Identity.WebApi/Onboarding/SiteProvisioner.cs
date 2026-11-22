@@ -52,6 +52,9 @@ public sealed class SiteProvisioner(
         await accounts.CreateIfMissingAsync(site, AdminUserName, DefaultPassword, ["TenantAdmin"], "admin@" + site, "Administrator", cancellationToken).ConfigureAwait(false);
 
         var person = new User(userSchema.Schema);
+        // the repository refuses an entity with no Id (the forms and presenters assign one for a person made on screen; this path has no presenter)
+        var personId = Guid.NewGuid().ToString();
+        person.Set(DynamicEntity.EntityIdPropertyName, Guid.NewGuid().ToString(), personId);
         person.Set("UserName", Guid.NewGuid().ToString(), AdminUserName);
         person.Set("First", Guid.NewGuid().ToString(), "Administrator");
         var created = await people.CreateInTenantAsync(person, new HashSet<string>(StringComparer.Ordinal), cancellationToken).ConfigureAwait(false);
