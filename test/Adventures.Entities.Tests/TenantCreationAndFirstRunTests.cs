@@ -174,4 +174,10 @@ public sealed class TenantCreationAndFirstRunTests : IAsyncLifetime
         Assert.False(await FirstRun.TryAliasAsync("one-too-many.example.org", main.Domain));
         Assert.Equal(TenantFirstRun.MaxAutomaticAliases, (await Editor.ListAsync()).Single(t => t.Id == main.Id).Aliases.Count);
     }
+
+    [Fact]
+    public async Task WithoutASignInStore_ThereIsNoFirstSiteToMake()
+    {
+        Assert.False(await new NoFirstRunSite().TryCreateFirstSiteAsync("fresh.example.org"));
+    }
 }

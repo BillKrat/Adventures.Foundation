@@ -247,6 +247,88 @@ public class TenancyTests
         Assert.True(before.HasChanged);
     }
 
+    // ---- onboarding stage 2: the first host of an empty install becomes the first site ----
+
+    private sealed class FakeFirstSite(LearningResolver resolver, bool succeed = true) : IFirstRunSite
+    {
+        public List<string> Hosts { get; } = [];
+
+        public Task<bool> TryCreateFirstSiteAsync(string host, CancellationToken cancellationToken = default)
+        {
+            Hosts.Add(host);
+            if (succeed)
+            {
+                resolver.Learn(host.Split(':')[0], host.Split(':')[0]);
+            }
+
+            return Task.FromResult(succeed);
+        }
+    }
+
+    private static async Task<(bool Reached, CurrentTenant? Seen, FakeFirstSite Site, LearningResolver Resolver)> FirstSiteAsync(string host, bool succeed = true, string path = "/api/posts", TenancyEnforcement mode = TenancyEnforcement.Report, TenantCacheInvalidator? invalidator = null)
+    {
+        var resolver = new LearningResolver(Acme);
+        var site = new FakeFirstSite(resolver, succeed);
+        var holder = new RequestTenant();
+        var reached = false;
+        CurrentTenant? seen = null;
+        var middleware = new TenantMiddleware(
+            _ =>
+            {
+                reached = true;
+                seen = holder.Current;
+                return Task.CompletedTask;
+            },
+            Microsoft.Extensions.Options.Options.Create(Options(mode)),
+            new MemoryCache(new MemoryCacheOptions()),
+            new CapturingLogger(),
+            invalidator);
+
+        await middleware.InvokeAsync(Request(host, path), resolver, holder, firstSite: site);
+        return (reached, seen, site, resolver);
+    }
+
+    [Theory]
+    [InlineData(TenancyEnforcement.Report)]
+    [InlineData(TenancyEnforcement.Enforce)]
+    public async Task AnUnknownHostOnAnEmptyInstall_IsAskedToBecomeTheFirstSite_AndThenServedAsThatTenant(TenancyEnforcement mode)
+    {
+        var run = await FirstSiteAsync("fresh.example.org", mode: mode);
+
+        Assert.Equal("fresh.example.org", Assert.Single(run.Site.Hosts));
+        Assert.True(run.Reached);
+        Assert.Equal("fresh.example.org", run.Seen!.Domain);
+        Assert.Equal(TenantMatch.Domain, run.Seen.Match);
+    }
+
+    [Fact]
+    public async Task AKnownHost_AndTheInfrastructurePaths_NeverStartASite()
+    {
+        Assert.Empty((await FirstSiteAsync("www." + Acme)).Site.Hosts);
+        Assert.Empty((await FirstSiteAsync("fresh.example.org", path: "/api/health")).Site.Hosts);
+        Assert.Empty((await FirstSiteAsync("fresh.example.org", path: "/")).Site.Hosts);
+    }
+
+    [Fact]
+    public async Task WhenThereIsNoFirstSiteToMake_TheHostStaysUnknown_AsBefore()
+    {
+        var run = await FirstSiteAsync("second.example.org", succeed: false, mode: TenancyEnforcement.Enforce);
+
+        Assert.False(run.Reached);
+        Assert.Single(run.Site.Hosts);
+    }
+
+    [Fact]
+    public async Task ANewFirstSite_ClearsTheKeptAnswers_SoEveryRequestSeesIt()
+    {
+        var invalidator = new TenantCacheInvalidator();
+        var before = invalidator.Token;
+
+        await FirstSiteAsync("fresh.example.org", invalidator: invalidator);
+
+        Assert.True(before.HasChanged);
+    }
+
     // ---- no tenant, no content (T2: there is no shared graph to fall back to) ----
 
     [Fact]

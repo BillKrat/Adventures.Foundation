@@ -15,11 +15,21 @@ namespace Adventures.WebApi;
 /// </summary>
 public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptions> options, IMemoryCache cache, ILogger<TenantMiddleware> logger, TenantCacheInvalidator? invalidator = null)
 {
-    public async Task InvokeAsync(HttpContext context, ITenantResolver resolver, RequestTenant holder, ITenantFirstRun? firstRun = null)
+    public async Task InvokeAsync(HttpContext context, ITenantResolver resolver, RequestTenant holder, ITenantFirstRun? firstRun = null, IFirstRunSite? firstSite = null)
     {
         var settings = options.Value;
         var host = context.Request.Host.Value ?? string.Empty;
         var current = await ResolveAsync(settings, host, resolver, context.RequestAborted).ConfigureAwait(false);
+        if (current.Match == TenantMatch.None && firstSite is not null && !IsExempt(settings, context.Request.Path)
+            && await firstSite.TryCreateFirstSiteAsync(host, context.RequestAborted).ConfigureAwait(false))
+        {
+            // a fresh install: this host is its first site (the store held no tenant at all); forget the "unknown" answer for everyone
+            logger.LogInformation("Tenancy: the first request on an empty install came on {Host}; it is now the first site.", host);
+            invalidator?.Invalidate();
+            cache.Remove(CacheKey(host));
+            current = await ResolveAsync(settings, host, resolver, context.RequestAborted).ConfigureAwait(false);
+        }
+
         if (current.Match == TenantMatch.None && firstRun is not null && !string.IsNullOrWhiteSpace(settings.AutoAliasToTenantDomain) && !IsExempt(settings, context.Request.Path)
             && await firstRun.TryAliasAsync(host, settings.AutoAliasToTenantDomain, context.RequestAborted).ConfigureAwait(false))
         {
