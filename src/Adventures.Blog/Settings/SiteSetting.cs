@@ -7,10 +7,11 @@ public sealed class SiteSetting(EntitySchema schema) : DynamicEntity(schema);
 
 /// <summary>The settings a visitor's browser needs: no secrets, nothing about the server.</summary>
 /// <param name="CommentsCloseAfterDays">Comments close on a post this many days after it was published; 0 never.</param>
+/// <param name="CommentsModerate">True (the default): a new visitor comment waits for approval. False: it is published at once.</param>
 /// <param name="FeedItems">How many of the newest posts the RSS feed lists (1 to 100).</param>
 /// <param name="Language">The language code of the site (en unless set): the language file of that code supplies the button and screen texts.</param>
 /// <param name="ColorMode">"dark" or "light": the site default a visitor sees until they use the header toggle themselves.</param>
-public sealed record PublicSiteSettings(string Title, string Tagline, int PostsPerPage, bool CommentsEnabled = true, string ColorMode = "dark", string Language = "en", int CommentsCloseAfterDays = 0, int FeedItems = 20);
+public sealed record PublicSiteSettings(string Title, string Tagline, int PostsPerPage, bool CommentsEnabled = true, string ColorMode = "dark", string Language = "en", int CommentsCloseAfterDays = 0, int FeedItems = 20, bool CommentsModerate = true);
 
 /// <summary>Reads the site settings with safe defaults, so a missing or mistyped row never breaks the site.</summary>
 public interface ISiteSettings
@@ -38,6 +39,8 @@ public sealed class SiteSettings(IEntityPresenter<SiteSetting> presenter) : ISit
         var perPage = int.TryParse(values.GetValueOrDefault("PostsPerPage"), out var parsed) ? Math.Clamp(parsed, 1, MaxPostsPerPage) : DefaultPostsPerPage;
         // Comments are on unless the setting says false (a missing or mistyped row never closes them by accident).
         var commentsEnabled = !string.Equals(values.GetValueOrDefault("CommentsEnabled")?.Trim(), "false", StringComparison.OrdinalIgnoreCase);
+        // Moderated unless the setting says exactly false: a typo never publishes a visitor's text unreviewed.
+        var moderate = !string.Equals(values.GetValueOrDefault("CommentsModerate")?.Trim(), "false", StringComparison.OrdinalIgnoreCase);
         // 0 (never) unless the setting is a positive number of days; a typo never closes comments.
         var closeAfter = int.TryParse(values.GetValueOrDefault("CommentsCloseAfterDays")?.Trim(), out var days) ? Math.Clamp(days, 0, MaxCloseAfterDays) : 0;
         // The feed lists 20 unless the setting is a number from 1 to 100.
@@ -46,7 +49,7 @@ public sealed class SiteSettings(IEntityPresenter<SiteSetting> presenter) : ISit
         var language = LanguageFiles.Normalise(values.GetValueOrDefault("Language")) ?? "en";
         // Dark (how the site always started) unless the setting says light.
         var colorMode = string.Equals(values.GetValueOrDefault("ColorMode")?.Trim(), "light", StringComparison.OrdinalIgnoreCase) ? "light" : "dark";
-        return new PublicSiteSettings(string.IsNullOrWhiteSpace(title) ? DefaultTitle : title.Trim(), values.GetValueOrDefault("Tagline")?.Trim() ?? string.Empty, perPage, commentsEnabled, colorMode, language, closeAfter, feedItems);
+        return new PublicSiteSettings(string.IsNullOrWhiteSpace(title) ? DefaultTitle : title.Trim(), values.GetValueOrDefault("Tagline")?.Trim() ?? string.Empty, perPage, commentsEnabled, colorMode, language, closeAfter, feedItems, moderate);
     }
 
     public async Task<string> GetLegacyTimeZoneAsync(CancellationToken cancellationToken = default)
@@ -113,6 +116,7 @@ public sealed class SiteSettingPresenter(IEntityBll<SiteSetting> bll, EntitySche
         ("Language", "en", "The language of the site: a language code such as en, de or pt-br. The texts come from the language file of that code (English where it has none)."),
         ("CommentsCloseAfterDays", "0", "Close comments on a post this many days after it was published (0 keeps them open for ever)."),
         ("FeedItems", "20", "How many of the newest posts the RSS feed lists (1 to 100)."),
+        ("CommentsModerate", "true", "true holds every new visitor comment until a moderator approves it. false publishes comments at once (the name, text length, closing and rate limits still apply); only for a blog whose visitors you trust."),
         ("CommentsEnabled", "true", "Visitor comments on the whole site: true shows the comment form where a post allows comments, false hides it and refuses new comments (existing comments are kept)."),
     ];
 

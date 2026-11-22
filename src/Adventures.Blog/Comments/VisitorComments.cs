@@ -116,7 +116,7 @@ public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntityS
             throw new BusinessRuleException($"Comments are closed on posts older than {site.CommentsCloseAfterDays.ToString(System.Globalization.CultureInfo.InvariantCulture)} days.");
         }
 
-        if (await CountPendingAsync(cancellationToken).ConfigureAwait(false) >= MaxPending)
+        if (site.CommentsModerate && await CountPendingAsync(cancellationToken).ConfigureAwait(false) >= MaxPending)
         {
             throw new BusinessRuleException("Too many comments are waiting for approval. Please try again later.");
         }
@@ -132,7 +132,7 @@ public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntityS
         }
 
         entity.Set("Created", Guid.NewGuid().ToString(), DateTimeOffset.UtcNow);
-        entity.Set("Status", Guid.NewGuid().ToString(), CommentStatuses.Pending);
+        entity.Set("Status", Guid.NewGuid().ToString(), site.CommentsModerate ? CommentStatuses.Pending : CommentStatuses.Approved);
         entity.Set("Body", Guid.NewGuid().ToString(), body);
         await comments.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
     }

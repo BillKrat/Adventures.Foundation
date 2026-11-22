@@ -11,6 +11,27 @@ namespace Adventures.Blog.WebApi.Tests;
 
 public class CommentsControllersTests
 {
+    private sealed class FakeSite(bool moderate = true) : ISiteSettings
+    {
+        public Task<PublicSiteSettings> GetPublicAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new PublicSiteSettings("Site", string.Empty, 10, CommentsModerate: moderate));
+
+        public Task<string> GetLegacyTimeZoneAsync(CancellationToken cancellationToken = default) => Task.FromResult("UTC");
+    }
+
+    [Fact]
+    public async Task TheAnswerTellsTheTruth_WaitingForApprovalWhenModerated_PublishedWhenNot()
+    {
+        var moderated = Assert.IsType<AcceptedResult>(await new PublicCommentsController(new FakeComments(), new FakeSite(moderate: true))
+            .Submit("a-post", new CommentRequest("Pat", null, "Nice", null), CancellationToken.None));
+        var open = Assert.IsType<AcceptedResult>(await new PublicCommentsController(new FakeComments(), new FakeSite(moderate: false))
+            .Submit("a-post", new CommentRequest("Pat", null, "Nice", null), CancellationToken.None));
+
+        Assert.Contains("approved", Assert.IsType<CommentAccepted>(moderated.Value).Message);
+        Assert.DoesNotContain("approved", Assert.IsType<CommentAccepted>(open.Value).Message);
+        Assert.Contains("published", Assert.IsType<CommentAccepted>(open.Value).Message);
+    }
+
     private sealed class FakeComments : IVisitorComments
     {
         public List<SubmittedComment> Submitted { get; } = [];
@@ -55,7 +76,7 @@ public class CommentsControllersTests
     {
         var fake = new FakeComments();
 
-        var result = await new PublicCommentsController(fake).Submit("a-post", new CommentRequest("Bot", null, "buy now", "http://spam.example"), CancellationToken.None);
+        var result = await new PublicCommentsController(fake, new FakeSite()).Submit("a-post", new CommentRequest("Bot", null, "buy now", "http://spam.example"), CancellationToken.None);
 
         Assert.IsType<AcceptedResult>(result);
         Assert.Empty(fake.Submitted);
@@ -66,7 +87,7 @@ public class CommentsControllersTests
     {
         var fake = new FakeComments();
 
-        var result = await new PublicCommentsController(fake).Submit("a-post", new CommentRequest("Pat", "pat@example.com", "Nice", null), CancellationToken.None);
+        var result = await new PublicCommentsController(fake, new FakeSite()).Submit("a-post", new CommentRequest("Pat", "pat@example.com", "Nice", null), CancellationToken.None);
 
         Assert.IsType<AcceptedResult>(result);
         Assert.Equal(new SubmittedComment("a-post", "Pat", "pat@example.com", "Nice"), Assert.Single(fake.Submitted));
@@ -78,7 +99,7 @@ public class CommentsControllersTests
     {
         var fake = new FakeComments { Refuse = new BusinessRuleException("Comments are not open on this post.") };
 
-        var result = await new PublicCommentsController(fake).Submit("a-post", new CommentRequest("Pat", null, "Nice", null), CancellationToken.None);
+        var result = await new PublicCommentsController(fake, new FakeSite()).Submit("a-post", new CommentRequest("Pat", null, "Nice", null), CancellationToken.None);
 
         Assert.Equal("Comments are not open on this post.", Assert.IsType<ConflictObjectResult>(result).Value);
     }

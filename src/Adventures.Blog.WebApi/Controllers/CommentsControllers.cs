@@ -20,7 +20,7 @@ public sealed record CommentAccepted(string Message);
 [ApiController]
 [Route("api/public/posts/{slug}/comments")]
 [AllowAnonymous]
-public sealed class PublicCommentsController(IVisitorComments comments) : ApiControllerBase
+public sealed class PublicCommentsController(IVisitorComments comments, ISiteSettings settings) : ApiControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<PublicComment>>> Approved(string slug, CancellationToken cancellationToken) =>
@@ -35,14 +35,18 @@ public sealed class PublicCommentsController(IVisitorComments comments) : ApiCon
             if (!string.IsNullOrWhiteSpace(request.Website))
             {
                 // the honeypot: answer exactly as for a real comment so a robot learns nothing, and store nothing
-                return Accepted(new CommentAccepted(AcceptedMessage));
+                return Accepted(new CommentAccepted(await MessageAsync(cancellationToken)));
             }
 
             await comments.SubmitAsync(new SubmittedComment(slug, request.Author ?? string.Empty, request.Email, request.Body ?? string.Empty), cancellationToken);
-            return Accepted(new CommentAccepted(AcceptedMessage));
+            return Accepted(new CommentAccepted(await MessageAsync(cancellationToken)));
         });
 
-    private const string AcceptedMessage = "Thank you. Your comment will appear after it has been approved.";
+    /// <summary>What the visitor is told: held for approval, or published at once (so the page never promises a review that will not happen).</summary>
+    private async Task<string> MessageAsync(CancellationToken cancellationToken) =>
+        (await settings.GetPublicAsync(cancellationToken)).CommentsModerate
+            ? "Thank you. Your comment will appear after it has been approved."
+            : "Thank you. Your comment has been published.";
 }
 
 public sealed record CommentCount(int Pending);

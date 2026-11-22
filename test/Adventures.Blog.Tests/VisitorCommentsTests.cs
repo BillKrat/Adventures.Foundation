@@ -19,8 +19,10 @@ public sealed class VisitorCommentsTests : IAsyncLifetime
 
         public int CloseAfterDays { get; set; }
 
+        public bool Moderate { get; set; } = true;
+
         public Task<PublicSiteSettings> GetPublicAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new PublicSiteSettings("Site", string.Empty, 10, CommentsEnabled, CommentsCloseAfterDays: CloseAfterDays));
+            Task.FromResult(new PublicSiteSettings("Site", string.Empty, 10, CommentsEnabled, CommentsCloseAfterDays: CloseAfterDays, CommentsModerate: Moderate));
 
         public Task<string> GetLegacyTimeZoneAsync(CancellationToken cancellationToken = default) => Task.FromResult("UTC");
     }
@@ -240,5 +242,37 @@ public sealed class VisitorCommentsTests : IAsyncLifetime
         await _comments.SubmitAsync(On("undated-post"));
 
         Assert.Equal(1, await _comments.CountPendingAsync());
+    }
+
+    [Fact]
+    public async Task WithModerationOn_ANewCommentWaits_AndIsNotShownToVisitors()
+    {
+        await _comments.SubmitAsync(On("open-post"));
+
+        Assert.Equal(1, await _comments.CountPendingAsync());
+        Assert.Empty(await _comments.ListApprovedAsync("open-post"));
+    }
+
+    [Fact]
+    public async Task WithModerationOff_ANewCommentIsApprovedAtOnce_AndStillStoredAsPlainText()
+    {
+        _settings.Moderate = false;
+
+        await _comments.SubmitAsync(new SubmittedComment("open-post", "Anna", null, "<b>hi</b>"));
+
+        Assert.Equal(0, await _comments.CountPendingAsync());
+        Assert.Equal("<b>hi</b>", Assert.Single(await _comments.ListApprovedAsync("open-post")).Body);   // shown as text by the client, never as markup
+    }
+
+    [Fact]
+    public async Task WithModerationOff_EveryOtherRuleStillApplies()
+    {
+        _settings.Moderate = false;
+        _settings.CloseAfterDays = 30;
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _comments.SubmitAsync(On("old-post")));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _comments.SubmitAsync(On("closed-post")));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _comments.SubmitAsync(new SubmittedComment("open-post", "", null, "text")));
+        Assert.Empty(await _comments.ListApprovedAsync("open-post"));
     }
 }
