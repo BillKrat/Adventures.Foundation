@@ -108,6 +108,28 @@ public class TenancyTests
         Assert.Equal(2, resolver.Asked.Count);
     }
 
+    [Fact]
+    public void TheHomeTenant_IsTheHostsTenant_AndTheSwitcherDoesNotReplaceIt()
+    {
+        var holder = new RequestTenant();
+        Assert.Null(holder.HomeTenantId);
+
+        holder.Set(new CurrentTenant("home-id", "Home", "home.test", "www.home.test", TenantMatch.Domain));
+        holder.Set(new CurrentTenant("other-id", "Other", "other.test", "www.home.test", TenantMatch.Acting));
+
+        Assert.Equal("home-id", holder.HomeTenantId);
+        Assert.Equal("other-id", holder.Current.Id);
+    }
+
+    [Fact]
+    public void AHostWithNoTenant_HasNoHomeTenant_SoNoPersonIsPickedForIt()
+    {
+        var holder = new RequestTenant();
+        holder.Set(new CurrentTenant(null, null, null, "unknown.test", TenantMatch.None));
+
+        Assert.Null(holder.HomeTenantId);
+    }
+
     // ---- T4b: the temporary address of a fresh install (an explicit operator setting) ----
 
     /// <summary>Knows the domains it was given and learns a host when the first-run step "aliases" it.</summary>
