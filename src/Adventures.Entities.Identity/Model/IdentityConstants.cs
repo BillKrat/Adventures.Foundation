@@ -21,6 +21,9 @@ public static class IdentityConstants
 
     /// <summary>Seed 005 marks the assignment pointer fields required (seed 004 had already been applied, and a named seed applies once).</summary>
     public const string RequiredSeedName = "005-identity-required";
+
+    /// <summary>Adds the profile fields (about me, website, picture address) to the User schema.</summary>
+    public const string ProfileSeedName = "027-profile-fields";
     public const string DefaultGraph = "https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df";
     public const string SchemaBase = "https://schema.global-webnet.com/identity/";
     public const string IdBase = "https://global-webnet.com/id/";

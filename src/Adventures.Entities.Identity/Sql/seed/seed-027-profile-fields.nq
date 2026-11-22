@@ -1,0 +1,18 @@
+<https://global-webnet.com/schema/User> <https://global-webnet.com/ontology/schema#field> <https://global-webnet.com/schema/User/AboutMe> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/AboutMe> <https://global-webnet.com/ontology/schema#name> "AboutMe" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/AboutMe> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/AboutMe> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/user#aboutMe> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/AboutMe> <https://global-webnet.com/ontology/schema#order> "20" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/AboutMe> <https://global-webnet.com/ontology/schema#label> "About me" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User> <https://global-webnet.com/ontology/schema#field> <https://global-webnet.com/schema/User/Website> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/Website> <https://global-webnet.com/ontology/schema#name> "Website" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/Website> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/Website> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/user#website> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/Website> <https://global-webnet.com/ontology/schema#order> "21" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/Website> <https://global-webnet.com/ontology/schema#label> "Website" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User> <https://global-webnet.com/ontology/schema#field> <https://global-webnet.com/schema/User/Picture> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/Picture> <https://global-webnet.com/ontology/schema#name> "Picture" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/Picture> <https://global-webnet.com/ontology/schema#fieldType> "String" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/Picture> <https://global-webnet.com/ontology/schema#predicate> <https://global-webnet.com/ontology/user#picture> <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/Picture> <https://global-webnet.com/ontology/schema#order> "22" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
+<https://global-webnet.com/schema/User/Picture> <https://global-webnet.com/ontology/schema#label> "Picture address" <https://global-webnet.com/graph/user/b7963bd0-5ad3-4c83-b61c-fa622cc6a2df> .
