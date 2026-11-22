@@ -3,6 +3,7 @@ using Adventures.Entities;
 using Adventures.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -187,7 +188,9 @@ public class TenancyTests
             new CapturingLogger(),
             invalidator);
 
-        await middleware.InvokeAsync(Request(host, path), resolver, holder, firstRun);
+        var context = Request(host, path);
+        context.RequestServices = new ServiceCollection().AddSingleton<ITenantFirstRun>(firstRun).BuildServiceProvider();
+        await middleware.InvokeAsync(context, resolver, holder);
         return (reached, seen, firstRun, resolver);
     }
 
@@ -269,6 +272,43 @@ public class TenancyTests
         Assert.False(run.Reached);
     }
 
+    /// <summary>A service that cannot be built here (the first-site service needs the sign-in store). A request for a host that already reaches a tenant must never ask for it.</summary>
+    private sealed class ExplodingServices : IServiceProvider
+    {
+        public List<Type> Asked { get; } = [];
+
+        public object? GetService(Type serviceType)
+        {
+            Asked.Add(serviceType);
+            throw new InvalidOperationException("must not be built for a known host: " + serviceType.Name);
+        }
+    }
+
+    [Fact]
+    public async Task AKnownHost_NeverBuildsTheFirstRunServices_SoAnInstallWithoutASignInStoreStillAnswers()
+    {
+        var services = new ExplodingServices();
+        var context = Request(Acme, "/api/posts");
+        context.RequestServices = services;
+        var options = Options(TenancyEnforcement.Enforce);
+        options.AutoAliasToTenantDomain = Acme;
+        var reached = false;
+        var middleware = new TenantMiddleware(
+            _ =>
+            {
+                reached = true;
+                return Task.CompletedTask;
+            },
+            Microsoft.Extensions.Options.Options.Create(options),
+            new MemoryCache(new MemoryCacheOptions()),
+            new CapturingLogger());
+
+        await middleware.InvokeAsync(context, new FakeResolver(Acme), new RequestTenant());
+
+        Assert.True(reached);
+        Assert.Empty(services.Asked);
+    }
+
     // ---- onboarding stage 2: the first host of an empty install becomes the first site ----
 
     private sealed class FakeFirstSite(LearningResolver resolver, bool succeed = true) : IFirstRunSite
@@ -306,7 +346,9 @@ public class TenancyTests
             new CapturingLogger(),
             invalidator);
 
-        await middleware.InvokeAsync(Request(host, path), resolver, holder, firstSite: site);
+        var context = Request(host, path);
+        context.RequestServices = new ServiceCollection().AddSingleton<IFirstRunSite>(site).BuildServiceProvider();
+        await middleware.InvokeAsync(context, resolver, holder);
         return (reached, seen, site, resolver);
     }
 

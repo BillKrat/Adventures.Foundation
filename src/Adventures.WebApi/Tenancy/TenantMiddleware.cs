@@ -1,6 +1,7 @@
 using Adventures.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -15,13 +16,19 @@ namespace Adventures.WebApi;
 /// </summary>
 public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptions> options, IMemoryCache cache, ILogger<TenantMiddleware> logger, TenantCacheInvalidator? invalidator = null)
 {
-    public async Task InvokeAsync(HttpContext context, ITenantResolver resolver, RequestTenant holder, ITenantFirstRun? firstRun = null, IFirstRunSite? firstSite = null)
+    /// <summary>
+    /// The first-run services (an alias for the first address, the first site of an empty install) are asked for only when a host reaches no tenant: they need the sign-in store, which a
+    /// request for a known host must not depend on (an install without that store would answer 500 to every request).
+    /// </summary>
+    public async Task InvokeAsync(HttpContext context, ITenantResolver resolver, RequestTenant holder)
     {
+        var firstRun = new Lazy<ITenantFirstRun?>(() => context.RequestServices?.GetService<ITenantFirstRun>());
+        var firstSite = new Lazy<IFirstRunSite?>(() => context.RequestServices?.GetService<IFirstRunSite>());
         var settings = options.Value;
         var host = context.Request.Host.Value ?? string.Empty;
         var current = await ResolveAsync(settings, host, resolver, context.RequestAborted).ConfigureAwait(false);
-        if (current.Match == TenantMatch.None && firstSite is not null && !IsExempt(settings, context.Request.Path)
-            && await firstSite.TryCreateFirstSiteAsync(host, context.RequestAborted).ConfigureAwait(false))
+        if (current.Match == TenantMatch.None && !IsExempt(settings, context.Request.Path) && firstSite.Value is { } site
+            && await site.TryCreateFirstSiteAsync(host, context.RequestAborted).ConfigureAwait(false))
         {
             // a fresh install: this host is its first site (the store held no tenant at all); forget the "unknown" answer for everyone
             logger.LogInformation("Tenancy: the first request on an empty install came on {Host}; it is now the first site.", host);
@@ -30,8 +37,8 @@ public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptio
             current = await ResolveAsync(settings, host, resolver, context.RequestAborted).ConfigureAwait(false);
         }
 
-        if (current.Match == TenantMatch.None && firstRun is not null && !string.IsNullOrWhiteSpace(settings.AutoAliasToTenantDomain) && !IsExempt(settings, context.Request.Path)
-            && await firstRun.TryAliasAsync(host, settings.AutoAliasToTenantDomain, context.RequestAborted).ConfigureAwait(false))
+        if (current.Match == TenantMatch.None && !string.IsNullOrWhiteSpace(settings.AutoAliasToTenantDomain) && !IsExempt(settings, context.Request.Path) && firstRun.Value is { } alias
+            && await alias.TryAliasAsync(host, settings.AutoAliasToTenantDomain, context.RequestAborted).ConfigureAwait(false))
         {
             // the first run on this address: it now belongs to the tenant the operator named; forget the "unknown" answer for everyone
             logger.LogInformation("Tenancy: the host {Host} was added as an alias of {Domain} (Tenancy:AutoAliasToTenantDomain).", host, settings.AutoAliasToTenantDomain);
