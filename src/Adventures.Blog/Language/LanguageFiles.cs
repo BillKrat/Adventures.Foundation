@@ -27,7 +27,7 @@ public static partial class LanguageConstants
     [GeneratedRegex("^[a-z]{2,3}(-[a-z0-9]{2,8})?$", RegexOptions.CultureInvariant)]
     internal static partial Regex CodePattern();
 
-    [GeneratedRegex("^[A-Za-z][A-Za-z0-9]{0,40}$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex("^[A-Za-z][A-Za-z0-9.-]{0,60}$", RegexOptions.CultureInvariant)]
     internal static partial Regex KeyPattern();
 }
 

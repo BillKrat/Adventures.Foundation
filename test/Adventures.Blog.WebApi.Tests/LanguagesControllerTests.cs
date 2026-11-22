@@ -37,6 +37,11 @@ public sealed class LanguagesControllerTests
         public Task<bool> RemoveAsync(string language, CancellationToken cancellationToken = default) => Task.FromResult(Stored.Remove(language));
     }
 
+    private sealed class FakeCatalog : IServerTextCatalog
+    {
+        public IReadOnlyDictionary<string, string> Defaults { get; } = new Dictionary<string, string> { ["menu.posts"] = "Posts" };
+    }
+
     private sealed class FakeSite(string language) : ISiteSettings
     {
         public Task<PublicSiteSettings> GetPublicAsync(CancellationToken cancellationToken = default) =>
@@ -71,7 +76,7 @@ public sealed class LanguagesControllerTests
     public async Task TheScreen_ListsReadsSavesAndRemoves()
     {
         var files = new FakeFiles();
-        var controller = new LanguagesController(files);
+        var controller = new LanguagesController(files, new FakeCatalog());
 
         Assert.Equal("de", Assert.Single(Assert.IsAssignableFrom<IReadOnlyList<LanguageSummary>>(Assert.IsType<OkObjectResult>((await controller.List(CancellationToken.None)).Result).Value)).Language);
         Assert.IsType<OkObjectResult>(await controller.Read("de", CancellationToken.None));
@@ -82,9 +87,17 @@ public sealed class LanguagesControllerTests
     }
 
     [Fact]
+    public void TheCatalog_ListsTheServerTextsWithTheirEnglishDefaults()
+    {
+        var answer = Assert.IsAssignableFrom<IReadOnlyDictionary<string, string>>(Assert.IsType<OkObjectResult>(new LanguagesController(new FakeFiles(), new FakeCatalog()).Catalog().Result).Value);
+
+        Assert.Equal("Posts", answer["menu.posts"]);
+    }
+
+    [Fact]
     public async Task ReadingAnUnknownLanguage_IsNotFound_AndABadSaveIsARefusalNotACrash()
     {
-        var controller = new LanguagesController(new FakeFiles());
+        var controller = new LanguagesController(new FakeFiles(), new FakeCatalog());
 
         Assert.IsType<NotFoundResult>(await controller.Read("xx", CancellationToken.None));
         var refused = await controller.Save("bad", new LanguageBody(new Dictionary<string, string> { ["save"] = "a" }), CancellationToken.None);

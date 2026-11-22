@@ -19,10 +19,14 @@ public sealed record PublicLabels(string Language, IReadOnlyDictionary<string, s
 [ApiController]
 [Route("api/languages")]
 [RequireRight(Rights.SettingsManage)]
-public sealed class LanguagesController(ILanguageFiles files) : ApiControllerBase
+public sealed class LanguagesController(ILanguageFiles files, IServerTextCatalog catalog) : ApiControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<LanguageSummary>>> List(CancellationToken cancellationToken) => Ok(await files.ListAsync(cancellationToken));
+
+    /// <summary>The texts the server itself produces, with their English defaults: keys a language file can translate.</summary>
+    [HttpGet("catalog")]
+    public ActionResult<IReadOnlyDictionary<string, string>> Catalog() => Ok(catalog.Defaults);
 
     [HttpGet("{language}")]
     public async Task<IActionResult> Read(string language, CancellationToken cancellationToken)
