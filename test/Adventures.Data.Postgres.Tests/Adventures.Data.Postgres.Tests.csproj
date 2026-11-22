@@ -19,4 +19,9 @@
 	<ProjectReference Include="..\..\src\Adventures.Data.Postgres\Adventures.Data.Postgres.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\src\Adventures.Data.Postgres\Sql\schema.sql" Link="Sql\schema.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Data.Postgres\Sql\schema-users.sql" Link="Sql\schema-users.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

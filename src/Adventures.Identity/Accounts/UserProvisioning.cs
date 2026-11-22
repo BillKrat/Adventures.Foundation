@@ -20,8 +20,18 @@ public interface IUserProvisioning
     Task<ProvisionedLogin> SetInitialPasswordAsync(string tenant, string username, string? email, string? displayName, CancellationToken cancellationToken = default);
 }
 
+/// <summary>Creates a sign-in account with a chosen first password (the install's Admin/Admin), only when none exists.</summary>
+public interface IAccountCreator
+{
+    /// <summary>
+    /// Creates the account and its credential (password hashed, flagged to change at the first sign-in) and returns true; returns false and changes nothing when an account with that
+    /// user name already exists in the tenant, so running it again can never reset a password.
+    /// </summary>
+    Task<bool> CreateIfMissingAsync(string tenant, string username, string password, IReadOnlyList<string> roles, string? email, string? displayName, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Default <see cref="IUserProvisioning"/> over the identity entity store, the credential store and the password hasher.</summary>
-public sealed class UserProvisioning(IEntityRecordRepository entities, IUserCredentialStore credentials, IPasswordHasher hasher) : IUserProvisioning
+public sealed class UserProvisioning(IEntityRecordRepository entities, IUserCredentialStore credentials, IPasswordHasher hasher) : IUserProvisioning, IAccountCreator
 {
     public const string PasswordAlgorithm = "pbkdf2-sha256";
     public const int GeneratedLength = 20;
@@ -54,6 +64,31 @@ public sealed class UserProvisioning(IEntityRecordRepository entities, IUserCred
         var password = Generate();
         await credentials.CreateOrResetAsync(entity.Id, hasher.Hash(password), PasswordAlgorithm, mustChangePassword: true, cancellationToken).ConfigureAwait(false);
         return new ProvisionedLogin(username, password, created);
+    }
+
+    public async Task<bool> CreateIfMissingAsync(string tenant, string username, string password, IReadOnlyList<string> roles, string? email, string? displayName, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
+        ArgumentException.ThrowIfNullOrWhiteSpace(username);
+        ArgumentException.ThrowIfNullOrWhiteSpace(password);
+
+        if (await entities.FindByStandardFieldAsync(tenant, "user", "username", username, cancellationToken).ConfigureAwait(false) is not null)
+        {
+            return false;
+        }
+
+        var fields = new JsonObject
+        {
+            ["username"] = username,
+            ["email"] = email ?? string.Empty,
+            ["display_name"] = string.IsNullOrWhiteSpace(displayName) ? username : displayName,
+            ["status"] = "must_change_password",
+            ["roles"] = new JsonArray(roles.Select(role => (JsonNode?)JsonValue.Create(role)).ToArray()),
+        };
+        var now = DateTimeOffset.UtcNow;
+        var entity = await entities.CreateAsync(new Entity(Guid.NewGuid(), tenant, "default", "user", fields.ToJsonString(), now, now, 1), cancellationToken).ConfigureAwait(false);
+        await credentials.CreateOrResetAsync(entity.Id, hasher.Hash(password), PasswordAlgorithm, mustChangePassword: true, cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
     private static string Generate()

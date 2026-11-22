@@ -17,6 +17,7 @@ public static class IdentityServiceCollectionExtensions
     {
         services.AddScoped<IUserAccountService, UserAccountService>();
         services.AddScoped<IUserProvisioning, UserProvisioning>();
+        services.AddScoped<IAccountCreator, UserProvisioning>();
         services.AddScoped<IPasswordChangeGate, PasswordChangeGate>();
         return services;
     }
