@@ -15,11 +15,21 @@ namespace Adventures.WebApi;
 /// </summary>
 public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptions> options, IMemoryCache cache, ILogger<TenantMiddleware> logger, TenantCacheInvalidator? invalidator = null)
 {
-    public async Task InvokeAsync(HttpContext context, ITenantResolver resolver, RequestTenant holder)
+    public async Task InvokeAsync(HttpContext context, ITenantResolver resolver, RequestTenant holder, ITenantFirstRun? firstRun = null)
     {
         var settings = options.Value;
         var host = context.Request.Host.Value ?? string.Empty;
         var current = await ResolveAsync(settings, host, resolver, context.RequestAborted).ConfigureAwait(false);
+        if (current.Match == TenantMatch.None && firstRun is not null && !string.IsNullOrWhiteSpace(settings.AutoAliasToTenantDomain) && !IsExempt(settings, context.Request.Path)
+            && await firstRun.TryAliasAsync(host, settings.AutoAliasToTenantDomain, context.RequestAborted).ConfigureAwait(false))
+        {
+            // the first run on this address: it now belongs to the tenant the operator named; forget the "unknown" answer for everyone
+            logger.LogInformation("Tenancy: the host {Host} was added as an alias of {Domain} (Tenancy:AutoAliasToTenantDomain).", host, settings.AutoAliasToTenantDomain);
+            invalidator?.Invalidate();
+            cache.Remove(CacheKey(host));
+            current = await ResolveAsync(settings, host, resolver, context.RequestAborted).ConfigureAwait(false);
+        }
+
         holder.Set(current);
 
         if (current.Match == TenantMatch.None && settings.Enforcement == TenancyEnforcement.Enforce && !IsExempt(settings, context.Request.Path))

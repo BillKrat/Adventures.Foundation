@@ -108,6 +108,123 @@ public class TenancyTests
         Assert.Equal(2, resolver.Asked.Count);
     }
 
+    // ---- T4b: the temporary address of a fresh install (an explicit operator setting) ----
+
+    /// <summary>Knows the domains it was given and learns a host when the first-run step "aliases" it.</summary>
+    private sealed class LearningResolver(params string[] domains) : ITenantResolver
+    {
+        private readonly List<(string Name, string Domain)> _names = domains.Select(d => (d, d)).ToList();
+
+        public int Asked { get; private set; }
+
+        public void Learn(string host, string domain) => _names.Add((host, domain));
+
+        public Task<CurrentTenant> ResolveAsync(string? host, string? fallbackDomain = null, CancellationToken cancellationToken = default)
+        {
+            Asked++;
+            var name = (host ?? string.Empty).Split(':')[0].ToLowerInvariant();
+            var hit = _names.FirstOrDefault(d => name == d.Name || name.EndsWith("." + d.Name, StringComparison.Ordinal));
+            return Task.FromResult(hit.Name is null ? new CurrentTenant(null, null, null, host ?? string.Empty, TenantMatch.None) : new CurrentTenant(hit.Domain + "-id", hit.Domain, hit.Domain, host ?? string.Empty, TenantMatch.Domain));
+        }
+    }
+
+    private sealed class FakeFirstRun(LearningResolver resolver, bool succeed = true) : ITenantFirstRun
+    {
+        public List<(string Host, string? Target)> Calls { get; } = [];
+
+        public Task<bool> TryAliasAsync(string host, string? targetDomain, CancellationToken cancellationToken = default)
+        {
+            Calls.Add((host, targetDomain));
+            if (succeed)
+            {
+                resolver.Learn(host.Split(':')[0], targetDomain!);
+            }
+
+            return Task.FromResult(succeed);
+        }
+    }
+
+    private static async Task<(bool Reached, CurrentTenant? Seen, FakeFirstRun FirstRun, LearningResolver Resolver)> FirstRunAsync(string host, string? target, bool succeed = true, string path = "/api/posts", TenantCacheInvalidator? invalidator = null)
+    {
+        var resolver = new LearningResolver(Acme);
+        var firstRun = new FakeFirstRun(resolver, succeed);
+        var holder = new RequestTenant();
+        var reached = false;
+        CurrentTenant? seen = null;
+        var options = Options(TenancyEnforcement.Enforce);
+        options.AutoAliasToTenantDomain = target;
+        var middleware = new TenantMiddleware(
+            _ =>
+            {
+                reached = true;
+                seen = holder.Current;
+                return Task.CompletedTask;
+            },
+            Microsoft.Extensions.Options.Options.Create(options),
+            new MemoryCache(new MemoryCacheOptions()),
+            new CapturingLogger(),
+            invalidator);
+
+        await middleware.InvokeAsync(Request(host, path), resolver, holder, firstRun);
+        return (reached, seen, firstRun, resolver);
+    }
+
+    [Fact]
+    public async Task WithTheSettingOff_AnUnknownHostIsRefusedAsBefore_AndTheFirstRunStepIsNeverAsked()
+    {
+        var run = await FirstRunAsync("temp.example.org", target: null);
+
+        Assert.False(run.Reached);
+        Assert.Empty(run.FirstRun.Calls);
+    }
+
+    [Fact]
+    public async Task WithTheSettingOn_AnUnknownHostIsAliasedOnceAndTheRequestGoesThroughForThatTenant()
+    {
+        var run = await FirstRunAsync("temp.example.org", target: Acme);
+
+        Assert.True(run.Reached);
+        Assert.Equal(("temp.example.org", Acme), Assert.Single(run.FirstRun.Calls));
+        Assert.Equal(Acme, run.Seen!.Domain);
+    }
+
+    [Fact]
+    public async Task AKnownHost_NeverTriggersTheFirstRunStep()
+    {
+        var run = await FirstRunAsync("www." + Acme, target: Acme);
+
+        Assert.True(run.Reached);
+        Assert.Empty(run.FirstRun.Calls);
+    }
+
+    [Fact]
+    public async Task WhenTheStepDeclines_TheHostStaysUnknownAndIsRefused()
+    {
+        var run = await FirstRunAsync("temp.example.org", target: Acme, succeed: false);
+
+        Assert.False(run.Reached);
+        Assert.Single(run.FirstRun.Calls);
+    }
+
+    [Fact]
+    public async Task TheInfrastructurePaths_DoNotTriggerIt()
+    {
+        var run = await FirstRunAsync("temp.example.org", target: Acme, path: "/api/health");
+
+        Assert.Empty(run.FirstRun.Calls);
+    }
+
+    [Fact]
+    public async Task AnAliasedHost_ClearsTheKeptAnswersSoEveryOtherRequestSeesIt()
+    {
+        var invalidator = new TenantCacheInvalidator();
+        var before = invalidator.Token;
+
+        await FirstRunAsync("temp.example.org", target: Acme, invalidator: invalidator);
+
+        Assert.True(before.HasChanged);
+    }
+
     // ---- no tenant, no content (T2: there is no shared graph to fall back to) ----
 
     [Fact]
