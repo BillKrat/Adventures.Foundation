@@ -216,10 +216,10 @@ public sealed class SiteSettingsTests : IAsyncLifetime
         var recreated = Assert.Single(grid.Rows, r => r.Values["Name"] == "CommentsEnabled");
         Assert.Equal("true", recreated.Values["Value"]);
         Assert.NotEmpty(recreated.Values["Description"] ?? string.Empty);
-        Assert.Equal(10, grid.Rows.Count);                                         // nothing duplicated
+        Assert.Equal(11, grid.Rows.Count);                                         // nothing duplicated
         Assert.Equal(25, (await _settings.GetPublicAsync()).PostsPerPage);        // an edited setting is left alone
         await _presenter.GetGridAsync(new EntityGridQuery());
-        Assert.Equal(10, (await _presenter.ListAsync()).Count);                    // and asking again creates nothing more
+        Assert.Equal(11, (await _presenter.ListAsync()).Count);                    // and asking again creates nothing more
     }
 
     [Fact]
@@ -232,7 +232,7 @@ public sealed class SiteSettingsTests : IAsyncLifetime
 
         var grid = await _presenter.GetGridAsync(new EntityGridQuery());
 
-        Assert.Equal(["ColorMode", "CommentsCloseAfterDays", "CommentsEnabled", "CommentsModerate", "FeedItems", "Language", "PostsPerPage", "SiteTitle", "Tagline", "TimeZone"], grid.Rows.Select(r => r.Values["Name"]).Order());
+        Assert.Equal(["ColorMode", "CommentsCloseAfterDays", "CommentsEnabled", "CommentsModerate", "FeedItems", "Language", "PostsPerPage", "SiteTitle", "Tagline", "TimeZone", "TrackingScriptUrl"], grid.Rows.Select(r => r.Values["Name"]).Order());
         Assert.Equal("AI Research Blog", (await _settings.GetPublicAsync()).Title);
     }
 
