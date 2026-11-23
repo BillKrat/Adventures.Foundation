@@ -62,6 +62,7 @@ public static class RequestHardening
     /// </summary>
     public static IServiceCollection AddRequestHardening(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddTrustedProxies(configuration);
         var perMinute = ResolveLimit(configuration, TokensPerMinuteKey, DefaultTokensPerMinute);
         var healthPerMinute = ResolveLimit(configuration, HealthPerMinuteKey, DefaultHealthPerMinute);
         var commentsPerMinute = ResolveLimit(configuration, CommentsPerMinuteKey, DefaultCommentsPerMinute);
