@@ -4,6 +4,7 @@ using System.Net.Mail;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using Adventures.Common.Exceptions;
+using Adventures.Entities;
 using Adventures.MEF;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -202,8 +203,26 @@ public interface IMailer
     Task SendTestAsync(string to, CancellationToken cancellationToken = default);
 }
 
-public sealed class Mailer(IPluginSettings settings, IMailTransport transport, IPlugins? plugins = null) : IMailer, ICommentNotifier
+public sealed class Mailer(IPluginSettings settings, IMailTransport transport, IPlugins? plugins = null) : IMailer, ICommentNotifier, IEmailSender
 {
+    /// <summary>Sends one plain-text mail with the saved settings (used for account mail such as address verification). Refuses an unusable recipient or a mail setup that is off or incomplete.</summary>
+    public async Task SendAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
+    {
+        await EnsureOnAsync(cancellationToken).ConfigureAwait(false);
+        var config = await ConfigAsync(cancellationToken).ConfigureAwait(false);
+        if (!config.HasServer || !config.HasSender)
+        {
+            throw new BusinessRuleException("Mail is not set up on this site yet, so no message can be sent. An administrator must fill in the E-mail settings.");
+        }
+
+        if (string.IsNullOrWhiteSpace(to) || MailPlugin.ValidateAddress(to.Trim()) is not null)
+        {
+            throw new BusinessRuleException("The recipient address is not valid.");
+        }
+
+        await SendAsync(config, new MailMessageData(to.Trim(), OneLine(config.SubjectPrefix + subject), Plain(body)), cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task SendTestAsync(string to, CancellationToken cancellationToken = default)
     {
         await EnsureOnAsync(cancellationToken).ConfigureAwait(false);
@@ -311,6 +330,7 @@ public static class MailServiceCollectionExtensions
         services.TryAddScoped<Mailer>();
         services.TryAddScoped<IMailer>(p => p.GetRequiredService<Mailer>());
         services.TryAddScoped<ICommentNotifier>(p => p.GetRequiredService<Mailer>());
+        services.TryAddScoped<IEmailSender>(p => p.GetRequiredService<Mailer>());
         return services;
     }
 }
