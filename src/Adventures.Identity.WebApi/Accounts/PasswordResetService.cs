@@ -35,7 +35,8 @@ public sealed class PasswordResetService(
     IEmailVerificationStore store,
     IEmailSender sender,
     IPasswordResetter resetter,
-    TimeProvider? clock = null)
+    TimeProvider? clock = null,
+    Microsoft.Extensions.Logging.ILogger<PasswordResetService>? logger = null)
 {
     public const string Token = "reset-token";
     public const string Used = "reset-used";
@@ -56,8 +57,21 @@ public sealed class PasswordResetService(
             }
 
             var person = await directory.FindAsync(identifier, cancellationToken).ConfigureAwait(false);
-            if (person is null || string.IsNullOrWhiteSpace(person.Email) || !await verification.IsVerifiedAsync(person.UserId, person.Email, cancellationToken).ConfigureAwait(false))
+            if (person is null)
             {
+                logger?.LogInformation("Password reset asked for a name or address that matches no person of this tenant: no mail sent.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(person.Email))
+            {
+                logger?.LogInformation("Password reset asked for {UserName}, who has no e-mail address saved: no mail sent.", person.UserName);
+                return;
+            }
+
+            if (!await verification.IsVerifiedAsync(person.UserId, person.Email, cancellationToken).ConfigureAwait(false))
+            {
+                logger?.LogInformation("Password reset asked for {UserName}, whose saved address is not confirmed: no mail sent. An administrator can send the confirmation mail from Admin > Users.", person.UserName);
                 return;
             }
 
@@ -66,6 +80,7 @@ public sealed class PasswordResetService(
                 .Select(EmailVerificationService.ParseToken).Count(t => t is not null && t.Value.Created > now.Subtract(RateWindow).UtcTicks);
             if (recent >= MailsPerWindow)
             {
+                logger?.LogInformation("Password reset asked for {UserName}: three mails were already sent in the last hour, no mail sent.", person.UserName);
                 return;
             }
 
@@ -78,6 +93,7 @@ public sealed class PasswordResetService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            logger?.LogWarning("Password reset mail could not be sent: {Reason}", ex.Message);
             // never tell the asker what went wrong (mail not set up, a store fault): the answer must not depend on the person
         }
     }
