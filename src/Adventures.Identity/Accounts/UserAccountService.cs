@@ -15,8 +15,30 @@ public sealed class UserAccountService(
     IEntityRecordRepository entityRepository,
     IUserCredentialStore credentialStore,
     IPasswordHasher passwordHasher,
-    IJwtTokenService tokenService) : IUserAccountService
+    IJwtTokenService tokenService) : IUserAccountService, IPasswordResetter
 {
+    public async Task<ResetOutcome> ResetAsync(string tenant, string username, string newPassword, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
+        ArgumentException.ThrowIfNullOrWhiteSpace(username);
+
+        var entity = await entityRepository.FindByStandardFieldAsync(tenant, "user", "username", username, cancellationToken);
+        if (entity is null || UserAccount.FromEntity(entity).Status == UserStatus.Disabled)
+        {
+            return ResetOutcome.NotFound;
+        }
+
+        if (!PasswordPolicy.IsAcceptable(newPassword ?? string.Empty, string.Empty))
+        {
+            return ResetOutcome.Rejected;
+        }
+
+        // creates or replaces the credential row, clears the failed-attempt count and any lockout, and does not ask for a change at the next sign-in (the person just chose it)
+        await credentialStore.CreateOrResetAsync(entity.Id, passwordHasher.Hash(newPassword!), UserProvisioning.PasswordAlgorithm, mustChangePassword: false, cancellationToken);
+        await ClearMustChangeStatusAsync(entity.Id, cancellationToken);
+        return ResetOutcome.Reset;
+    }
+
     // Not yet configurable - revisit if a real tenant ever needs a different policy. 5 attempts /
     // 15 minutes is a common, unremarkable default for this class of lockout.
     private const int LockoutThreshold = 5;

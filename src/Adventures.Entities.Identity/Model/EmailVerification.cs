@@ -104,13 +104,17 @@ public sealed partial class EmailVerificationService(IEmailVerificationStore sto
         return (await store.ListAsync(userId, Verified, cancellationToken).ConfigureAwait(false)).Any(line => line.Split(';', 2) is [_, var hash] && hash == wanted);
     }
 
-    private static string Normalize(string address) => address.Trim().ToLowerInvariant();
+    /// <summary>The form an address is compared in: trimmed, lower case.</summary>
+    public static string Normalize(string address) => address.Trim().ToLowerInvariant();
 
-    private static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+    /// <summary>SHA-256 as upper-case hex (tokens and addresses are only ever stored in this form).</summary>
+    public static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
 
-    private static string Base64Url(byte[] bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    public static string NewToken() => Base64Url(RandomNumberGenerator.GetBytes(32));
 
-    private static (long Created, long Expires, string TokenHash, string AddressHash)? ParseToken(string line)
+    private static string Base64Url(byte[] bytes) => Convert.ToBase64String(bytes).TrimEnd((char)61).Replace((char)43, (char)45).Replace((char)47, (char)95);
+
+    public static (long Created, long Expires, string TokenHash, string AddressHash)? ParseToken(string line)
     {
         var parts = line.Split(';', 4);
         return parts.Length == 4 && long.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var created) && long.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var expires)

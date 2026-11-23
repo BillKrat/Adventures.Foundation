@@ -45,7 +45,7 @@ public sealed class EmailVerificationController(IUserPresenter presenter, EmailV
             return current.Failure;
         }
 
-        var linkBase = await LinkBaseAsync(request.ClientBase, cancellationToken);
+        var linkBase = await ClientLinkBase.ResolveAsync(request.ClientBase, hosts, environment, cancellationToken);
         if (linkBase is null)
         {
             return BadRequest("The address of this site is not one we know. Open the site by its own address and try again.");
@@ -81,25 +81,4 @@ public sealed class EmailVerificationController(IUserPresenter presenter, EmailV
         return (form.Entity.EntityId, address.Trim(), null);
     }
 
-    /// <summary>The scheme and host the client was opened at, accepted only for a registered host name (or localhost in Development), with no path, query or credentials.</summary>
-    private async Task<string?> LinkBaseAsync(string? clientBase, CancellationToken cancellationToken)
-    {
-        if (!Uri.TryCreate(clientBase, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http") || !string.IsNullOrEmpty(uri.UserInfo) || uri.AbsolutePath != "/" || !string.IsNullOrEmpty(uri.Query))
-        {
-            return null;
-        }
-
-        var local = uri.IsLoopback && environment.IsDevelopment();
-        if (!local && !(await hosts.AllNamesAsync(cancellationToken)).Contains(uri.Host, StringComparer.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        if (!local && uri.Scheme != "https" && !uri.Host.EndsWith(".dtempurl.com", StringComparison.OrdinalIgnoreCase) && !uri.Host.EndsWith(".atempurl.com", StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        return uri.GetLeftPart(UriPartial.Authority);
-    }
 }
