@@ -21,6 +21,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Adventures.Entities\Adventures.Entities.csproj" />
     <ProjectReference Include="..\Adventures.Entities.Diagnostics\Adventures.Entities.Diagnostics.csproj" />
     <ProjectReference Include="..\Adventures.Entities.Identity\Adventures.Entities.Identity.csproj" />
