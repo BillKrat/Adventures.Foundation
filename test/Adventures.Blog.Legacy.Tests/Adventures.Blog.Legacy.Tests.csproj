@@ -22,6 +22,8 @@
     <ProjectReference Include="..\..\src\Adventures.Entities.Identity\Adventures.Entities.Identity.csproj" />
     <ProjectReference Include="..\..\src\Adventures.Blog\Adventures.Blog.csproj" />
     <ProjectReference Include="..\..\src\Adventures.Blog.Legacy\Adventures.Blog.Legacy.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Blog.Legacy.Research\Adventures.Blog.Legacy.Research.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Mcp.WebApi\Adventures.Mcp.WebApi.csproj" />
     <ProjectReference Include="..\..\src\Adventures.Data.Sql\Adventures.Data.Sql.csproj" />
     <ProjectReference Include="..\..\src\Adventures.Collaboration\Adventures.Collaboration.csproj" />
     <ProjectReference Include="..\..\src\Adventures.MEF\Adventures.MEF.csproj" />

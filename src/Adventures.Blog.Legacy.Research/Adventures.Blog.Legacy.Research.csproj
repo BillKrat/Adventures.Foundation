@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- The optional research module (R5 of the host reuse review): read-only MCP tools over the legacy BlogEngine.NET database through a SELECT-only login, the one list of legacy tables, and the generator of the legacy mirror schemas.
+       It references no store project: the only things it reaches are the MCP tool contract and SQL Server through its own reader. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
+    <!-- SqlClient 6.1.2 pulls Pkcs 9.0.4 (GHSA-846f-f764-76mx, high); pin the patched major we run on. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Adventures.Mcp.WebApi\Adventures.Mcp.WebApi.csproj" />
+  </ItemGroup>
+
+</Project>

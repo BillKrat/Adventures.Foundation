@@ -20,6 +20,7 @@ public class DependencyRulesTests
         "Adventures.Blog -> Adventures.MEF",
         "Adventures.Blog.Legacy -> Adventures.Blog",
         "Adventures.Blog.Legacy -> Adventures.Data.Sql",
+        "Adventures.Blog.Legacy.Research -> Adventures.Mcp.WebApi",
         "Adventures.Blog.Postgres -> Adventures.Blog",
         "Adventures.Blog.WebApi -> Adventures.Blog",
         "Adventures.Blog.WebApi -> Adventures.Security",

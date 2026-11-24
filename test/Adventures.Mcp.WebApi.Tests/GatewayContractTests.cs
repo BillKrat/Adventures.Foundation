@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Adventures.Mcp.WebApi;
 using Adventures.Security;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Adventures.Mcp.WebApi.Tests;
@@ -49,5 +50,27 @@ public sealed class GatewayContractTests
         var options = new McpGatewayOptions();
         Assert.Empty(options.AdditionalScopes);
         Assert.False(string.IsNullOrWhiteSpace(options.ServerName));
+    }
+
+    private sealed class Source(params IMcpOnlyTool[] tools) : IMcpOnlyToolSource
+    {
+        public IEnumerable<IMcpOnlyTool> Tools => tools;
+    }
+
+    [Fact]
+    public void The_gateway_registry_is_built_from_every_registered_tool_and_every_tool_source()
+    {
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddLogging();
+        services.AddMcpGateway(new McpGatewayOptions());
+        services.AddSingleton<IMcpOnlyTool>(new FakeTool("single", "a.read"));
+        services.AddSingleton<IMcpOnlyToolSource>(new Source(new FakeTool("from-source", "b.read")));
+        using var provider = services.BuildServiceProvider();
+
+        var registry = provider.GetRequiredService<McpOnlyToolRegistry>();
+
+        Assert.NotNull(registry.Find("single"));
+        Assert.NotNull(registry.Find("from-source"));
+        Assert.Equal(["a.read", "b.read"], registry.Tools.Select(t => t.RequiredScope).OrderBy(s => s));
     }
 }

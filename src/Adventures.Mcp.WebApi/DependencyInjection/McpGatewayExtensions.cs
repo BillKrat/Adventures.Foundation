@@ -15,7 +15,7 @@ public sealed class McpGatewayOptions
 
     public string Instructions { get; set; } = "Diagnostics (read-only): start with recent_exceptions or exception_signatures, then diagnose_request with a correlation id. Authoring (drafts only): create_draft_post and update_draft_post write Markdown drafts that an administrator publishes.";
 
-    /// <summary>Scopes of the host's own <see cref="IMcpOnlyTool"/> tools, beyond the shared <see cref="Scopes.ContentDraft"/> and <see cref="Scopes.DiagnosticsRead"/>.</summary>
+    /// <summary>Scopes beyond the shared <see cref="Scopes.ContentDraft"/> and <see cref="Scopes.DiagnosticsRead"/> and the scopes of the registered <see cref="IMcpOnlyTool"/> tools (those are found from the registry).</summary>
     public IReadOnlyList<string> AdditionalScopes { get; set; } = [];
 
     /// <summary>Where the API is when <c>Api:BaseUrl</c> is not set.</summary>
@@ -33,7 +33,7 @@ public static class McpGatewayExtensions
         services.AddMemoryCache();
         services.AddCorrelationId();
         services.AddScoped<ApiForwardingClient>();
-        services.AddSingleton(sp => new McpOnlyToolRegistry(sp.GetServices<IMcpOnlyTool>()));
+        services.AddSingleton(sp => new McpOnlyToolRegistry(sp.GetServices<IMcpOnlyTool>().Concat(sp.GetServices<IMcpOnlyToolSource>().SelectMany(source => source.Tools))));
         return services;
     }
 

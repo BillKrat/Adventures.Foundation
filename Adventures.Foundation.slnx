@@ -14,6 +14,7 @@
     <Project Path="src/Adventures.Blog/Adventures.Blog.csproj" />
     <Project Path="src/Adventures.Blog.Postgres/Adventures.Blog.Postgres.csproj" />
     <Project Path="src/Adventures.Blog.Legacy/Adventures.Blog.Legacy.csproj" />
+    <Project Path="src/Adventures.Blog.Legacy.Research/Adventures.Blog.Legacy.Research.csproj" />
     <Project Path="src/Adventures.Blog.WebApi/Adventures.Blog.WebApi.csproj" />
     <Project Path="src/Adventures.Data.NQuad/Adventures.Data.NQuad.csproj" />
     <Project Path="src/Adventures.Data.NQuad.Postgres/Adventures.Data.NQuad.Postgres.csproj" />

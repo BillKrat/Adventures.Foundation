@@ -90,7 +90,7 @@ public sealed class McpController(ApiForwardingClient api, IAuthorizationService
     private async Task<HashSet<string>> GrantedScopesAsync(CancellationToken cancellationToken)
     {
         var granted = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var scope in new[] { DiagnosticsScope, AuthoringScope }.Concat(options.AdditionalScopes))
+        foreach (var scope in new[] { DiagnosticsScope, AuthoringScope }.Concat(options.AdditionalScopes).Concat(research.Tools.Select(t => t.RequiredScope)).Distinct())
         {
             if ((await authorization.AuthorizeAsync(User, null, "Scope:" + scope)).Succeeded)
             {

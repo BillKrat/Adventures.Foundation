@@ -27,6 +27,12 @@ public interface IMcpOnlyTool
     Task<McpToolOutcome> InvokeAsync(JsonElement arguments, CancellationToken cancellationToken);
 }
 
+/// <summary>A module that brings several MCP-only tools at once (the legacy research module): the gateway collects every source next to the individually registered tools.</summary>
+public interface IMcpOnlyToolSource
+{
+    IEnumerable<IMcpOnlyTool> Tools { get; }
+}
+
 /// <summary>The MCP-only tools, in one list of their own, kept apart from the tools the API's manifest describes.</summary>
 public sealed class McpOnlyToolRegistry
 {
