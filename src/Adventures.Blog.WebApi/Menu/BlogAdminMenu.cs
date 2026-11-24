@@ -42,15 +42,16 @@ public static class BlogAdminMenu
         services.AddAdminMenuItems(
             new AdminMenuItemDefinition("Dashboard", "dashboard", "Dashboard", "/admin/dashboard", "dashboard", RequiredRight: Rights.AdminAccess, Order: 1),
             new AdminMenuItemDefinition("Content", "posts", "Posts", "/admin/posts", "article", RequiredRight: Rights.PostsRead, Order: 1),
-            new AdminMenuItemDefinition("Content", "comments", "Comments", "/admin/comments", "comment", RequiredRight: Rights.CommentsModerate, Order: 6),
+            new AdminMenuItemDefinition("Content", "comments", "Comments", "/admin/comments", "comment", RequiredRight: Rights.CommentsModerate, Order: 2),
             new AdminMenuItemDefinition("Content", "pages", "Pages", "/admin/pages", "description", RequiredRight: Rights.PagesRead, Order: 3),
             new AdminMenuItemDefinition("Content", "categories", "Categories", "/admin/categories", "folder", RequiredRight: Rights.PostsRead, Order: 4),
             new AdminMenuItemDefinition("Content", "tags", "Tags", "/admin/tags", "sell", RequiredRight: Rights.PostsRead, Order: 5),
-            new AdminMenuItemDefinition("System", "settings", "Settings", "/admin/settings", "settings", RequiredRight: Rights.SettingsManage, Order: 2),
-            new AdminMenuItemDefinition("System", "mail", "E-mail", "/admin/plugins/mail", "mail", RequiredRight: Rights.PluginsManage, Order: 4),
-            new AdminMenuItemDefinition("System", "maintenance", "Maintenance", "/admin/maintenance", "build", RequiredRight: Rights.SettingsManage, Order: 8),
-            new AdminMenuItemDefinition("System", "widgets", "Widgets", "/admin/widgets", "widgets", RequiredRight: Rights.SettingsManage, Order: 5),
-            new AdminMenuItemDefinition("System", "languages", "Languages", "/admin/languages", "translate", RequiredRight: Rights.SettingsManage, Order: 6));
+            new AdminMenuItemDefinition("Settings", "settings", "Settings", "/admin/settings", "settings", RequiredRight: Rights.SettingsManage, Order: 1),
+            new AdminMenuItemDefinition("Settings", "mail", "E-mail", "/admin/plugins/mail", "mail", RequiredRight: Rights.PluginsManage, Order: 2),
+            new AdminMenuItemDefinition("System", "maintenance", "Maintenance", "/admin/maintenance", "build", RequiredRight: Rights.SettingsManage, Order: 2),
+            new AdminMenuItemDefinition("About", "about", "About", "/admin/about", "info", RequiredRight: Rights.AdminAccess, Order: 1),
+            new AdminMenuItemDefinition("Custom", "widgets", "Widgets", "/admin/widgets", "widgets", RequiredRight: Rights.SettingsManage, Order: 2),
+            new AdminMenuItemDefinition("Custom", "languages", "Languages", "/admin/languages", "translate", RequiredRight: Rights.SettingsManage, Order: 3));
         services.AddAdminCount<PostsNeedingReviewCount>();
         services.AddAdminCount<CommentsPendingCount>();
         return services;

@@ -17,7 +17,7 @@ public sealed class AdminMenuContribution(IEnumerable<AdminMenuItemDefinition> i
 /// <summary>Every entry the registered features contribute, one catalog for the menu controller.</summary>
 public sealed class AdminMenuCatalog
 {
-    private static readonly string[] KnownSections = ["Dashboard", "Content", "Users", "System"];
+    private static readonly string[] KnownSections = ["Dashboard", "Content", "Collaboration", "Custom", "Users", "Settings", "System", "About"];
 
     /// <summary>Where a section sits: the well-known ones in their usual order, any other after them in the order its first entry was contributed.</summary>
     public static int SectionRank(string section)

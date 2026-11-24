@@ -20,9 +20,9 @@ public static class CollaborationAdminMenu
     public static IServiceCollection AddCollaborationAdminMenu(this IServiceCollection services)
     {
         services.AddAdminMenuItems(
-            new AdminMenuItemDefinition("Content", "collaboration", "Collaboration", "/admin/collaboration", "forum", RequiredRight: Rights.CollaborationRead, Order: 2, AnyOfPlugins: [CollaborationPlugins.DeveloperCollaboration, CollaborationPlugins.ResearchCollaboration]),
-            new AdminMenuItemDefinition("Content", "decisions", "Decisions", "/admin/decisions", "gavel", RequiredRight: Rights.DecisionsRead, Order: 7, AnyOfPlugins: [CollaborationPlugins.Decisions]),
-            new AdminMenuItemDefinition("System", "plugins", "Plugins", "/admin/plugins", "extension", RequiredRight: Rights.PluginsManage, Order: 3));
+            new AdminMenuItemDefinition("Collaboration", "collaboration", "Collaboration", "/admin/collaboration", "forum", RequiredRight: Rights.CollaborationRead, Order: 1, AnyOfPlugins: [CollaborationPlugins.DeveloperCollaboration, CollaborationPlugins.ResearchCollaboration]),
+            new AdminMenuItemDefinition("Collaboration", "decisions", "Decisions", "/admin/decisions", "gavel", RequiredRight: Rights.DecisionsRead, Order: 2, AnyOfPlugins: [CollaborationPlugins.Decisions]),
+            new AdminMenuItemDefinition("Custom", "plugins", "Plugins", "/admin/plugins", "extension", RequiredRight: Rights.PluginsManage, Order: 1));
         services.AddAdminCount<CollaborationWaitingCount>();
         return services;
     }
