@@ -62,6 +62,32 @@ public class DependencyRulesTests
         "Adventures.Entities.NQuad -> Adventures.Entities.Diagnostics",
         "Adventures.Entities.NQuad -> Adventures.Entities.Identity",
         "Adventures.Entities.NQuad -> Adventures.MEF",
+        "Adventures.Hosting -> Adventures.Blog",
+        "Adventures.Hosting -> Adventures.Blog.Legacy",
+        "Adventures.Hosting -> Adventures.Blog.Postgres",
+        "Adventures.Hosting -> Adventures.Blog.WebApi",
+        "Adventures.Hosting -> Adventures.Collaboration",
+        "Adventures.Hosting -> Adventures.Collaboration.WebApi",
+        "Adventures.Hosting -> Adventures.Common",
+        "Adventures.Hosting -> Adventures.Data",
+        "Adventures.Hosting -> Adventures.Data.NQuad",
+        "Adventures.Hosting -> Adventures.Data.NQuad.Postgres",
+        "Adventures.Hosting -> Adventures.Data.Postgres",
+        "Adventures.Hosting -> Adventures.Diagnostics.WebApi",
+        "Adventures.Hosting -> Adventures.Entities",
+        "Adventures.Hosting -> Adventures.Entities.Diagnostics",
+        "Adventures.Hosting -> Adventures.Entities.Identity",
+        "Adventures.Hosting -> Adventures.Entities.NQuad",
+        "Adventures.Hosting -> Adventures.Identity",
+        "Adventures.Hosting -> Adventures.Identity.Postgres",
+        "Adventures.Hosting -> Adventures.Identity.WebApi",
+        "Adventures.Hosting -> Adventures.Ioc",
+        "Adventures.Hosting -> Adventures.MEF",
+        "Adventures.Hosting -> Adventures.MEF.WebApi",
+        "Adventures.Hosting -> Adventures.Security",
+        "Adventures.Hosting -> Adventures.Security.AspNetCore",
+        "Adventures.Hosting -> Adventures.Tools.WebApi",
+        "Adventures.Hosting -> Adventures.WebApi",
         "Adventures.Identity -> Adventures.Data",
         "Adventures.Identity -> Adventures.Security",
         "Adventures.Identity.Postgres -> Adventures.Data",
@@ -222,7 +248,7 @@ public class DependencyRulesTests
             .Where(p => p.ProjectReferences.Contains("Adventures.Blog"))
             .Select(p => p.Name)
             .OrderBy(n => n, StringComparer.Ordinal);
-        Assert.Equal(["Adventures.Blog.Legacy", "Adventures.Blog.Postgres", "Adventures.Blog.WebApi", "Adventures.Entities.NQuad"], referrers); // Entities.NQuad: the feature entity registrations over the store (R2)
+        Assert.Equal(["Adventures.Blog.Legacy", "Adventures.Blog.Postgres", "Adventures.Blog.WebApi", "Adventures.Entities.NQuad", "Adventures.Hosting"], referrers); // Entities.NQuad: the feature entity registrations over the store (R2)
     }
 
     // S4: Collaboration builds on Entities and the plug-in seam only (no Blog, no store, no host); the plug-in seam builds on Entities only; only the Blog stack and the collaboration controllers build on Collaboration.
@@ -232,7 +258,7 @@ public class DependencyRulesTests
         Assert.Equal(["Adventures.Entities", "Adventures.Entities.Identity", "Adventures.MEF"], Graph.Projects["Adventures.Collaboration"].ProjectReferences);
         Assert.Equal(["Adventures.Entities", "Adventures.Security"], Graph.Projects["Adventures.MEF"].ProjectReferences); // Security: the field encryptor behind Secret settings
         var referrers = Graph.Projects.Values.Where(p => p.ProjectReferences.Contains("Adventures.Collaboration")).Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal);
-        Assert.Equal(["Adventures.Blog", "Adventures.Collaboration.WebApi", "Adventures.Entities.NQuad"], referrers);
+        Assert.Equal(["Adventures.Blog", "Adventures.Collaboration.WebApi", "Adventures.Entities.NQuad", "Adventures.Hosting"], referrers);
     }
 
     // S9: the desktop client library talks to the API through the Entities contract and the Security core only. No host framework, no store, no UI
