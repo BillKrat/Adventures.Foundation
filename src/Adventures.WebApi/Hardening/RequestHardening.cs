@@ -98,20 +98,21 @@ public static class RequestHardening
     /// Sets the response headers for a JSON API before the rest of the pipeline runs; a later component (for example the
     /// media endpoint's stricter policy) may overwrite one. Strict-Transport-Security is sent over HTTPS outside Development.
     /// </summary>
-    public static IApplicationBuilder UseSecurityHeaders(this IApplicationBuilder app, bool isDevelopment) =>
+    /// <param name="contentSecurityPolicy">A policy of the host's own, for a host that serves a page; the default is the API-only policy that blocks everything.</param>
+    public static IApplicationBuilder UseSecurityHeaders(this IApplicationBuilder app, bool isDevelopment, string? contentSecurityPolicy = null) =>
         app.Use(async (context, next) =>
         {
-            SetSecurityHeaders(context, isDevelopment);
+            SetSecurityHeaders(context, isDevelopment, contentSecurityPolicy);
             await next(context);
         });
 
-    public static void SetSecurityHeaders(HttpContext context, bool isDevelopment)
+    public static void SetSecurityHeaders(HttpContext context, bool isDevelopment, string? contentSecurityPolicy = null)
     {
         var headers = context.Response.Headers;
         headers["X-Content-Type-Options"] = "nosniff";
         headers["X-Frame-Options"] = "DENY";
         headers["Referrer-Policy"] = "no-referrer";
-        headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+        headers["Content-Security-Policy"] = contentSecurityPolicy ?? "default-src 'none'; frame-ancestors 'none'";
         headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()";
         if (!isDevelopment && context.Request.IsHttps)
         {

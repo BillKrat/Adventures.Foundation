@@ -117,4 +117,16 @@ public class RequestHardeningTests
 
         Assert.Equal("default-src 'none'; sandbox", context.Response.Headers["Content-Security-Policy"]);
     }
+
+    [Fact]
+    public void A_host_that_serves_a_page_can_give_its_own_content_security_policy_and_keeps_the_other_headers()
+    {
+        var http = new DefaultHttpContext();
+
+        RequestHardening.SetSecurityHeaders(http, isDevelopment: false, contentSecurityPolicy: "default-src 'none'; script-src 'self'");
+
+        Assert.Equal("default-src 'none'; script-src 'self'", http.Response.Headers["Content-Security-Policy"].ToString());
+        Assert.Equal("nosniff", http.Response.Headers["X-Content-Type-Options"].ToString());
+        Assert.Equal("DENY", http.Response.Headers["X-Frame-Options"].ToString());
+    }
 }
