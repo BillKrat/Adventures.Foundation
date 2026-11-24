@@ -2,6 +2,7 @@
 using Adventures.WebApi;
 using Adventures.Entities;
 using Adventures.Security;
+using Adventures.WebApi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,14 +15,24 @@ namespace Adventures.Identity.WebApi;
 [ApiController]
 [Route("api/lookups")]
 [RequireRight(Rights.AdminAccess)]
-public sealed class LookupsController(IEntityRelationProvider provider) : ControllerBase
+public sealed class LookupsController(IEntityRelationProvider provider, IRightsAuthorizer authorizer) : ControllerBase
 {
+    /// <summary>Admin access alone is not enough (beta readiness): the choices are role, tenant and organization names, so only a person who manages or reads what the forms edit may ask.</summary>
+    private static readonly string[] AnyOf =
+        [Rights.UsersManage, Rights.RolesManage, Rights.PostsRead, Rights.PagesRead, Rights.TaxonomyManage, Rights.SettingsManage, Rights.PluginsManage];
+
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<RelationOption>>> Options([FromQuery] string schema, [FromQuery] string? exclude, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(schema))
         {
             return BadRequest("A schema is required.");
+        }
+
+        var held = await authorizer.RightsOfAsync(User, cancellationToken);
+        if (!held.Contains(Rights.All) && !AnyOf.Any(held.Contains))
+        {
+            return Forbid();
         }
 
         var options = await provider.GetOptionsAsync(schema, exclude, cancellationToken);

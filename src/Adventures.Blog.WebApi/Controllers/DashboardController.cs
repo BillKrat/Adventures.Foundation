@@ -55,6 +55,31 @@ public static class DashboardSummary
             Latest(latestComments ?? []));
     }
 
+    /// <summary>
+    /// The dashboard as one person may see it (beta readiness: admin access alone, a beta tester, must not read draft titles, reader comments or the exception count).
+    /// Each figure and list needs the right to see what it counts; a figure the person may not see is zero and a list is empty.
+    /// </summary>
+    public static DashboardModel Restrict(DashboardModel model, IReadOnlySet<string> rights)
+    {
+        bool Has(string right) => rights.Contains(Rights.All) || rights.Contains(right);
+        var posts = Has(Rights.PostsRead);
+        var pages = Has(Rights.PagesRead);
+        var comments = Has(Rights.CommentsModerate);
+        return model with
+        {
+            PublishedPosts = posts ? model.PublishedPosts : 0,
+            DraftPosts = posts ? model.DraftPosts : 0,
+            PublishedPages = pages ? model.PublishedPages : 0,
+            DraftPages = pages ? model.DraftPages : 0,
+            Exceptions = Has(Rights.DiagnosticsRead) ? model.Exceptions : 0,
+            CollaborationWaiting = Has(Rights.CollaborationRead) ? model.CollaborationWaiting : 0,
+            CommentsPending = comments ? model.CommentsPending : 0,
+            DraftPostList = posts ? model.DraftPostList : [],
+            DraftPageList = pages ? model.DraftPageList : [],
+            LatestComments = comments ? model.LatestComments : [],
+        };
+    }
+
     /// <summary>The first few comments (the caller passes them newest first), each shortened to an excerpt.</summary>
     public static IReadOnlyList<DashboardComment> Latest(IEnumerable<ModerationComment> comments) =>
         comments.Take(LatestCommentsLimit).Select(c => new DashboardComment(c.Id, c.Author, c.PostTitle, c.Status, c.Created, Excerpt(c.Body))).ToList();
@@ -74,20 +99,21 @@ public static class DashboardSummary
 [Route("api/admin/dashboard")]
 [RequireRight(Rights.AdminAccess)]
 public sealed class DashboardController(
-    IEntityBll<Post> posts, IPageBll pages, AdminCounts counts, IVisitorComments comments) : ControllerBase
+    IEntityBll<Post> posts, IPageBll pages, AdminCounts counts, IVisitorComments comments, IRightsAuthorizer authorizer) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<DashboardModel>> Get(CancellationToken cancellationToken)
     {
         var postRows = (await posts.ListAsync(cancellationToken)).Select(ToRow);
         var pageRows = (await pages.ListAsync(cancellationToken)).Select(ToRow);
-        return Ok(DashboardSummary.Build(
+        var rights = await authorizer.RightsOfAsync(User, cancellationToken);
+        return Ok(DashboardSummary.Restrict(DashboardSummary.Build(
             postRows,
             pageRows,
             await counts.GetAsync("exceptions", cancellationToken),
             await counts.GetAsync("collaboration", cancellationToken),
             commentsPending: await counts.GetAsync("comments", cancellationToken),
-            latestComments: await comments.ListAsync(null, cancellationToken)));
+            latestComments: await comments.ListAsync(null, cancellationToken)), rights));
     }
 
     private static ContentRow ToRow(DynamicEntity entity) => new(
