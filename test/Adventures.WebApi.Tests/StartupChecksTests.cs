@@ -71,4 +71,13 @@ public class StartupChecksTests
         Assert.Equal("https://schema.example/Missing", problem.Key);
         Assert.Contains("https profile", problem.Fix);
     }
+
+    [Fact]
+    public void A_host_with_no_database_is_not_asked_for_a_connection_string()
+    {
+        var config = Config(("Jwt:SigningKey", "k"));
+        Assert.Contains(StartupChecks.Find(config, isDevelopment: false), p => p.Key == "ConnectionStrings:Postgres");
+        Assert.Empty(StartupChecks.Find(config, isDevelopment: false, needsDatabase: false));
+        Assert.Contains(StartupChecks.Find(Config(), isDevelopment: false, needsDatabase: false), p => p.Key == "Jwt:SigningKey");
+    }
 }

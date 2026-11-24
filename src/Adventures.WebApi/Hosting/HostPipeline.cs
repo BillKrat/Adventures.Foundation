@@ -10,8 +10,8 @@ namespace Adventures.WebApi;
 public static class HostPipeline
 {
     /// <summary>Applies the shared preamble. Call it first; a host then adds its own tenancy, authentication and endpoints after it.</summary>
-    /// <param name="corsPolicy">The named CORS policy the host registered.</param>
-    public static void UseAdventuresPreamble(this WebApplication app, string corsPolicy)
+    /// <param name="corsPolicy">The named CORS policy the host registered; none for a host that no browser calls (the MCP gateway).</param>
+    public static void UseAdventuresPreamble(this WebApplication app, string? corsPolicy = null)
     {
         // Before everything: behind a CDN or proxy the visitor address and scheme come from the listed proxies only (Proxy:Trusted, off by default), so the redirect and the rate limits see the visitor.
         app.UseTrustedProxies(app.Configuration);
@@ -35,7 +35,11 @@ public static class HostPipeline
         // UseCors must come before any Map* calls so it runs ahead of terminal middleware and can attach CORS headers.
         // The root stays reachable over plain HTTP: SmarterASP's free-SSL preflight requests it without following redirects, so redirecting "/" would fail issue and renewal.
         app.UseWhen(context => !context.Request.Path.Equals("/"), branch => branch.UseHttpsRedirection());
-        app.UseCors(corsPolicy);
+        if (corsPolicy is not null)
+        {
+            app.UseCors(corsPolicy);
+        }
+
         app.UseRateLimiter();
 
         // One handler in every environment, so what a developer sees is what production does: the full exception goes to the log file and the exception log,

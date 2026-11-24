@@ -94,7 +94,7 @@ public sealed class AdminDiagnosticsController(IDiagnosticsReader reader, IDepen
 [Authorize(Policy = "Scope:" + McpDiagnosticsController.RequiredScope)]
 public sealed class McpDiagnosticsController(IDiagnosticsReader reader) : ControllerBase
 {
-    public const string RequiredScope = "mcp.diagnostics.read";
+    public const string RequiredScope = Adventures.Security.Scopes.DiagnosticsRead;
 
     [HttpGet("{correlationId}")]
     public async Task<ActionResult<RequestDiagnostics>> ForRequest(string correlationId, CancellationToken cancellationToken) =>

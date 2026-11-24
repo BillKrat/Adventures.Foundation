@@ -10,9 +10,6 @@ namespace Adventures.Blog.Legacy.Tests;
 /// <summary>R2 of the host reuse review: each feature library lists its own seeds, and the list must match the files beside the schemas, so a seed added to a library cannot be forgotten by a host.</summary>
 public sealed class SeedManifestTests
 {
-    // seed-012 (MCP wave 2 tables) is deliberately not applied by any host today; it stays listed here so adding it to a manifest is a conscious change.
-    private static readonly string[] NotApplied = ["seed-012-legacy-wave2.nq"];
-
     private static string SrcRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -51,7 +48,7 @@ public sealed class SeedManifestTests
     {
         var onDisk = Directory.GetFiles(Path.Combine(SrcRoot(), project, "Sql", "seed"), "seed-*.nq").Select(Path.GetFileName).ToHashSet();
         var listed = Load(manifest).Select(s => s.File).ToHashSet();
-        Assert.Empty(onDisk.Except(listed).Except(NotApplied));
+        Assert.Empty(onDisk.Except(listed));
         Assert.Empty(listed.Except(onDisk));
     }
 

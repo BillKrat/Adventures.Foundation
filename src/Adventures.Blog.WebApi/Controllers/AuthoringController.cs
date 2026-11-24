@@ -21,7 +21,7 @@ public sealed record TermRequest(string? Name);
 [Authorize(Policy = "Scope:" + RequiredScope)]
 public sealed class AuthoringController(IContentAuthoring authoring, IConfiguration configuration) : ApiControllerBase
 {
-    public const string RequiredScope = "content.draft";
+    public const string RequiredScope = Adventures.Security.Scopes.ContentDraft;
 
     private string Author => configuration["Authoring:AuthorUserName"] ?? "Claude";
 

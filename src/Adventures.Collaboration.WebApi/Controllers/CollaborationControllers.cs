@@ -191,7 +191,7 @@ public sealed class CollaborationController(IEntityPresenter<CollaborationItem> 
 public sealed class CollaborationAuthoringController(ICollaborationAuthoring authoring, IConfiguration configuration) : ApiControllerBase
 {
     /// <summary>The scope a machine client needs; the same one the posts authoring surface uses (a test keeps the two equal).</summary>
-    public const string RequiredScope = "content.draft";
+    public const string RequiredScope = Adventures.Security.Scopes.ContentDraft;
 
     private string Author => configuration["Authoring:AuthorUserName"] ?? "Claude";
 

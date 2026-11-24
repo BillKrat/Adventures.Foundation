@@ -23,8 +23,8 @@ public static class StartupChecks
 {
     public const string ProblemTitle = "The API could not start: its configuration is incomplete.";
 
-    /// <summary>The missing pieces, empty when the API can start. Reads only; applies nothing.</summary>
-    public static IReadOnlyList<StartupProblem> Find(IConfiguration configuration, bool isDevelopment)
+    /// <summary>The missing pieces, empty when the host can start. Reads only; applies nothing. A host that keeps no database of its own (the MCP gateway) passes <paramref name="needsDatabase"/> false.</summary>
+    public static IReadOnlyList<StartupProblem> Find(IConfiguration configuration, bool isDevelopment, bool needsDatabase = true)
     {
         var problems = new List<StartupProblem>();
 
@@ -37,7 +37,7 @@ public static class StartupChecks
             problems.Add(new StartupProblem(SiteDomain.Key, ex.Message, "Set Site__Domain to your bare domain name, for example example.com, or remove it."));
         }
 
-        if (string.Equals(configuration[LiveDataMode.EnabledKey], "true", StringComparison.OrdinalIgnoreCase))
+        if (needsDatabase && string.Equals(configuration[LiveDataMode.EnabledKey], "true", StringComparison.OrdinalIgnoreCase))
         {
             if (!isDevelopment)
             {
@@ -50,7 +50,7 @@ public static class StartupChecks
                     "Store it with the usersecret command in docs/artifacts/Claude-2026-10-23-live-data-profile.md, or start the normal 'https' profile."));
             }
         }
-        else if (!isDevelopment && string.IsNullOrWhiteSpace(configuration["ConnectionStrings:Postgres"]))
+        else if (needsDatabase && !isDevelopment && string.IsNullOrWhiteSpace(configuration["ConnectionStrings:Postgres"]))
         {
             problems.Add(new StartupProblem("ConnectionStrings:Postgres", "The database connection string is not set.",
                 "Set ConnectionStrings__Postgres as a site secret on the host (and restart the site)."));
