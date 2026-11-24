@@ -13,6 +13,7 @@ public static class IdentityWebApiExtensions
     public static IMvcBuilder AddIdentityControllers(this IMvcBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
+        builder.Services.AddIdentityAdminMenu();
         return builder.AddApplicationPart(typeof(IdentityWebApiExtensions).Assembly);
     }
 

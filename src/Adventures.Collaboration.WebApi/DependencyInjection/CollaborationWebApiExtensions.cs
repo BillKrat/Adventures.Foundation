@@ -18,6 +18,8 @@ public static class CollaborationWebApiExtensions
             builder.Services.AddSingleton<IAppTool>(tool);
         }
 
+        builder.Services.AddCollaborationAdminMenu();
+
         return builder.AddApplicationPart(typeof(CollaborationWebApiExtensions).Assembly);
     }
 }

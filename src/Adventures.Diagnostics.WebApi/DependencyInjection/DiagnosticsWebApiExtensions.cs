@@ -18,6 +18,8 @@ public static class DiagnosticsWebApiExtensions
             builder.Services.AddSingleton<IAppTool>(tool);
         }
 
+        builder.Services.AddDiagnosticsAdminMenu();
+
         return builder.AddApplicationPart(typeof(DiagnosticsWebApiExtensions).Assembly);
     }
 }

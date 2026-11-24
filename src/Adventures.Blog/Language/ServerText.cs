@@ -14,9 +14,16 @@ public interface IServerTextCatalog
     IReadOnlyDictionary<string, string> Defaults { get; }
 }
 
-public sealed class ServerTextCatalog(IEnumerable<ServerTextDeclaration> declarations) : IServerTextCatalog
+/// <summary>A source of server texts that is not a plain registration: a feature whose texts come from its own declarations (the admin menu names) lists them here.</summary>
+public interface IServerTextSource
+{
+    IEnumerable<ServerTextDeclaration> Declarations { get; }
+}
+
+public sealed class ServerTextCatalog(IEnumerable<ServerTextDeclaration> declarations, IEnumerable<IServerTextSource>? sources = null) : IServerTextCatalog
 {
     public IReadOnlyDictionary<string, string> Defaults { get; } = declarations
+        .Concat((sources ?? []).SelectMany(s => s.Declarations))
         .GroupBy(d => d.Key, StringComparer.Ordinal)
         .ToDictionary(g => g.Key, g => g.Last().English, StringComparer.Ordinal);
 }

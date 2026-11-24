@@ -1,3 +1,5 @@
+using Adventures.Blog;
+using Adventures.WebApi;
 using Adventures.Tools;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +19,10 @@ public static class BlogWebApiExtensions
         {
             builder.Services.AddSingleton<IAppTool>(tool);
         }
+
+        builder.Services.AddBlogAdminMenu();
+        builder.Services.AddAdminMenuCore();
+        builder.Services.AddSingleton<IServerTextSource, AdminMenuTextSource>();
 
         return builder.AddApplicationPart(typeof(BlogWebApiExtensions).Assembly);
     }

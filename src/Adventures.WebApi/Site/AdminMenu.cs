@@ -8,7 +8,7 @@ namespace Adventures.WebApi;
 /// <summary>
 /// One entry the host declares for the admin menu: where it sits (section), what it is called, where it goes, which role may see
 /// it, and whether the screen exists yet (<see cref="Available"/> false lists the destination as "coming" without a route). The
-/// host registers these once; the client never decides what an administrator sees.
+/// host registers these once; the client never decides what an administrator sees. <see cref="AnyOfPlugins"/> lists the plug-in keys that bring the entry: it is listed only while one of them is on.
 /// </summary>
 public sealed record AdminMenuItemDefinition(
     string Section,
@@ -19,7 +19,8 @@ public sealed record AdminMenuItemDefinition(
     string? RequiredRole = null,
     bool Available = true,
     int Order = 0,
-    string? RequiredRight = null);
+    string? RequiredRight = null,
+    IReadOnlyList<string>? AnyOfPlugins = null);
 
 /// <summary>One menu entry as the client renders it. <see cref="Badge"/> is a count to show beside it (active exceptions), or null.</summary>
 public sealed record AdminMenuItem(string Id, string Label, string? Route, string? Icon, bool Available, int? Badge);
@@ -58,6 +59,7 @@ public static class AdminMenuBuilder
 
         var sections = visible
             .GroupBy(item => item.Section, StringComparer.Ordinal)
+            .OrderBy(group => AdminMenuCatalog.SectionRank(group.Key))
             .Select(group => new AdminMenuSection(
                 group.Key,
                 group.Key,
