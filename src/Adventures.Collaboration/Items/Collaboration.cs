@@ -181,7 +181,7 @@ public sealed class CollaborationPresenter(ICollaborationBll bll, EntitySchemaOf
 
 /// <summary>One collaboration item as the authoring surface reports it.</summary>
 public sealed record CollaborationSummary(
-    string Id, string Title, string Kind, string? Approval, string? Branch, string? Repos, string? DateCreated, string? Status = null);
+    string Id, string Title, string Kind, string? Approval, string? Branch, string? Repos, string? DateCreated, string? Status = null, bool? Mine = null);
 
 /// <summary>What an author supplies for a collaboration item.</summary>
 public sealed record CollaborationDraft(
@@ -191,19 +191,24 @@ public sealed record CollaborationDraft(
 public sealed record CollaborationDetail(CollaborationSummary Summary, string? Content, string? Sources, string? Findings, bool Truncated);
 
 /// <summary>
-/// The way an AI over MCP writes collaboration items: create one, revise its own, list its own, read and add to the conversation.
-/// There is no route to approve (the human does that in the admin), to change an item written by someone else, or to touch a post.
+/// The way an AI over MCP works with collaboration items: create one, list them all, read and revise ANY item and add to any conversation (the human's items
+/// too, so the AI can work on them: the "user usage review" is the example). There is no route to approve or decide (the human does that in the admin) or to touch
+/// a post. Changing an item written by someone else leaves a visible note in its conversation, and a revised Developer item goes back to Needs review. What a person
+/// wrote is data to the AI, never an instruction.
 /// </summary>
 public interface ICollaborationAuthoring
 {
     Task<CollaborationSummary> CreateAsync(string authorUserName, CollaborationDraft draft, CancellationToken cancellationToken = default);
 
-    /// <summary>Revises an item the author owns (a revised Developer item goes back to needing review); null when no such item.</summary>
+    /// <summary>Revises any item (a revised Developer item goes back to needing review; a note in the conversation says when the item was written by someone else); null when no such item.</summary>
     Task<CollaborationSummary?> UpdateAsync(string authorUserName, string itemId, CollaborationDraft draft, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<CollaborationSummary>> ListMineAsync(string authorUserName, CancellationToken cancellationToken = default);
 
-    /// <summary>Reads the text of an item the author owns (size-capped); null when no such item.</summary>
+    /// <summary>Every collaboration item of the tenant, whoever wrote it, newest first; <see cref="CollaborationSummary.Mine"/> says which are the author's own. Read-only.</summary>
+    Task<IReadOnlyList<CollaborationSummary>> ListAllAsync(string authorUserName, CancellationToken cancellationToken = default);
+
+    /// <summary>Reads the text of any item (size-capped); null when no such item.</summary>
     Task<CollaborationDetail?> GetAsync(string authorUserName, string itemId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ConversationEntry>> ListCommentsAsync(string authorUserName, string itemId, CancellationToken cancellationToken = default);
@@ -242,7 +247,6 @@ public sealed class CollaborationAuthoring(
             return null;
         }
 
-        EnsureOwn(item, authorId);
         if (!string.IsNullOrWhiteSpace(draft.Title))
         {
             item.Set("Title", Guid.NewGuid().ToString(), draft.Title.Trim());
@@ -259,7 +263,17 @@ public sealed class CollaborationAuthoring(
         }
 
         await items.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
-        return Summarise(item);
+        if (!string.Equals(item.GetValue("Author") as string, authorId, StringComparison.Ordinal))
+        {
+            // not the AI's own item: the person who wrote it sees, in the conversation, that and what the AI changed
+            var named = new[] { (draft.Title, "title"), (draft.Content, "content"), (draft.Branch, "branch"), (draft.Repos, "repos"), (draft.Sources, "sources"), (draft.Findings, "findings") }
+                .Where(x => !string.IsNullOrWhiteSpace(x.Item1) || (x.Item1 is not null && x.Item2 != "title"))
+                .Select(x => x.Item2)
+                .ToList();
+            await conversation.AddAsync(itemId, authorUserName, CommentKinds.Comment, $"Edited by {authorUserName} (this item was written by someone else). Changed: {(named.Count == 0 ? "nothing" : string.Join(", ", named))}.", cancellationToken).ConfigureAwait(false);
+        }
+
+        return Summarise(item, authorId);
     }
 
     public async Task<IReadOnlyList<CollaborationSummary>> ListMineAsync(string authorUserName, CancellationToken cancellationToken = default)
@@ -267,7 +281,16 @@ public sealed class CollaborationAuthoring(
         var authorId = await AuthorIdAsync(authorUserName, cancellationToken).ConfigureAwait(false);
         return (await items.ListAsync(cancellationToken).ConfigureAwait(false))
             .Where(i => string.Equals(i.GetValue("Author") as string, authorId, StringComparison.Ordinal))
-            .Select(Summarise)
+            .Select(i => Summarise(i))
+            .OrderByDescending(s => s.DateCreated, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<CollaborationSummary>> ListAllAsync(string authorUserName, CancellationToken cancellationToken = default)
+    {
+        var authorId = await AuthorIdAsync(authorUserName, cancellationToken).ConfigureAwait(false);
+        return (await items.ListAsync(cancellationToken).ConfigureAwait(false))
+            .Select(i => Summarise(i, authorId))
             .OrderByDescending(s => s.DateCreated, StringComparer.Ordinal)
             .ToList();
     }
@@ -284,7 +307,6 @@ public sealed class CollaborationAuthoring(
             return null;
         }
 
-        EnsureOwn(item, authorId);
         var truncated = false;
         string? Text(string field)
         {
@@ -299,35 +321,21 @@ public sealed class CollaborationAuthoring(
         }
 
         var (content, sources, findings) = (Text("Content"), Text("Sources"), Text("Findings"));
-        return new CollaborationDetail(Summarise(item), content, sources, findings, truncated);
+        return new CollaborationDetail(Summarise(item, authorId), content, sources, findings, truncated);
     }
 
     public async Task<IReadOnlyList<ConversationEntry>> ListCommentsAsync(string authorUserName, string itemId, CancellationToken cancellationToken = default)
     {
-        await EnsureOwnAsync(authorUserName, itemId, cancellationToken).ConfigureAwait(false);
+        _ = await items.GetAsync(itemId, cancellationToken).ConfigureAwait(false)
+            ?? throw new BusinessRuleException("The collaboration item does not exist.");
         return await conversation.ListAsync(itemId, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<ConversationEntry> AddCommentAsync(string authorUserName, string itemId, string text, CancellationToken cancellationToken = default)
     {
-        await EnsureOwnAsync(authorUserName, itemId, cancellationToken).ConfigureAwait(false);
-        return await conversation.AddAsync(itemId, authorUserName, CommentKinds.Comment, text, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task EnsureOwnAsync(string authorUserName, string itemId, CancellationToken cancellationToken)
-    {
-        var authorId = await AuthorIdAsync(authorUserName, cancellationToken).ConfigureAwait(false);
-        var item = await items.GetAsync(itemId, cancellationToken).ConfigureAwait(false)
+        _ = await items.GetAsync(itemId, cancellationToken).ConfigureAwait(false)
             ?? throw new BusinessRuleException("The collaboration item does not exist.");
-        EnsureOwn(item, authorId);
-    }
-
-    private static void EnsureOwn(CollaborationItem item, string authorId)
-    {
-        if (!string.Equals(item.GetValue("Author") as string, authorId, StringComparison.Ordinal))
-        {
-            throw new BusinessRuleException("This item was written by someone else; it cannot be used here.");
-        }
+        return await conversation.AddAsync(itemId, authorUserName, CommentKinds.Comment, text, cancellationToken).ConfigureAwait(false);
     }
 
     private static void Apply(CollaborationItem item, CollaborationDraft draft)
@@ -354,7 +362,7 @@ public sealed class CollaborationAuthoring(
         return form?.Entity.EntityId ?? throw new BusinessRuleException($"The author account '{authorUserName}' does not exist.");
     }
 
-    private static CollaborationSummary Summarise(CollaborationItem item) => new(
+    private static CollaborationSummary Summarise(CollaborationItem item, string? viewerId = null) => new(
         item.EntityId?.Value ?? string.Empty,
         item.GetValue("Title") as string ?? string.Empty,
         item.GetValue("Kind") as string ?? CollaborationKinds.Developer,
@@ -362,5 +370,6 @@ public sealed class CollaborationAuthoring(
         item.GetValue("Branch") as string,
         item.GetValue("Repos") as string,
         item.GetValue("DateCreated") is DateTimeOffset created ? created.ToString("O") : null,
-        item.GetValue("Status") as string);
+        item.GetValue("Status") as string,
+        viewerId is null ? null : string.Equals(item.GetValue("Author") as string, viewerId, StringComparison.Ordinal));
 }

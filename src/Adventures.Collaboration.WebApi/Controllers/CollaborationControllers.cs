@@ -183,7 +183,7 @@ public sealed class CollaborationController(IEntityPresenter<CollaborationItem> 
         GuardedAsync(async () => (IActionResult)Ok(await migration.RunAsync(apply, cancellationToken)));
 }
 
-/// <summary>The collaboration authoring surface for Claude (scope <c>content.draft</c>), next to the posts one: create, revise and list its own items and use their conversation.</summary>
+/// <summary>The collaboration authoring surface for Claude (scope <c>content.draft</c>), next to the posts one: create items, list them all, read and revise any item and use any conversation (the human's items too: human decision 2026-11-24). It cannot approve or decide, and changing someone else's item leaves a note in its conversation.</summary>
 [ApiController]
 [Route("api/author/collaboration")]
 [Authorize(Policy = "Scope:" + RequiredScope)]
@@ -199,7 +199,12 @@ public sealed class CollaborationAuthoringController(ICollaborationAuthoring aut
     public async Task<ActionResult<IReadOnlyList<CollaborationSummary>>> Mine(CancellationToken cancellationToken) =>
         Ok(await authoring.ListMineAsync(Author, cancellationToken));
 
-    /// <summary>The text of one of the author's own items (summary, content, sources, findings), each field size-capped; another author's item is refused.</summary>
+    /// <summary>Every item of the tenant, whoever wrote it, newest first, with a Mine flag.</summary>
+    [HttpGet("all")]
+    public async Task<ActionResult<IReadOnlyList<CollaborationSummary>>> All(CancellationToken cancellationToken) =>
+        Ok(await authoring.ListAllAsync(Author, cancellationToken));
+
+    /// <summary>The text of any item (summary, content, sources, findings), each field size-capped.</summary>
     [HttpGet("{id}")]
     public Task<IActionResult> Show(string id, CancellationToken cancellationToken) =>
         GuardedAsync(async () => await authoring.GetAsync(Author, id, cancellationToken) is { } detail ? Ok(detail) : NotFound());

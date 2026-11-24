@@ -100,16 +100,61 @@ public sealed class CollaborationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AnItemOfAnotherAuthorCannotBeChangedOrRead()
+    public async Task TheAuthoringAccountCanReadAnItemTheHumanWrote()
     {
-        var created = await _authoring.CreateAsync("Claude", new CollaborationDraft("Mine"));
+        // the user usage review is the example: the AI must be able to read the human's items to act on them
+        var humans = await _authoring.CreateAsync("Admin", new CollaborationDraft("User usage review", Content: "1. Move Add to the grid", Kind: CollaborationKinds.Research, Findings: "two clicks"));
+        await _conversation.AddAsync(humans.Id, "Admin", CommentKinds.Comment, "Please start with the grid buttons");
 
-        await Assert.ThrowsAsync<BusinessRuleException>(() => _authoring.UpdateAsync("Admin", created.Id, new CollaborationDraft("Not yours")));
-        await Assert.ThrowsAsync<BusinessRuleException>(() => _authoring.ListCommentsAsync("Admin", created.Id));
+        var detail = await _authoring.GetAsync("Claude", humans.Id);
+        var comments = await _authoring.ListCommentsAsync("Claude", humans.Id);
+
+        Assert.Equal("1. Move Add to the grid", detail!.Content);
+        Assert.Equal("two clicks", detail.Findings);
+        Assert.False(detail.Summary.Mine);
+        Assert.Contains(comments, c => c.Body.Contains("grid buttons", StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task TheAuthorCanReadTheBodyOfItsOwnItem_AndNobodyElseCan()
+    public async Task TheAuthoringAccountCanEditAndCommentOnTheHumansItem_ThroughANoteTheHumanSees_AndNeverKeepsAnApproval()
+    {
+        var humans = await _authoring.CreateAsync("Admin", new CollaborationDraft("Review the plan", Content: "v1"));
+        Assert.True(await _bll.SetApprovalAsync(humans.Id, PostApproval.Approved, "Admin"));
+
+        var edited = await _authoring.UpdateAsync("Claude", humans.Id, new CollaborationDraft(Content: "v2, answered the findings"));
+        await _authoring.AddCommentAsync("Claude", humans.Id, "Done: see the content");
+
+        Assert.Equal("v2, answered the findings", (await _authoring.GetAsync("Claude", humans.Id))!.Content);
+        Assert.Equal(PostApproval.NeedsReview, edited!.Approval); // an approval of v1 does not describe v2
+        Assert.False(edited.Mine);
+        var comments = await _authoring.ListCommentsAsync("Admin", humans.Id);
+        Assert.Contains(comments, c => c.Author == "Claude" && c.Body.Contains("Edited by Claude", StringComparison.Ordinal) && c.Body.Contains("content", StringComparison.Ordinal));
+        Assert.Contains(comments, c => c.Body == "Done: see the content");
+        // the item is still the human's
+        Assert.Equal("Admin", (await _authoring.ListAllAsync("Admin")).Single(i => i.Id == humans.Id).Mine == true ? "Admin" : "?");
+    }
+
+    [Fact]
+    public async Task EditingTheAiItemByAnotherAccountToo_StillNeedsTheItemToExist()
+    {
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _authoring.AddCommentAsync("Claude", Guid.NewGuid().ToString(), "x"));
+        Assert.Null(await _authoring.UpdateAsync("Claude", Guid.NewGuid().ToString(), new CollaborationDraft("x")));
+    }
+    [Fact]
+    public async Task ListAllShowsEveryItemWithAMineFlag()
+    {
+        var mine = await _authoring.CreateAsync("Claude", new CollaborationDraft("Mine"));
+        var theirs = await _authoring.CreateAsync("Admin", new CollaborationDraft("Theirs"));
+
+        var all = await _authoring.ListAllAsync("Claude");
+
+        Assert.True(all.Single(i => i.Id == mine.Id).Mine);
+        Assert.False(all.Single(i => i.Id == theirs.Id).Mine);
+        Assert.Equal([mine.Id], (await _authoring.ListMineAsync("Claude")).Select(i => i.Id)); // the old list stays "mine"
+    }
+
+    [Fact]
+    public async Task TheAuthorCanReadTheBodyOfItsOwnItem()
     {
         var created = await _authoring.CreateAsync("Claude", new CollaborationDraft("Read me", Content: "## Test steps\n1. Run it", Kind: CollaborationKinds.Research, Sources: "src", Findings: "found"));
 
@@ -120,7 +165,7 @@ public sealed class CollaborationTests : IAsyncLifetime
         Assert.Equal("found", detail.Findings);
         Assert.Equal("Read me", detail.Summary.Title);
         Assert.False(detail.Truncated);
-        await Assert.ThrowsAsync<BusinessRuleException>(() => _authoring.GetAsync("Admin", created.Id));
+        Assert.True(detail.Summary.Mine);
         Assert.Null(await _authoring.GetAsync("Claude", Guid.NewGuid().ToString()));
     }
 
