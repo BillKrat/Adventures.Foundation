@@ -1,102 +1,98 @@
 # Adventures.Foundation
 
-**The core of an AI starter kit for developers.** Our mission is to give every developer a fully
-functional foundation for building with AI, so one person can build something with the potential
-to succeed for less than $35 a month (hosting $38/qtr and an AI subscription $20/mon), without
-depending on expensive identity, data or AI service providers. The `Adventures.*` libraries here
-are the meat of that kit; [`ai-research-blog`](https://github.com/BillKrat/ai-research-blog) is a
-single, complete blog application that shows how to use them.
+**The core of an AI starter kit for developers.** The mission is to give every developer a working
+foundation for building with AI, so one person can run something with the potential to succeed for less
+than $35 a month, without depending on expensive identity, data or AI service providers.
 
-Reusable .NET class libraries shared across "Adventures.*"-family projects — extracted from
-[`ai-research-blog`](https://github.com/BillKrat/ai-research-blog) on 2026-09-19 because neither
-library is actually specific to that project. Naming convention: **`Adventures.*`** for anything
-meant to be reused across projects, **`<Product>.*`** (e.g. `AiBlogResearch.*`) for code specific
-to one product. If you're building a new project that needs auth or a generic multi-tenant data
-store, start here instead of re-implementing it.
+> **What the money buys, and from whom.** We do not provide hosting or AI services. The figures are what
+> the other parties charge: shared Windows hosting from [SmarterASP.NET](https://www.smarterasp.net)
+> (about $38 per quarter, billed by SmarterASP.NET) and an AI subscription from the provider of your
+> choice (about $20 a month).
 
-## Packages
+The `Adventures.*` libraries here are the meat of that kit.
+[`ai-research-blog`](https://github.com/BillKrat/ai-research-blog) is a single, complete blog application
+that shows how to use them: Angular client, ASP.NET Core API and an MCP server on top of these libraries.
+Naming convention: **`Adventures.*`** for anything meant to be reused across products, **`<Product>.*`**
+(for example `AiBlogResearch.*`) for code specific to one product. If you are building a project that
+needs sign-in, a multi-tenant data store, a plug-in seam or a tool surface for AI clients, start here
+instead of re-implementing it. The libraries were extracted from `ai-research-blog` on 2026-09-19.
 
-- **`Adventures.Security`** (`src/Adventures.Security/`) — self-hosted JWT issuing/validation,
-  OAuth2 client-credentials (M2M) auth for service-to-service calls, scope-based authorization
-  policies, and PBKDF2-HMAC-SHA256 password hashing for human users. No external identity
-  provider required. See the XML doc comments on `PasswordHasher` vs. `ClientSecretHasher` for why
-  user passwords and machine secrets deliberately use different hashing strategies — this is a
-  hard security requirement, not a style choice; don't unify them to save a step.
-- **`Adventures.Data`** (`src/Adventures.Data/`) — generic, tenant/org-scoped entity storage over
-  PostgreSQL using a **JSONB Hybrid + W3C N-Quads** model: known/structured fields live in an
-  indexable JSONB column (`IEntityRepository`), fully user-defined/extension fields live as
-  N-Quad-style triples scoped by a `graph` value (`ITripleStore`). This is what lets an app built
-  on this library support user-designed custom fields/forms per tenant/org/user without schema
-  migrations. `Sql/schema.sql` has the DDL.
-- **`Adventures.Identity`** (`src/Adventures.Identity/`) — `IUserAccountService`, composing
-  `Adventures.Data`'s generic entity store with `Adventures.Security`'s password hashing and JWT
-  issuance into an actual login flow: finds the user by tenant+username, checks the
-  `user_credentials` vault (`Adventures.Data`'s `Sql/schema-users.sql`) for lockout/disabled
-  status, verifies the password, and issues a JWT whose `sub` claim is the user's `entities.id`
-  UUID — never a password or secret, matching the "credentials never travel past the point of
-  login" design goal. `AddUserIdentity()` wires up the DI registrations; the host still separately
-  registers `Adventures.Data`'s `ISqlExecutor`/`IEntityRepository` (a real Postgres connection) and
-  `Adventures.Security`'s `AddSharedJwtAuthentication`.
+## The libraries (`src/`)
 
-All three are plain class libraries with no web framework dependency beyond what's needed for JWT
-bearer validation (`Adventures.Security` only) — safe to reference from an ASP.NET Core host, a
-console app, an Azure Function, etc.
+Each feature is wired into a host by one `AddXxx()` call, and `test/Adventures.Architecture.Tests` pins the
+reference graph so the layers cannot drift. Matching xUnit projects live in `test/`.
 
-## Why extracted, not just referenced in place
+**Foundations**
+- **`Adventures.Common`** and **`Adventures.Ioc`**: base types, diagnostics, and the dependency-injection
+  scan that registers services by lifetime.
+- **`Adventures.Entities`**: a storage-agnostic dynamic entity model (`IEntityBll`, `IEntityDal`,
+  `IEntityRepository<T>`), with **`Adventures.Entities.Identity`** (users, roles, rights, tenants, first-run
+  site creation, e-mail verification) and **`Adventures.Entities.Diagnostics`** (exception log, signatures).
+- **`Adventures.Security`**: framework-free JWT issuing and validation, OAuth2 client-credentials (M2M)
+  sign-in for service-to-service calls, scope policies, AES-256-GCM field encryption, and
+  PBKDF2-HMAC-SHA256 password hashing for people. **`Adventures.Security.AspNetCore`** is the ASP.NET wiring.
+  People's passwords and machine secrets deliberately use different hashers (`PasswordHasher` and
+  `ClientSecretHasher`): a hard security requirement, so do not unify them.
+- **`Adventures.Identity`** (+ `.Postgres`): the login flow, a credential vault with lockout and disabled
+  status, password change and recovery. Tokens carry the user's id and tenant, never a secret.
 
-`ai-research-blog` is a source-available, cost-conscious "AI starter kit" example (see its own
-`docs/Claude-architecture-decisions.md` for that project's full rationale, e.g. why it rejected Auth0's M2M
-free-tier quota). A second, separate Angular/backend app — a security-provider/admin UI mirroring
-what Auth0's own dashboard does, for managing tenants/orgs/users/M2M clients — needs the *same*
-security and data foundation without depending on `ai-research-blog`'s source tree. Packaging
-these as independently-versioned libraries is what makes that possible without cross-repo
-`ProjectReference` hacks.
+**Data**
+- **`Adventures.Data`** (contracts), **`Adventures.Data.Postgres`** and **`Adventures.Data.Sql`** (a legacy
+  SQL Server mode).
+- **`Adventures.Data.NQuad`** and **`Adventures.Data.NQuad.Postgres`**: a W3C N-Quads store behind
+  `INQuadStore` (in memory for tests, Npgsql for real), with two Postgres layouts, a plain text table and a
+  hybrid dictionary layout that is about half the size. A repository gives each tenant its own graph, so a
+  request can only read and write its tenant's data.
+
+**Web**
+- **`Adventures.WebApi`**: controller bases, correlation ids, the diagnostics probes, exception handling,
+  request hardening (fallback authorization, rate limits, security headers, trusted proxies), tenancy
+  (the host picks the tenant, CORS from the registered sites) and the one-setting site domain.
+- Controller libraries, each added with one call: **`Adventures.Identity.WebApi`** (sign-in, users, roles,
+  setup, password recovery), **`Adventures.Diagnostics.WebApi`** (health, exceptions, client errors, MCP
+  diagnostics), **`Adventures.Collaboration.WebApi`**, **`Adventures.Blog.WebApi`** (public reader, admin
+  content, comments, languages, widgets) and **`Adventures.Tools.WebApi`** (the tool manifest, `GET /api/tools`).
+
+**Features**
+- **`Adventures.Blog`** (+ `.Postgres`, `.Legacy`): posts, pages, categories, tags, visitor comments with
+  approval, HTML and Markdown content, site settings, language files, widgets, the default-on HTML sanitiser.
+- **`Adventures.Collaboration`**: the review channel between a person and an AI (developer and research
+  items, a conversation, recorded decisions).
+- **`Adventures.MEF`** and **`Adventures.MEF.WebApi`**: the plug-in seam. Discovery from the host and an
+  approved plug-in folder, per-tenant switches and settings, an in-process event bus, widgets, and the rules
+  for plug-in routes and tools.
+- **`Adventures.Tools`**: `IAppTool` (name, description, input schema, scope, route), a selector chain with a
+  fallback, and the catalog an MCP server reads. It has no dependencies.
+- **`Adventures.Client`**: a desktop and console client (sign-in session, remote presenter, view models) used by
+  the WPF app in `ai-research-blog`.
 
 ## Consuming this from another repo
 
-**During active co-development** (this repo and a consumer changing together, same machine): pack
-and push to a local folder-based NuGet feed rather than publishing a real version for every
-iteration.
+Consume the libraries by **project reference** from a sibling clone, as `ai-research-blog` does from its
+solution file, or pack them to a **local folder feed** for your own use:
 
 ```bash
 dotnet pack src/Adventures.Security -c Release -o ../local-nuget-feed
-dotnet pack src/Adventures.Data -c Release -o ../local-nuget-feed
 ```
 
-A consumer repo's `nuget.config` should add that folder as a package source (see
-`ai-research-blog/nuget.config` for the pattern already wired up there).
+and add that folder as a package source in your `nuget.config`. We do not publish current versions to a
+public package registry. Earlier versions that were published remain under the terms they were released
+with, and are superseded by the source here. Keep this repository and its consumer on matching branch names.
 
-**Once a version is stable enough to depend on for real**: publish to nuget.org (public, free, no
-auth needed to *consume* — deliberately not GitHub Packages, since GitHub Packages requires
-authentication to restore even public packages, which would force anyone cloning
-`ai-research-blog` to configure a PAT just to build it. That contradicts the whole point of a
-"starter kit," so nuget.org is the actual target feed, not a stopgap).
+## Build and test
 
-Publishing is done via nuget.org's **Trusted Publishing** (OIDC), not a stored `NUGET_API_KEY`
-secret — no long-lived credential to create, rotate, or leak. This needs a one-time policy
-configured on nuget.org (Account → Trusted Publishing → Add) before the first tag push will work:
+```bash
+dotnet build Adventures.Foundation.slnx
+dotnet test
+```
 
-| Field | Value |
-|---|---|
-| Repository Owner | `BillKrat` |
-| Repository | `Adventures.Foundation` |
-| Workflow File | `publish.yml` (file name only, not the `.github/workflows/` path) |
-| Environment | *(leave blank — this workflow doesn't use a GitHub Actions environment)* |
-| Scope glob | `Adventures.*` (covers both current packages and future ones added to this repo) |
-
-Once that policy exists, pushing a tag like `v0.1.0` triggers [`.github/workflows/publish.yml`](.github/workflows/publish.yml),
-which builds, tests, packs, and publishes both packages. A brand-new policy against a public repo
-may sit in nuget.org's 7-day "pending" state until the first successful publish locks it to this
-repo's IDs — if the first tag push fails, check the policy's status on nuget.org before assuming
-the workflow is broken.
-
-## Versioning
-
-Bump `<Version>` in each project's `.csproj` independently — `Adventures.Security` and
-`Adventures.Data` don't have to move in lockstep, they just happen to live in one repo for now
-because they're evolving at the same pace during early development. Split into separate repos
-later if that stops being true; don't force it prematurely.
+`Adventures.Data.NQuad.Tests` also has live-Postgres tests that need a `ConnectionStrings:Postgres`
+user-secret; everything else runs offline. A GitHub Actions build runs on every push.
 
 ## Not for regulated use
 
 This software is a general-purpose starter kit. It is **not designed, validated or licensed for regulated use**: health care and life sciences (including clinical or other human-subjects research), financial services, safety-critical or critical-infrastructure systems, government or defence compliance regimes, or any setting that needs a validated system, an audit trail, electronic signatures or a compliance certification. It has no regulatory approval and makes no compliance claim, and it keeps no audit trail. Production use in a regulated field is outside the licence, and no commercial licence is offered for it. We also do not accept contributions whose purpose is to make it usable in a regulated environment (see [CONTRIBUTING.md](CONTRIBUTING.md)), so please do not spend effort on that. The exact terms are in [NOTICE](NOTICE) (Regulatory disclaimer and field of use) and the Additional Use Grant in [LICENSE](LICENSE).
+
+## License
+
+Source-available under the Business Source License 1.1, with an additional use grant for small operators, changing to AGPL-3.0 after four years. Read [LICENSE](LICENSE) and [NOTICE](NOTICE) for the exact terms; they govern, not this summary.
