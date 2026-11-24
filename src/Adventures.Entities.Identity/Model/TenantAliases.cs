@@ -37,6 +37,10 @@ public static partial class TenantHosts
     /// <summary>Whether the text is a plain host name (letters, digits, dots and hyphens; at most 253 characters). A name decides whose data a request sees, so nothing else is accepted.</summary>
     public static bool IsValid(string host) => host.Length is > 0 and <= 253 && ValidHost().IsMatch(host);
 
+    /// <summary>A real name for a site: a valid host name with at least one dot that is not localhost and not an address. Used for a tenant's domain and an automatic alias.</summary>
+    public static bool IsRealName(string host) =>
+        IsValid(host) && host.Contains('.') && host != "localhost" && !host.EndsWith(".localhost", StringComparison.Ordinal) && !host.All(c => char.IsDigit(c) || c == '.');
+
     [GeneratedRegex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$")]
     private static partial Regex ValidHost();
 }
@@ -126,7 +130,7 @@ public sealed class TenantAliasEditor(IEntityBll<Tenant> tenants) : ITenantAlias
     }
 
     /// <summary>Whether the tenant already reaches this host: through its domain or an alias, either equal or above it (a host under a name the tenant holds is already the tenant's).</summary>
-    private static bool Reaches(Tenant tenant, string host) =>
+    internal static bool Reaches(Tenant tenant, string host) =>
         Names(tenant).Any(name => host == name || host.EndsWith("." + name, StringComparison.Ordinal) || name.EndsWith("." + host, StringComparison.Ordinal));
 
     internal static IEnumerable<string> Names(Tenant tenant) =>

@@ -20,6 +20,7 @@ public sealed class HttpRequestOrigin(IHttpContextAccessor accessor) : IRequestO
         }
 
         var headers = context.Request.Headers;
-        return !headers.ContainsKey("X-Forwarded-For") && !headers.ContainsKey("Forwarded") && !headers.ContainsKey("X-Real-IP");
+        // X-Original-For is what the forwarded-headers middleware leaves behind after it replaced the address with the proxy's answer: the request still came through a proxy
+        return !headers.ContainsKey("X-Forwarded-For") && !headers.ContainsKey("Forwarded") && !headers.ContainsKey("X-Real-IP") && !headers.ContainsKey("X-Original-For");
     }
 }

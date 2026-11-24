@@ -12,13 +12,36 @@ public sealed class VisitorCommentsTests : IAsyncLifetime
     private IVisitorComments _comments = null!;
     private readonly FakePosts _posts = new();
     private readonly FakeSettings _settings = new();
+    private readonly FakeNotifier _notifier = new();
+
+    private sealed class FakeNotifier : ICommentNotifier
+    {
+        public List<(string Author, string Post, string Body)> Told { get; } = [];
+
+        public bool Throws { get; set; }
+
+        public Task NotifyAsync(string author, string postTitle, string body, CancellationToken cancellationToken = default)
+        {
+            if (Throws)
+            {
+                throw new InvalidOperationException("mail is down");
+            }
+
+            Told.Add((author, postTitle, body));
+            return Task.CompletedTask;
+        }
+    }
 
     private sealed class FakeSettings : ISiteSettings
     {
         public bool CommentsEnabled { get; set; } = true;
 
+        public int CloseAfterDays { get; set; }
+
+        public bool Moderate { get; set; } = true;
+
         public Task<PublicSiteSettings> GetPublicAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new PublicSiteSettings("Site", string.Empty, 10, CommentsEnabled));
+            Task.FromResult(new PublicSiteSettings("Site", string.Empty, 10, CommentsEnabled, CommentsCloseAfterDays: CloseAfterDays, CommentsModerate: Moderate));
 
         public Task<string> GetLegacyTimeZoneAsync(CancellationToken cancellationToken = default) => Task.FromResult("UTC");
     }
@@ -29,6 +52,9 @@ public sealed class VisitorCommentsTests : IAsyncLifetime
         {
             ["open-post"] = new("An open post", true),
             ["closed-post"] = new("A closed post", false),
+            ["old-post"] = new("An old post", true, DateTimeOffset.UtcNow.AddDays(-40).ToString("o")),
+            ["new-post"] = new("A new post", true, DateTimeOffset.UtcNow.AddDays(-2).ToString("o")),
+            ["undated-post"] = new("A post with no usable date", true, "not a date"),
         };
 
         public Task<CommentablePost?> FindAsync(string slug, CancellationToken cancellationToken = default) =>
@@ -51,6 +77,7 @@ public sealed class VisitorCommentsTests : IAsyncLifetime
         services.AddScoped<IEntityBll<VisitorComment>>(p => new EntityBll<VisitorComment>(new EntityDal<VisitorComment>(p.GetRequiredService<IEntityRepository<VisitorComment>>())));
         services.AddSingleton<ICommentablePosts>(_posts);
         services.AddSingleton<ISiteSettings>(_settings);
+        services.AddSingleton<ICommentNotifier>(_notifier);
         services.AddScoped<IVisitorComments, VisitorComments>();
         _comments = services.BuildServiceProvider().CreateScope().ServiceProvider.GetRequiredService<IVisitorComments>();
     }
@@ -204,5 +231,94 @@ public sealed class VisitorCommentsTests : IAsyncLifetime
         }
 
         await Assert.ThrowsAsync<BusinessRuleException>(() => _comments.SubmitAsync(Valid("one too many")));
+    }
+
+    private static SubmittedComment On(string slug) => new(slug, "Anna", null, "Nice post");
+
+    [Fact]
+    public async Task WithNoLimit_AnOldPostStillTakesComments()
+    {
+        await _comments.SubmitAsync(On("old-post"));
+
+        Assert.Equal(1, await _comments.CountPendingAsync());
+    }
+
+    [Fact]
+    public async Task CommentsCloseOnAPostOlderThanTheLimit_ButNotOnANewerOne()
+    {
+        _settings.CloseAfterDays = 30;
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _comments.SubmitAsync(On("old-post")));
+        await _comments.SubmitAsync(On("new-post"));
+
+        Assert.Equal(1, await _comments.CountPendingAsync());
+    }
+
+    [Fact]
+    public async Task APostWhoseDateCannotBeRead_IsNeverClosedByTheLimit()
+    {
+        _settings.CloseAfterDays = 1;
+
+        await _comments.SubmitAsync(On("undated-post"));
+
+        Assert.Equal(1, await _comments.CountPendingAsync());
+    }
+
+    [Fact]
+    public async Task WithModerationOn_ANewCommentWaits_AndIsNotShownToVisitors()
+    {
+        await _comments.SubmitAsync(On("open-post"));
+
+        Assert.Equal(1, await _comments.CountPendingAsync());
+        Assert.Empty(await _comments.ListApprovedAsync("open-post"));
+    }
+
+    [Fact]
+    public async Task WithModerationOff_ANewCommentIsApprovedAtOnce_AndStillStoredAsPlainText()
+    {
+        _settings.Moderate = false;
+
+        await _comments.SubmitAsync(new SubmittedComment("open-post", "Anna", null, "<b>hi</b>"));
+
+        Assert.Equal(0, await _comments.CountPendingAsync());
+        Assert.Equal("<b>hi</b>", Assert.Single(await _comments.ListApprovedAsync("open-post")).Body);   // shown as text by the client, never as markup
+    }
+
+    [Fact]
+    public async Task WithModerationOff_EveryOtherRuleStillApplies()
+    {
+        _settings.Moderate = false;
+        _settings.CloseAfterDays = 30;
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _comments.SubmitAsync(On("old-post")));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _comments.SubmitAsync(On("closed-post")));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _comments.SubmitAsync(new SubmittedComment("open-post", "", null, "text")));
+        Assert.Empty(await _comments.ListApprovedAsync("open-post"));
+    }
+
+    [Fact]
+    public async Task ANewComment_IsAnnouncedToTheOwnerOnce_WithTheAuthorThePostAndTheText()
+    {
+        await _comments.SubmitAsync(On("open-post"));
+
+        Assert.Equal(("Anna", "An open post", "Nice post"), Assert.Single(_notifier.Told));
+    }
+
+    [Fact]
+    public async Task ARefusedComment_IsNotAnnounced()
+    {
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _comments.SubmitAsync(On("closed-post")));
+
+        Assert.Empty(_notifier.Told);
+    }
+
+    [Fact]
+    public async Task AFailingNotice_NeverFailsTheComment()
+    {
+        _notifier.Throws = true;
+
+        await _comments.SubmitAsync(On("open-post"));
+
+        Assert.Equal(1, await _comments.CountPendingAsync());
     }
 }

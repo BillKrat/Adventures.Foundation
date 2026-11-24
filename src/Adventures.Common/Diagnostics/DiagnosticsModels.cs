@@ -36,8 +36,14 @@ public sealed record CorrelationReport(
 /// for this request" without knowing how exceptions are stored. Nothing here changes state. The host adds what only it
 /// can read (its log files); this interface covers what is in the store.
 /// </summary>
+/// <summary>One recorded exception by its entry id, with the kind of failure it belongs to (null when its kind is not known).</summary>
+public sealed record ExceptionDetail(ExceptionOccurrence Occurrence, ExceptionSignatureSummary? Kind);
+
 public interface IDiagnosticsReader : IBll
 {
+    /// <summary>One exception by its entry id (the id of a row in the exception list), or null when there is none or the id is not an id. It works for an entry that has no correlation id.</summary>
+    Task<ExceptionDetail?> FindByEntryIdAsync(string entryId, CancellationToken cancellationToken = default);
+
     /// <summary>The exceptions recorded under <paramref name="correlationId"/> and their signatures.</summary>
     Task<CorrelationReport> FindByCorrelationIdAsync(string correlationId, CancellationToken cancellationToken = default);
 

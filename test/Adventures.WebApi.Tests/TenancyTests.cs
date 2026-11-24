@@ -3,6 +3,7 @@ using Adventures.Entities;
 using Adventures.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -106,6 +107,338 @@ public class TenancyTests
         await middleware.InvokeAsync(Request(Acme), resolver, new RequestTenant());
 
         Assert.Equal(2, resolver.Asked.Count);
+    }
+
+    [Fact]
+    public void TheHomeTenant_IsTheHostsTenant_AndTheSwitcherDoesNotReplaceIt()
+    {
+        var holder = new RequestTenant();
+        Assert.Null(holder.HomeTenantId);
+
+        holder.Set(new CurrentTenant("home-id", "Home", "home.test", "www.home.test", TenantMatch.Domain));
+        holder.Set(new CurrentTenant("other-id", "Other", "other.test", "www.home.test", TenantMatch.Acting));
+
+        Assert.Equal("home-id", holder.HomeTenantId);
+        Assert.Equal("other-id", holder.Current.Id);
+    }
+
+    [Fact]
+    public void AHostWithNoTenant_HasNoHomeTenant_SoNoPersonIsPickedForIt()
+    {
+        var holder = new RequestTenant();
+        holder.Set(new CurrentTenant(null, null, null, "unknown.test", TenantMatch.None));
+
+        Assert.Null(holder.HomeTenantId);
+    }
+
+    // ---- T4b: the temporary address of a fresh install (an explicit operator setting) ----
+
+    /// <summary>Knows the domains it was given and learns a host when the first-run step "aliases" it.</summary>
+    private sealed class LearningResolver(params string[] domains) : ITenantResolver
+    {
+        private readonly List<(string Name, string Domain)> _names = domains.Select(d => (d, d)).ToList();
+
+        public int Asked { get; private set; }
+
+        public void Learn(string host, string domain) => _names.Add((host, domain));
+
+        public Task<CurrentTenant> ResolveAsync(string? host, string? fallbackDomain = null, CancellationToken cancellationToken = default)
+        {
+            Asked++;
+            var name = (host ?? string.Empty).Split(':')[0].ToLowerInvariant();
+            var hit = _names.FirstOrDefault(d => name == d.Name || name.EndsWith("." + d.Name, StringComparison.Ordinal));
+            return Task.FromResult(hit.Name is null ? new CurrentTenant(null, null, null, host ?? string.Empty, TenantMatch.None) : new CurrentTenant(hit.Domain + "-id", hit.Domain, hit.Domain, host ?? string.Empty, TenantMatch.Domain));
+        }
+    }
+
+    private sealed class FakeFirstRun(LearningResolver resolver, bool succeed = true) : ITenantFirstRun
+    {
+        public List<(string Host, string? Target)> Calls { get; } = [];
+
+        public Task<bool> TryAliasAsync(string host, string? targetDomain, CancellationToken cancellationToken = default)
+        {
+            Calls.Add((host, targetDomain));
+            if (succeed)
+            {
+                resolver.Learn(host.Split(':')[0], targetDomain!);
+            }
+
+            return Task.FromResult(succeed);
+        }
+    }
+
+    private static async Task<(bool Reached, CurrentTenant? Seen, FakeFirstRun FirstRun, LearningResolver Resolver)> FirstRunAsync(string host, string? target, bool succeed = true, string path = "/api/posts", TenantCacheInvalidator? invalidator = null)
+    {
+        var resolver = new LearningResolver(Acme);
+        var firstRun = new FakeFirstRun(resolver, succeed);
+        var holder = new RequestTenant();
+        var reached = false;
+        CurrentTenant? seen = null;
+        var options = Options(TenancyEnforcement.Enforce);
+        options.AutoAliasToTenantDomain = target;
+        var middleware = new TenantMiddleware(
+            _ =>
+            {
+                reached = true;
+                seen = holder.Current;
+                return Task.CompletedTask;
+            },
+            Microsoft.Extensions.Options.Options.Create(options),
+            new MemoryCache(new MemoryCacheOptions()),
+            new CapturingLogger(),
+            invalidator);
+
+        var context = Request(host, path);
+        context.RequestServices = new ServiceCollection().AddSingleton<ITenantFirstRun>(firstRun).BuildServiceProvider();
+        await middleware.InvokeAsync(context, resolver, holder);
+        return (reached, seen, firstRun, resolver);
+    }
+
+    [Fact]
+    public async Task WithTheSettingOff_AnUnknownHostIsRefusedAsBefore_AndTheFirstRunStepIsNeverAsked()
+    {
+        var run = await FirstRunAsync("temp.example.org", target: null);
+
+        Assert.False(run.Reached);
+        Assert.Empty(run.FirstRun.Calls);
+    }
+
+    [Fact]
+    public async Task WithTheSettingOn_AnUnknownHostIsAliasedOnceAndTheRequestGoesThroughForThatTenant()
+    {
+        var run = await FirstRunAsync("temp.example.org", target: Acme);
+
+        Assert.True(run.Reached);
+        Assert.Equal(("temp.example.org", Acme), Assert.Single(run.FirstRun.Calls));
+        Assert.Equal(Acme, run.Seen!.Domain);
+    }
+
+    [Fact]
+    public async Task AKnownHost_NeverTriggersTheFirstRunStep()
+    {
+        var run = await FirstRunAsync("www." + Acme, target: Acme);
+
+        Assert.True(run.Reached);
+        Assert.Empty(run.FirstRun.Calls);
+    }
+
+    [Fact]
+    public async Task WhenTheStepDeclines_TheHostStaysUnknownAndIsRefused()
+    {
+        var run = await FirstRunAsync("temp.example.org", target: Acme, succeed: false);
+
+        Assert.False(run.Reached);
+        Assert.Single(run.FirstRun.Calls);
+    }
+
+    [Fact]
+    public async Task TheInfrastructurePaths_DoNotTriggerIt()
+    {
+        var run = await FirstRunAsync("temp.example.org", target: Acme, path: "/api/health");
+
+        Assert.Empty(run.FirstRun.Calls);
+    }
+
+    [Fact]
+    public async Task AnAliasedHost_ClearsTheKeptAnswersSoEveryOtherRequestSeesIt()
+    {
+        var invalidator = new TenantCacheInvalidator();
+        var before = invalidator.Token;
+
+        await FirstRunAsync("temp.example.org", target: Acme, invalidator: invalidator);
+
+        Assert.True(before.HasChanged);
+    }
+
+    [Theory]
+    [InlineData("/api/setup/status")]
+    [InlineData("/api/setup/token")]
+    [InlineData("/API/SETUP/attach")]
+    public async Task TheSetupApi_IsNeverRefusedForAnUnknownHost_ItIsHowAnUnknownHostGetsSetUp(string path)
+    {
+        var run = await RunAsync(Request("unknown.example.org", path), Options(TenancyEnforcement.Enforce));
+
+        Assert.True(run.Reached);
+    }
+
+    [Theory]
+    [InlineData("/api/setupx")]
+    [InlineData("/api/posts")]
+    [InlineData("/api/setups/status")]
+    public async Task OnlyTheSetupApiItself_IsExempt_NotANeighbourOfIt(string path)
+    {
+        var run = await RunAsync(Request("unknown.example.org", path), Options(TenancyEnforcement.Enforce));
+
+        Assert.False(run.Reached);
+    }
+
+    /// <summary>A service that cannot be built here (the first-site service needs the sign-in store). A request for a host that already reaches a tenant must never ask for it.</summary>
+    private sealed class ExplodingServices : IServiceProvider
+    {
+        public List<Type> Asked { get; } = [];
+
+        public object? GetService(Type serviceType)
+        {
+            Asked.Add(serviceType);
+            throw new InvalidOperationException("must not be built for a known host: " + serviceType.Name);
+        }
+    }
+
+    [Fact]
+    public async Task AKnownHost_NeverBuildsTheFirstRunServices_SoAnInstallWithoutASignInStoreStillAnswers()
+    {
+        var services = new ExplodingServices();
+        var context = Request(Acme, "/api/posts");
+        context.RequestServices = services;
+        var options = Options(TenancyEnforcement.Enforce);
+        options.AutoAliasToTenantDomain = Acme;
+        var reached = false;
+        var middleware = new TenantMiddleware(
+            _ =>
+            {
+                reached = true;
+                return Task.CompletedTask;
+            },
+            Microsoft.Extensions.Options.Options.Create(options),
+            new MemoryCache(new MemoryCacheOptions()),
+            new CapturingLogger());
+
+        await middleware.InvokeAsync(context, new FakeResolver(Acme), new RequestTenant());
+
+        Assert.True(reached);
+        Assert.Empty(services.Asked);
+    }
+
+    private sealed class ThrowingFirstSite : IFirstRunSite
+    {
+        public Task<bool> TryCreateFirstSiteAsync(string host, CancellationToken cancellationToken = default) => throw new InvalidOperationException("the sign-in store is not available");
+    }
+
+    private sealed class ThrowingFirstRun : ITenantFirstRun
+    {
+        public Task<bool> TryAliasAsync(string host, string? targetDomain, CancellationToken cancellationToken = default) => throw new InvalidOperationException("the store is not available");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AFirstRunStepThatFails_NeverBecomesA500_TheHostSimplyStaysUnknown(bool firstSiteStep)
+    {
+        var resolver = new LearningResolver(Acme);
+        var holder = new RequestTenant();
+        var reached = false;
+        var options = Options(TenancyEnforcement.Enforce);
+        options.AutoAliasToTenantDomain = Acme;
+        var middleware = new TenantMiddleware(
+            _ =>
+            {
+                reached = true;
+                return Task.CompletedTask;
+            },
+            Microsoft.Extensions.Options.Options.Create(options),
+            new MemoryCache(new MemoryCacheOptions()),
+            new CapturingLogger());
+        var context = Request("temp.example.org", "/api/posts");
+        var services = new ServiceCollection();
+        if (firstSiteStep)
+        {
+            services.AddSingleton<IFirstRunSite>(new ThrowingFirstSite());
+        }
+        else
+        {
+            services.AddSingleton<ITenantFirstRun>(new ThrowingFirstRun());
+        }
+
+        context.RequestServices = services.BuildServiceProvider();
+
+        await middleware.InvokeAsync(context, resolver, holder);
+
+        Assert.False(reached);
+        Assert.Equal(404, context.Response.StatusCode);   // refused as an unknown host, not a server error
+    }
+
+    // ---- onboarding stage 2: the first host of an empty install becomes the first site ----
+
+    private sealed class FakeFirstSite(LearningResolver resolver, bool succeed = true) : IFirstRunSite
+    {
+        public List<string> Hosts { get; } = [];
+
+        public Task<bool> TryCreateFirstSiteAsync(string host, CancellationToken cancellationToken = default)
+        {
+            Hosts.Add(host);
+            if (succeed)
+            {
+                resolver.Learn(host.Split(':')[0], host.Split(':')[0]);
+            }
+
+            return Task.FromResult(succeed);
+        }
+    }
+
+    private static async Task<(bool Reached, CurrentTenant? Seen, FakeFirstSite Site, LearningResolver Resolver)> FirstSiteAsync(string host, bool succeed = true, string path = "/api/posts", TenancyEnforcement mode = TenancyEnforcement.Report, TenantCacheInvalidator? invalidator = null)
+    {
+        var resolver = new LearningResolver(Acme);
+        var site = new FakeFirstSite(resolver, succeed);
+        var holder = new RequestTenant();
+        var reached = false;
+        CurrentTenant? seen = null;
+        var middleware = new TenantMiddleware(
+            _ =>
+            {
+                reached = true;
+                seen = holder.Current;
+                return Task.CompletedTask;
+            },
+            Microsoft.Extensions.Options.Options.Create(Options(mode)),
+            new MemoryCache(new MemoryCacheOptions()),
+            new CapturingLogger(),
+            invalidator);
+
+        var context = Request(host, path);
+        context.RequestServices = new ServiceCollection().AddSingleton<IFirstRunSite>(site).BuildServiceProvider();
+        await middleware.InvokeAsync(context, resolver, holder);
+        return (reached, seen, site, resolver);
+    }
+
+    [Theory]
+    [InlineData(TenancyEnforcement.Report)]
+    [InlineData(TenancyEnforcement.Enforce)]
+    public async Task AnUnknownHostOnAnEmptyInstall_IsAskedToBecomeTheFirstSite_AndThenServedAsThatTenant(TenancyEnforcement mode)
+    {
+        var run = await FirstSiteAsync("fresh.example.org", mode: mode);
+
+        Assert.Equal("fresh.example.org", Assert.Single(run.Site.Hosts));
+        Assert.True(run.Reached);
+        Assert.Equal("fresh.example.org", run.Seen!.Domain);
+        Assert.Equal(TenantMatch.Domain, run.Seen.Match);
+    }
+
+    [Fact]
+    public async Task AKnownHost_AndTheInfrastructurePaths_NeverStartASite()
+    {
+        Assert.Empty((await FirstSiteAsync("www." + Acme)).Site.Hosts);
+        Assert.Empty((await FirstSiteAsync("fresh.example.org", path: "/api/health")).Site.Hosts);
+        Assert.Empty((await FirstSiteAsync("fresh.example.org", path: "/")).Site.Hosts);
+    }
+
+    [Fact]
+    public async Task WhenThereIsNoFirstSiteToMake_TheHostStaysUnknown_AsBefore()
+    {
+        var run = await FirstSiteAsync("second.example.org", succeed: false, mode: TenancyEnforcement.Enforce);
+
+        Assert.False(run.Reached);
+        Assert.Single(run.Site.Hosts);
+    }
+
+    [Fact]
+    public async Task ANewFirstSite_ClearsTheKeptAnswers_SoEveryRequestSeesIt()
+    {
+        var invalidator = new TenantCacheInvalidator();
+        var before = invalidator.Token;
+
+        await FirstSiteAsync("fresh.example.org", invalidator: invalidator);
+
+        Assert.True(before.HasChanged);
     }
 
     // ---- no tenant, no content (T2: there is no shared graph to fall back to) ----

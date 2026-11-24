@@ -39,6 +39,8 @@ public sealed class UsersPlatformSwitchTests
 
         public Task<User> CreateAsync(User entity, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
+        public Task<User> CreateInTenantAsync(User entity, IReadOnlySet<string> tenantPeopleIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
         public Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task UpdateAsync(User entity, CancellationToken cancellationToken = default) => throw new NotSupportedException();

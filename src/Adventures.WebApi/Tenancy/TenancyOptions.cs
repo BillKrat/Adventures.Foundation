@@ -27,9 +27,18 @@ public sealed class TenancyOptions
     /// <summary>Set by the host, never by configuration: true only in the Development environment, so a deployed site cannot fall into a tenant by accident.</summary>
     public bool AllowFallback { get; set; }
 
+    /// <summary>
+    /// The domain of the tenant that receives an unknown host as an alias (the install step that makes the site's temporary address work before anyone can sign in). Empty (the
+    /// default) switches it off: an unknown host is then reported or refused. Turn it on for the first run, then clear it again.
+    /// </summary>
+    public string? AutoAliasToTenantDomain { get; set; }
+
     /// <summary>How long the tenant answer for one host name is kept, so not every request reads the tenant store. A new tenant takes at most this long to be recognised. 0 turns the cache off.</summary>
     public int CacheSeconds { get; set; } = 60;
 
     /// <summary>Paths never refused, even for an unknown host: the domain root (the hosting provider's certificate request needs a 200 there) and the public health check (the deploy smoke test).</summary>
     public IReadOnlyList<string> ExemptPaths { get; } = ["/", "/api/health"];
+
+    /// <summary>Paths (and everything under them) never refused for an unknown host and never the trigger of a first site: the setup API is how an unknown host gets set up.</summary>
+    public IReadOnlyList<string> ExemptPrefixes { get; } = ["/api/setup"];
 }

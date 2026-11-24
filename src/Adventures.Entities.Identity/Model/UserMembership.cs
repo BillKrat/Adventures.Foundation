@@ -2,6 +2,15 @@ using Adventures.Common.Exceptions;
 
 namespace Adventures.Entities;
 
+/// <summary>
+/// The tenant a person signed in to: the tenant of the host the request came on, even while the tenant switcher has the person working in another one. A person is looked up by name
+/// in this tenant (the sign-in account is per tenant), never in the tenant they are only acting in. Null when the request has no tenant.
+/// </summary>
+public interface IHomeTenant
+{
+    string? HomeTenantId { get; }
+}
+
 /// <summary>The tenant of the current request. It throws <see cref="TenantRequiredException"/> when the request has none, so nothing is read or changed for nobody.</summary>
 public interface ITenantContext
 {
@@ -38,6 +47,8 @@ public sealed class TenantScopedUserBll(IUserBll inner, IUserMembership membersh
 {
     public Task<User?> FindByUserNameAsync(string userName, CancellationToken cancellationToken = default) => inner.FindByUserNameAsync(userName, cancellationToken);
 
+    public Task<User> CreateInTenantAsync(User entity, IReadOnlySet<string> tenantPeopleIds, CancellationToken cancellationToken = default) => inner.CreateInTenantAsync(entity, tenantPeopleIds, cancellationToken);
+
     public async Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default)
     {
         if (visibility?.SeeEveryone == true)
@@ -57,7 +68,9 @@ public sealed class TenantScopedUserBll(IUserBll inner, IUserMembership membersh
     public async Task<User> CreateAsync(User entity, CancellationToken cancellationToken = default)
     {
         var tenantId = tenant.TenantId; // before anything is written: with no tenant nothing is created, not even an orphan person
-        var created = await inner.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
+        // the name only has to be free among this tenant's people: every tenant can have its own Admin
+        var people = await membership.MemberIdsAsync(tenantId, cancellationToken).ConfigureAwait(false);
+        var created = await inner.CreateInTenantAsync(entity, people, cancellationToken).ConfigureAwait(false);
         await membership.AddMemberAsync(created.EntityId!.Value, tenantId, cancellationToken).ConfigureAwait(false);
         return created;
     }

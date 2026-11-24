@@ -37,6 +37,17 @@ public sealed class TenantController(IRequestTenant requestTenant, TenantCacheIn
     public async Task<IActionResult> Hosts([FromServices] ITenantAliasEditor aliases, CancellationToken cancellationToken) =>
         Ok(await aliases.ListAsync(cancellationToken));
 
+    /// <summary>Creates a tenant on a domain: a name and the domain, from one place. 409 with the reason when the name or domain is refused or another tenant already reaches the domain.</summary>
+    [HttpPost]
+    [RequireRight(Rights.PlatformManage)]
+    public Task<IActionResult> CreateTenant([FromBody] NewTenantRequest request, [FromServices] ITenantCreator creator, CancellationToken cancellationToken) =>
+        GuardedAsync(async () =>
+        {
+            var created = await creator.CreateAsync(request.Name ?? string.Empty, request.Domain ?? string.Empty, cancellationToken);
+            caches?.Invalidate(); // the new domain works at once
+            return StatusCode(StatusCodes.Status201Created, created);
+        });
+
     /// <summary>Makes the host an alias of the tenant, so it mirrors the tenant's own domain. 409 when the name is not a plain host name or already reaches another tenant.</summary>
     [HttpPut("{id}/aliases")]
     [RequireRight(Rights.PlatformManage)]
@@ -85,6 +96,9 @@ public sealed class TenantController(IRequestTenant requestTenant, TenantCacheIn
             return removed is null ? NotFound() : Ok(removed);
         });
 }
+
+/// <summary>The name and domain of a new tenant.</summary>
+public sealed record NewTenantRequest(string? Name, string? Domain);
 
 /// <summary>The host name to add as an alias.</summary>
 public sealed record AliasRequest(string Host);

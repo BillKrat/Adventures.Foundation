@@ -24,7 +24,8 @@ public sealed record PublicComment(string Author, string Created, string Body);
 public sealed record ModerationComment(string Id, string PostSlug, string PostTitle, string Author, string? Email, string Created, string Status, string Body);
 
 /// <summary>A published post that may take comments, as far as the comments feature needs to know.</summary>
-public sealed record CommentablePost(string Title, bool CommentsEnabled);
+/// <param name="DatePublished">When the post was published (ISO text), or null; used to close comments on old posts.</param>
+public sealed record CommentablePost(string Title, bool CommentsEnabled, string? DatePublished = null);
 
 /// <summary>Finds a published post by its address. A post that is missing or not published is null.</summary>
 public interface ICommentablePosts
@@ -37,7 +38,7 @@ public sealed class PublicContentCommentablePosts(IPublicContent content) : ICom
 {
     public async Task<CommentablePost?> FindAsync(string slug, CancellationToken cancellationToken = default) =>
         await content.GetPostAsync(slug, cancellationToken, includeDrafts: false).ConfigureAwait(false) is { } post
-            ? new CommentablePost(post.Summary.Title, post.EnableComments)
+            ? new CommentablePost(post.Summary.Title, post.EnableComments, post.Summary.DatePublished)
             : null;
 }
 
@@ -66,7 +67,7 @@ public interface IVisitorComments
 }
 
 /// <summary>Implementation over the visitor comment repository and the published posts.</summary>
-public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntitySchemaOf<VisitorComment> schema, ICommentablePosts posts, ISiteSettings settings) : IVisitorComments
+public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntitySchemaOf<VisitorComment> schema, ICommentablePosts posts, ISiteSettings settings, ICommentNotifier? notifier = null) : IVisitorComments
 {
     public const int MaxBodyLength = 2000;
     public const int MaxAuthorLength = 80;
@@ -83,6 +84,7 @@ public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntityS
             throw new BusinessRuleException("Comments are closed on this site.");
         }
 
+        var site = await settings.GetPublicAsync(cancellationToken).ConfigureAwait(false);
         var author = Clean(comment.Author);
         var body = Clean(comment.Body);
         var email = Clean(comment.Email ?? string.Empty);
@@ -107,7 +109,14 @@ public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntityS
             throw new BusinessRuleException("Comments are not open on this post.");
         }
 
-        if (await CountPendingAsync(cancellationToken).ConfigureAwait(false) >= MaxPending)
+        if (site.CommentsCloseAfterDays > 0
+            && DateTimeOffset.TryParse(post.DatePublished, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var published)
+            && DateTimeOffset.UtcNow - published > TimeSpan.FromDays(site.CommentsCloseAfterDays))
+        {
+            throw new BusinessRuleException($"Comments are closed on posts older than {site.CommentsCloseAfterDays.ToString(System.Globalization.CultureInfo.InvariantCulture)} days.");
+        }
+
+        if (site.CommentsModerate && await CountPendingAsync(cancellationToken).ConfigureAwait(false) >= MaxPending)
         {
             throw new BusinessRuleException("Too many comments are waiting for approval. Please try again later.");
         }
@@ -123,9 +132,29 @@ public sealed class VisitorComments(IEntityBll<VisitorComment> comments, EntityS
         }
 
         entity.Set("Created", Guid.NewGuid().ToString(), DateTimeOffset.UtcNow);
-        entity.Set("Status", Guid.NewGuid().ToString(), CommentStatuses.Pending);
+        entity.Set("Status", Guid.NewGuid().ToString(), site.CommentsModerate ? CommentStatuses.Pending : CommentStatuses.Approved);
         entity.Set("Body", Guid.NewGuid().ToString(), body);
         await comments.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
+        await AnnounceAsync(author, post.Title, body).ConfigureAwait(false);
+    }
+
+    /// <summary>Tells the owner, best effort and for a few seconds at most: a mail server that is slow or down must not slow or fail the visitor's comment.</summary>
+    private async Task AnnounceAsync(string author, string postTitle, string body)
+    {
+        if (notifier is null)
+        {
+            return;
+        }
+
+        try
+        {
+            using var limit = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await notifier.NotifyAsync(author, postTitle, body, limit.Token).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // the comment is stored; the notice is a courtesy
+        }
     }
 
     public async Task<IReadOnlyList<PublicComment>> ListApprovedAsync(string postSlug, CancellationToken cancellationToken = default) =>

@@ -19,8 +19,15 @@ public interface IPlatformAdministrators
     Task SetAsync(string userId, bool on, string changedBy, CancellationToken cancellationToken = default);
 }
 
+/// <summary>Gives the platform switch to the first administrator when nobody has it (the start-up rule, and the first site of a fresh install).</summary>
+public interface IFirstPlatformAdministrator
+{
+    /// <summary>Returns whether it granted the switch.</summary>
+    Task<bool> EnsureFirstAsync(CancellationToken cancellationToken = default);
+}
+
 /// <summary>The rules around the switch. The host calls it from an endpoint that already needs the platform right.</summary>
-public sealed class PlatformAdministratorBll(IPlatformAdministrators store, IUserBll users)
+public sealed class PlatformAdministratorBll(IPlatformAdministrators store, IUserBll users) : IFirstPlatformAdministrator
 {
     /// <summary>The user name that receives the switch when nobody has it yet.</summary>
     public const string FirstAdministratorUserName = "Admin";

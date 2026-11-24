@@ -11,7 +11,14 @@ namespace Adventures.Entities;
 /// </summary>
 public interface IUserBll : IEntityBll<User>
 {
+    /// <summary>
+    /// The person with this user name. Names are unique within a tenant, so several people (one per tenant) can share one; then the one who belongs to the tenant the request
+    /// came on (<see cref="IHomeTenant"/>) is returned, and nobody when that tenant has none or the request has no tenant (never a guess). With one person of the name it is that person.
+    /// </summary>
     Task<User?> FindByUserNameAsync(string userName, CancellationToken cancellationToken = default);
+
+    /// <summary>Creates the person after checking that no one in <paramref name="tenantPeopleIds"/> (the people of their tenant) already has the name. The system-wide <see cref="IEntityBll{TEntity}.CreateAsync"/> keeps its old rule.</summary>
+    Task<User> CreateInTenantAsync(User entity, IReadOnlySet<string> tenantPeopleIds, CancellationToken cancellationToken = default);
 
     /// <summary>Tombstones <paramref name="userId"/>. Throws <see cref="Adventures.Common.Exceptions.BusinessRuleException"/> if it is <paramref name="currentUserId"/> - you cannot delete your own account.</summary>
     Task<bool> DeleteAsync(string userId, string currentUserId, CancellationToken cancellationToken = default);

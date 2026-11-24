@@ -1,3 +1,4 @@
+using Adventures.Entities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Extensions.Caching.Memory;
@@ -24,6 +25,7 @@ public static class TenancyExtensions
         services.TryAddSingleton<TenantCacheInvalidator>();
         services.AddScoped<RequestTenant>();
         services.AddScoped<IRequestTenant>(provider => provider.GetRequiredService<RequestTenant>());
+        services.AddScoped<IHomeTenant>(provider => provider.GetRequiredService<RequestTenant>());
         return services;
     }
 

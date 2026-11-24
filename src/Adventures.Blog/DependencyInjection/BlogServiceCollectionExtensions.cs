@@ -21,17 +21,24 @@ public static class BlogServiceCollectionExtensions
         services.AddScoped<IPostBll, PostBll>();
         services.AddScoped<IContentAuthoring, ContentAuthoring>();
         services.AddScoped<IPublicContent, PublicContent>();
+        services.TryAddSingleton<SiteOptions>();
         services.AddScoped<ISiteSettings, SiteSettings>();
+        services.AddScoped<IContentExporter, ContentExporter>();
+        services.AddScoped<IContentSearcher, ContentSearcher>();
 
         // HTML sanitising is a plug-in that is on by default, behind a seam an owner can switch off and a developer can replace (register another IHtmlContentSanitizer after this).
         services.AddPlugins();
         services.AddPlugin(HtmlSanitizerPlugin.Definition);
+        services.AddMail();
         services.AddScoped<IHtmlContentSanitizer, HtmlContentSanitizer>();
 
         // Widgets: code that returns HTML for one of the four zones; where each sits is stored per tenant (the host registers the placement repository).
         services.AddWidgets();
         services.AddScoped<IEntityBll<WidgetPlacement>>(p => new EntityBll<WidgetPlacement>(p.GetRequiredService<IEntityDal<WidgetPlacement>>()));
         services.AddScoped<IWidgetPlacements, WidgetPlacements>();
+        services.AddScoped<IEntityBll<LanguageFile>>(p => new EntityBll<LanguageFile>(p.GetRequiredService<IEntityDal<LanguageFile>>()));
+        services.AddScoped<ILanguageFiles, LanguageFiles>();
+        services.AddServerText();
         services.AddPlugin(WidgetsPlugin.Definition);
         services.AddWidget<TextBoxWidget>(WidgetsPlugin.Key, TextBoxWidget.Definition);
         services.AddWidget<TagCloudWidget>(WidgetsPlugin.Key, TagCloudWidget.Definition);
