@@ -12,7 +12,7 @@ namespace Adventures.WebApi;
 /// The CORS policy of the API, built from data: a browser site may call the API when an administrator registered it (a tenant's domain, its <c>www.</c> host or
 /// an alias such as the host's temporary address), plus the fixed origins from configuration (development, an existing install). The answer is kept briefly so the
 /// tenant store is not read on every request, and when the store cannot be read only the fixed origins apply (fail closed). A real domain is trusted over https
-/// only; a host's temporary address (<c>.atempurl.com</c>, <c>.dtempurl.com</c>) also over http because that site has no certificate until a domain is attached.
+/// only; a host's temporary address (<c>.atempurl.com</c>, <c>.dtempurl.com</c>, <c>.ftempurl.com</c>) also over http because that site has no certificate until a domain is attached.
 /// No wildcard, no cookies (the API takes bearer tokens only). An allowed origin lets a browser call the API; it never decides the tenant (that is the host the
 /// server saw, see <see cref="TenantMiddleware"/>) and never grants a right.
 /// </summary>
@@ -26,7 +26,7 @@ public sealed partial class TenantCorsPolicyProvider(
     TenantCacheInvalidator? invalidator = null) : ICorsPolicyProvider
 {
     private const string CacheKey = "tenant-cors-origins";
-    private static readonly string[] TemporarySuffixes = [".atempurl.com", ".dtempurl.com"];
+    private static readonly string[] TemporarySuffixes = [".atempurl.com", ".dtempurl.com", ".ftempurl.com"];
 
     [GeneratedRegex(@"^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")]
     private static partial Regex HostName();

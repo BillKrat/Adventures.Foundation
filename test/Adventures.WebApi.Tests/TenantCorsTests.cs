@@ -72,6 +72,30 @@ public sealed class TenantCorsTests
     }
 
     [Fact]
+    public async Task AnFtempurlTemporaryAddress_IsATemporaryHostToo_AndThreeOfThemFormASplitInstallWithNoCertificateToBuy()
+    {
+        // the web, API and MCP sites each answer on their own temporary address; registered on the tenant, each is a trusted origin
+        var provider = Provider(new FakeHosts("example.com", "acct-site8.ftempurl.com", "acct-site9.ftempurl.com", "acct-site10.ftempurl.com"));
+
+        Assert.True(await AllowsAsync(provider, "https://acct-site8.ftempurl.com"));
+        Assert.True(await AllowsAsync(provider, "http://acct-site8.ftempurl.com"));
+        Assert.True(await AllowsAsync(provider, "https://acct-site9.ftempurl.com"));
+        Assert.True(await AllowsAsync(provider, "https://acct-site10.ftempurl.com"));
+    }
+
+    [Theory]
+    [InlineData("https://acct-site11.ftempurl.com")]
+    [InlineData("https://ftempurl.com")]
+    [InlineData("https://acct-site8.ftempurl.com.evil.test")]
+    [InlineData("http://acct-site8.ftempurl.com.evil.test")]
+    public async Task AnUnregisteredFtempurlHost_OrALookAlike_IsStillRefused(string origin)
+    {
+        var provider = Provider(new FakeHosts("acct-site8.ftempurl.com"));
+
+        Assert.False(await AllowsAsync(provider, origin));
+    }
+
+    [Fact]
     public async Task ARealDomain_IsNeverAllowedOverPlainHttp()
     {
         var provider = Provider(new FakeHosts("example.com"));
