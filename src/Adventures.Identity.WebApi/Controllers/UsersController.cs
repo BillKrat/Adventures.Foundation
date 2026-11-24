@@ -39,7 +39,22 @@ public sealed class UsersController(
             grid = grid with { Paging = paging with { Filter = ScopeFilter, FilterValue = EveryoneValue } };
         }
 
+        grid = await WithRolesColumnAsync(grid, cancellationToken);
         return Ok(grid.WithLinks(BuildGridLinks(grid, Request.Path.Value ?? string.Empty)));
+    }
+
+    /// <summary>Adds the Roles column (who holds which role in the tenant being worked in, as the legacy blog shows it) to the page of people.</summary>
+    private async Task<EntityGridModel> WithRolesColumnAsync(EntityGridModel grid, CancellationToken cancellationToken)
+    {
+        var roleNames = (await relations.GetOptionsAsync(IdentityConstants.RoleSchemaIri, null, cancellationToken)).ToDictionary(o => o.Id, o => o.Text, StringComparer.Ordinal);
+        var byPerson = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var row in grid.Rows)
+        {
+            var assignments = await relations.GetRelationsAsync(userSchema.Schema, row.EntityId, editable: false, cancellationToken);
+            byPerson[row.EntityId] = UserRolesColumn.NamesOf(assignments.SelectMany(a => a.Grid.Rows), tenantContext.TenantId, roleNames);
+        }
+
+        return UserRolesColumn.Add(grid, byPerson);
     }
 
     public const string ScopeFilter = "Scope";
