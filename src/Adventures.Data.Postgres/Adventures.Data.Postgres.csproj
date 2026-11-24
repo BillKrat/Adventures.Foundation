@@ -35,6 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Adventures.Common\Adventures.Common.csproj" />
     <ProjectReference Include="..\Adventures.Data\Adventures.Data.csproj" />
   </ItemGroup>
 

@@ -18,6 +18,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Adventures.Entities\Adventures.Entities.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Entities.Diagnostics\Adventures.Entities.Diagnostics.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Entities.Identity\Adventures.Entities.Identity.csproj" />
     <ProjectReference Include="..\..\src\Adventures.Blog\Adventures.Blog.csproj" />
     <ProjectReference Include="..\..\src\Adventures.Blog.Legacy\Adventures.Blog.Legacy.csproj" />
     <ProjectReference Include="..\..\src\Adventures.Data.Sql\Adventures.Data.Sql.csproj" />
