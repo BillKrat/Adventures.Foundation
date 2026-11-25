@@ -27,7 +27,8 @@ public static class PluginConstants
 }
 
 /// <summary>One built-in plug-in as the code declares it: what it is, and what it contributes to the admin.</summary>
-public sealed record PluginDefinition(string Key, string Title, string Description, string Version, int Priority, IReadOnlyList<PluginSettingDefinition>? Settings = null);
+/// <param name="DefaultEnabled">Whether the plug-in is on before the owner has ever switched it (true for the plug-ins that were always there; false for a feature visitors would see that the owner opts into).</param>
+public sealed record PluginDefinition(string Key, string Title, string Description, string Version, int Priority, IReadOnlyList<PluginSettingDefinition>? Settings = null, bool DefaultEnabled = true);
 
 /// <summary>A built-in plug-in with its current state, as the Plugins page shows it.</summary>
 public sealed record PluginState(string Key, string Title, string Description, string Version, int Priority, bool Enabled, bool HasSettings = false);
@@ -54,13 +55,15 @@ public sealed class Plugins(IEntityBll<Plugin> states, EntitySchemaOf<Plugin> sc
     {
         var stored = await StoredAsync(cancellationToken).ConfigureAwait(false);
         return definitions
-            .Select(p => new PluginState(p.Key, p.Title, p.Description, p.Version, p.Priority, !stored.TryGetValue(p.Key, out var state) || IsOn(state), p.Settings is { Count: > 0 }))
+            .Select(p => new PluginState(p.Key, p.Title, p.Description, p.Version, p.Priority, stored.TryGetValue(p.Key, out var state) ? IsOn(state) : p.DefaultEnabled, p.Settings is { Count: > 0 }))
             .OrderBy(p => p.Priority)
             .ToList();
     }
 
     public async Task<bool> IsEnabledAsync(string key, CancellationToken cancellationToken = default) =>
-        (await StoredAsync(cancellationToken).ConfigureAwait(false)).TryGetValue(key, out var state) ? IsOn(state) : true;
+        (await StoredAsync(cancellationToken).ConfigureAwait(false)).TryGetValue(key, out var state)
+            ? IsOn(state)
+            : definitions.FirstOrDefault(p => string.Equals(p.Key, key, StringComparison.Ordinal))?.DefaultEnabled ?? true;
 
     public async Task<IReadOnlySet<string>> EnabledKeysAsync(CancellationToken cancellationToken = default) =>
         (await ListAsync(cancellationToken).ConfigureAwait(false)).Where(p => p.Enabled).Select(p => p.Key).ToHashSet(StringComparer.Ordinal);
