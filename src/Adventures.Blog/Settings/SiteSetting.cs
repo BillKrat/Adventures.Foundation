@@ -12,7 +12,21 @@ public sealed class SiteSetting(EntitySchema schema) : DynamicEntity(schema);
 /// <param name="FeedItems">How many of the newest posts the RSS feed lists (1 to 100).</param>
 /// <param name="Language">The language code of the site (en unless set): the language file of that code supplies the button and screen texts.</param>
 /// <param name="ColorMode">"dark" or "light": the site default a visitor sees until they use the header toggle themselves.</param>
-public sealed record PublicSiteSettings(string Title, string Tagline, int PostsPerPage, bool CommentsEnabled = true, string ColorMode = "dark", string Language = "en", int CommentsCloseAfterDays = 0, int FeedItems = 20, bool CommentsModerate = true, string TrackingScriptUrl = "");
+/// <param name="Theme">One of the twelve Angular Material palette names (<see cref="SiteThemes"/>), azure unless set: the site default colour theme until a visitor picks their own.</param>
+public sealed record PublicSiteSettings(string Title, string Tagline, int PostsPerPage, bool CommentsEnabled = true, string ColorMode = "dark", string Language = "en", int CommentsCloseAfterDays = 0, int FeedItems = 20, bool CommentsModerate = true, string TrackingScriptUrl = "", string Theme = SiteThemes.Default);
+
+/// <summary>The colour themes a site can use: the palette names Angular Material ships (the client has one set of colours for each). Anything else falls back to the default.</summary>
+public static class SiteThemes
+{
+    public const string Default = "azure";
+
+    public static readonly IReadOnlyList<string> Names =
+        ["azure", "blue", "chartreuse", "cyan", "green", "magenta", "orange", "red", "rose", "spring-green", "violet", "yellow"];
+
+    /// <summary>The theme in its canonical lower-case form, or the default when the value is not a known name.</summary>
+    public static string Normalise(string? value) =>
+        Names.FirstOrDefault(n => string.Equals(n, value?.Trim(), StringComparison.OrdinalIgnoreCase)) ?? Default;
+}
 
 /// <summary>Reads the site settings with safe defaults, so a missing or mistyped row never breaks the site.</summary>
 public interface ISiteSettings
@@ -57,7 +71,7 @@ public sealed class SiteSettings(IEntityPresenter<SiteSetting> presenter, SiteOp
         var language = LanguageFiles.Normalise(values.GetValueOrDefault("Language")) ?? "en";
         // Dark (how the site always started) unless the setting says light.
         var colorMode = string.Equals(values.GetValueOrDefault("ColorMode")?.Trim(), "light", StringComparison.OrdinalIgnoreCase) ? "light" : "dark";
-        return new PublicSiteSettings(string.IsNullOrWhiteSpace(title) ? DefaultTitle : title.Trim(), values.GetValueOrDefault("Tagline")?.Trim() ?? string.Empty, perPage, commentsEnabled, colorMode, language, closeAfter, feedItems, moderate, AllowedScriptUrl(values.GetValueOrDefault("TrackingScriptUrl"), options?.AllowedScriptHosts));
+        return new PublicSiteSettings(string.IsNullOrWhiteSpace(title) ? DefaultTitle : title.Trim(), values.GetValueOrDefault("Tagline")?.Trim() ?? string.Empty, perPage, commentsEnabled, colorMode, language, closeAfter, feedItems, moderate, AllowedScriptUrl(values.GetValueOrDefault("TrackingScriptUrl"), options?.AllowedScriptHosts), SiteThemes.Normalise(values.GetValueOrDefault("Theme")));
     }
 
     /// <summary>
@@ -143,6 +157,7 @@ public sealed class SiteSettingPresenter(IEntityBll<SiteSetting> bll, EntitySche
         ("PostsPerPage", SiteSettings.DefaultPostsPerPage.ToString(System.Globalization.CultureInfo.InvariantCulture), "How many posts the list shows on a page (1 to 50)."),
         ("TimeZone", "UTC", "The time zone the legacy BlogEngine dates were written in (for the migration)."),
         ("ColorMode", "dark", "The look every visitor starts with: dark or light (a visitor who uses the toggle in the header keeps their own choice in their browser)."),
+        ("Theme", SiteThemes.Default, "The colour theme every visitor starts with: azure, blue, chartreuse, cyan, green, magenta, orange, red, rose, spring-green, violet or yellow (a visitor who picks one in the header keeps their own choice in their browser)."),
         ("Language", "en", "The language of the site: a language code such as en, de or pt-br. The texts come from the language file of that code (English where it has none)."),
         ("CommentsCloseAfterDays", "0", "Close comments on a post this many days after it was published (0 keeps them open for ever)."),
         ("FeedItems", "20", "How many of the newest posts the RSS feed lists (1 to 100)."),

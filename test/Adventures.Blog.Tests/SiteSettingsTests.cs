@@ -106,6 +106,28 @@ public sealed class SiteSettingsTests : IAsyncLifetime
     }
 
     [Theory]
+    [InlineData("violet", "violet")]
+    [InlineData(" Rose ", "rose")]
+    [InlineData("azure", "azure")]
+    [InlineData("hot-pink", "azure")]
+    [InlineData("<script>", "azure")]
+    [InlineData("", "azure")]
+    public async Task TheThemeIsAzureUnlessTheSettingNamesAMaterialPalette(string value, string expected)
+    {
+        Assert.Equal("azure", (await _settings.GetPublicAsync()).Theme);   // no row yet: azure, as the site always looked
+        await _presenter.GetGridAsync(new EntityGridQuery());               // the screen creates the row
+        var row = (await _presenter.ListAsync()).Single(r => r.Values["Name"] == "Theme");
+        Assert.Equal("azure", row.Values["Value"]);
+        await _presenter.UpdateAsync(row.EntityId, Row("Theme", value));
+
+        Assert.Equal(expected, (await _settings.GetPublicAsync()).Theme);
+    }
+
+    [Fact]
+    public void TheThemeNames_AreTheTwelveMaterialPalettes() =>
+        Assert.Equal(["azure", "blue", "chartreuse", "cyan", "green", "magenta", "orange", "red", "rose", "spring-green", "violet", "yellow"], SiteThemes.Names.Order());
+
+    [Theory]
     [InlineData("de", "de")]
     [InlineData(" PT-br ", "pt-br")]
     [InlineData("klingon speak", "en")]
@@ -216,10 +238,10 @@ public sealed class SiteSettingsTests : IAsyncLifetime
         var recreated = Assert.Single(grid.Rows, r => r.Values["Name"] == "CommentsEnabled");
         Assert.Equal("true", recreated.Values["Value"]);
         Assert.NotEmpty(recreated.Values["Description"] ?? string.Empty);
-        Assert.Equal(11, grid.Rows.Count);                                         // nothing duplicated
+        Assert.Equal(12, grid.Rows.Count);                                         // nothing duplicated
         Assert.Equal(25, (await _settings.GetPublicAsync()).PostsPerPage);        // an edited setting is left alone
         await _presenter.GetGridAsync(new EntityGridQuery());
-        Assert.Equal(11, (await _presenter.ListAsync()).Count);                    // and asking again creates nothing more
+        Assert.Equal(12, (await _presenter.ListAsync()).Count);                    // and asking again creates nothing more
     }
 
     [Fact]
@@ -232,7 +254,7 @@ public sealed class SiteSettingsTests : IAsyncLifetime
 
         var grid = await _presenter.GetGridAsync(new EntityGridQuery());
 
-        Assert.Equal(["ColorMode", "CommentsCloseAfterDays", "CommentsEnabled", "CommentsModerate", "FeedItems", "Language", "PostsPerPage", "SiteTitle", "Tagline", "TimeZone", "TrackingScriptUrl"], grid.Rows.Select(r => r.Values["Name"]).Order());
+        Assert.Equal(["ColorMode", "CommentsCloseAfterDays", "CommentsEnabled", "CommentsModerate", "FeedItems", "Language", "PostsPerPage", "SiteTitle", "Tagline", "Theme", "TimeZone", "TrackingScriptUrl"], grid.Rows.Select(r => r.Values["Name"]).Order());
         Assert.Equal("AI Research Blog", (await _settings.GetPublicAsync()).Title);
     }
 
