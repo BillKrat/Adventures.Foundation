@@ -118,13 +118,61 @@ public sealed class WidgetsControllerTests
     [Fact]
     public async Task ThePublicZone_IsTheRenderedWidgets_AndAnUnknownZoneIsNotFound()
     {
-        var controller = new PublicWidgetsController(new FakePlacements());
+        var controller = new PublicWidgetsController(new FakePlacements(), new FakeAuthorizer(false));
 
         var shown = Assert.IsAssignableFrom<IReadOnlyList<RenderedWidget>>(Assert.IsType<OkObjectResult>((await controller.Zone("Footer", CancellationToken.None)).Result).Value);
 
         Assert.Equal("<p>x</p>", Assert.Single(shown).Html);
         Assert.IsType<NotFoundResult>((await controller.Zone("sidebar", CancellationToken.None)).Result);
     }
+
+    private sealed class FakeAuthorizer(bool allowed) : IRightsAuthorizer
+    {
+        public Task<IReadOnlySet<string>> RightsOfAsync(System.Security.Claims.ClaimsPrincipal user, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlySet<string>>(allowed ? new HashSet<string> { Rights.AdminAccess } : new HashSet<string>());
+
+        public Task<bool> IsAllowedAsync(System.Security.Claims.ClaimsPrincipal user, string right, CancellationToken cancellationToken = default) => Task.FromResult(allowed);
+    }
+
+    private sealed class GatedPlacements : IWidgetPlacements
+    {
+        public Task<IReadOnlyList<WidgetPlacementModel>> ListAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<WidgetPlacementModel> AddAsync(string zone, string widgetKey, string? title, IReadOnlyDictionary<string, string>? settings, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<WidgetPlacementModel?> UpdateAsync(string id, string? title, IReadOnlyDictionary<string, string>? settings, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<bool> RemoveAsync(string id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<bool> MoveAsync(string id, int direction, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<RenderedWidget>> RenderZoneAsync(string zone, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<RenderedWidget>>([
+                new RenderedWidget("a", "tag-cloud", "Tags", "<p>t</p>"),
+                new RenderedWidget("b", "administration", "Administration", "<p>admin</p>", Rights.AdminAccess),
+            ]);
+    }
+
+    [Fact]
+    public async Task AWidgetThatNeedsARight_IsLeftOutForACallerWithoutIt_AndShownToOneWithIt()
+    {
+        async Task<IReadOnlyList<RenderedWidget>> Shown(bool allowed) =>
+            Assert.IsAssignableFrom<IReadOnlyList<RenderedWidget>>(Assert.IsType<OkObjectResult>((await new PublicWidgetsController(new GatedPlacements(), new FakeAuthorizer(allowed)).Zone("right", CancellationToken.None)).Result).Value);
+
+        Assert.Equal(["tag-cloud"], (await Shown(false)).Select(w => w.WidgetKey));
+        Assert.Equal(["tag-cloud", "administration"], (await Shown(true)).Select(w => w.WidgetKey));
+    }
+
+    [Fact]
+    public void TheRightAWidgetNeeds_NeverLeavesTheServer()
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(new RenderedWidget("b", "administration", "Administration", "<p>x</p>", Rights.AdminAccess));
+
+        Assert.DoesNotContain("admin.access", json);
+    }
+
+    [Fact]
+    public void TheAdministrationWidgetRight_IsTheAdminAccessRight() => Assert.Equal(Rights.AdminAccess, AdministrationWidget.Definition.RequiredRight);
 
     [Fact]
     public void TheAdminApi_NeedsTheSettingsRight_AndNoActionIsAnonymous_WhileThePublicReadIsAnonymousOnlyUnderApiPublic()

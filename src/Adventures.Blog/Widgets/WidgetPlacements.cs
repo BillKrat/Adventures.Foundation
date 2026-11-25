@@ -26,7 +26,8 @@ public static class WidgetConstants
 public sealed record WidgetPlacementModel(string Id, string Zone, string WidgetKey, string? Title, IReadOnlyDictionary<string, string> Settings, int Position, bool Available);
 
 /// <summary>A widget ready for a page: its placement id, widget key, the title to show, and its sanitised HTML.</summary>
-public sealed record RenderedWidget(string Id, string WidgetKey, string Title, string Html);
+/// <param name="RequiredRight">The right a visitor needs to see this widget (null: everyone). Used by the host to filter; never sent to the browser.</param>
+public sealed record RenderedWidget(string Id, string WidgetKey, string Title, string Html, [property: System.Text.Json.Serialization.JsonIgnore] string? RequiredRight = null);
 
 /// <summary>Where each widget sits (per tenant) and what a zone shows.</summary>
 public interface IWidgetPlacements
@@ -178,7 +179,7 @@ public sealed class WidgetPlacements(IEntityBll<WidgetPlacement> store, EntitySc
             }
 
             var title = row.GetValue("Title") as string;
-            rendered.Add(new RenderedWidget(row.EntityId!.Value, key, string.IsNullOrWhiteSpace(title) ? widget.Definition.Title : title, html));
+            rendered.Add(new RenderedWidget(row.EntityId!.Value, key, string.IsNullOrWhiteSpace(title) ? widget.Definition.Title : title, html, widget.Definition.RequiredRight));
         }
 
         return rendered;

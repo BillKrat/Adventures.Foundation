@@ -56,6 +56,29 @@ public sealed class TagCloudWidget(IPublicContent content) : IWidget
     }
 }
 
+/// <summary>
+/// The Administration widget, as BlogEngine had it: the links of a signed-in administrator (Dashboard, Content, Custom, Users, Settings, Profile, Change password,
+/// Log off). It needs the admin-access right, so the host leaves it out for everyone else; the links are fixed addresses, and each screen still checks its own right.
+/// </summary>
+public sealed class AdministrationWidget : IWidget
+{
+    /// <summary>The right that shows the widget (the value of <c>Rights.AdminAccess</c>; a host test keeps them equal).</summary>
+    public const string AdminAccess = "admin.access";
+
+    public static readonly WidgetDefinition Definition = new(
+        "administration", "Administration", "The links of the admin area (and Profile, Change password and Log off), shown only to people who may use the admin area.",
+        RequiredRight: AdminAccess);
+
+    private static readonly (string Label, string Href)[] Links =
+    [
+        ("Dashboard", "/admin/dashboard"), ("Content", "/admin/posts"), ("Custom", "/admin/plugins"), ("Users", "/admin/users"),
+        ("Settings", "/admin/settings"), ("Profile", "/profile"), ("Change password", "/profile#password"), ("Log off", "/logout"),
+    ];
+
+    public Task<string> RenderAsync(WidgetContext context, CancellationToken cancellationToken) =>
+        Task.FromResult($"<ul class=\"widget-terms widget-admin\">{string.Concat(Links.Select(l => $"<li><a href=\"{l.Href}\">{l.Label}</a></li>"))}</ul>");
+}
+
 /// <summary>The categories with the number of posts in each, each linking to its page.</summary>
 public sealed class CategoryListWidget(IPublicContent content) : IWidget
 {

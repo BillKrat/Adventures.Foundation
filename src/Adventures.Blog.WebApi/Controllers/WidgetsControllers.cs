@@ -53,9 +53,26 @@ public sealed class WidgetsController(IWidgetPlacements placements, IWidgetRende
 [ApiController]
 [Route("api/public/widgets")]
 [AllowAnonymous]
-public sealed class PublicWidgetsController(IWidgetPlacements placements) : ControllerBase
+public sealed class PublicWidgetsController(IWidgetPlacements placements, IRightsAuthorizer authorizer) : ControllerBase
 {
+    /// <summary>A widget that names a required right (the Administration widget) is left out unless the caller holds it; everyone else sees the rest.</summary>
     [HttpGet("{zone}")]
-    public async Task<ActionResult<IReadOnlyList<RenderedWidget>>> Zone(string zone, CancellationToken cancellationToken) =>
-        WidgetZones.IsValid(zone) ? Ok(await placements.RenderZoneAsync(zone, cancellationToken)) : NotFound();
+    public async Task<ActionResult<IReadOnlyList<RenderedWidget>>> Zone(string zone, CancellationToken cancellationToken)
+    {
+        if (!WidgetZones.IsValid(zone))
+        {
+            return NotFound();
+        }
+
+        var shown = new List<RenderedWidget>();
+        foreach (var widget in await placements.RenderZoneAsync(zone, cancellationToken))
+        {
+            if (widget.RequiredRight is null || await authorizer.IsAllowedAsync(User, widget.RequiredRight, cancellationToken))
+            {
+                shown.Add(widget);
+            }
+        }
+
+        return Ok(shown);
+    }
 }

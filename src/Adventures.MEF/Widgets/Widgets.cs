@@ -19,8 +19,12 @@ public static class WidgetZones
     public static string? Normalise(string? zone) => IsValid(zone) ? zone!.Trim().ToLowerInvariant() : null;
 }
 
-/// <summary>What a widget is, as data: its key, the name shown on the Widgets screen, and the settings an owner fills in for each placement.</summary>
-public sealed record WidgetDefinition(string Key, string Title, string Description, IReadOnlyList<PluginSettingDefinition>? Settings = null);
+/// <summary>
+/// What a widget is, as data: its key, the name shown on the Widgets screen, and the settings an owner fills in for each placement.
+/// <paramref name="RequiredRight"/> (optional) is a right a visitor must hold for the widget to appear at all, so a widget for signed-in people (the
+/// Administration widget) is left out of the page for everyone else.
+/// </summary>
+public sealed record WidgetDefinition(string Key, string Title, string Description, IReadOnlyList<PluginSettingDefinition>? Settings = null, string? RequiredRight = null);
 
 /// <summary>What a widget is asked to render: the zone it sits in, its settings for this placement (defaults filled in) and the tenant it is shown for.</summary>
 public sealed record WidgetContext(string Zone, IReadOnlyDictionary<string, string> Settings, string? Tenant);

@@ -43,6 +43,7 @@ public static class BlogServiceCollectionExtensions
         services.AddWidget<TextBoxWidget>(WidgetsPlugin.Key, TextBoxWidget.Definition);
         services.AddWidget<TagCloudWidget>(WidgetsPlugin.Key, TagCloudWidget.Definition);
         services.AddWidget<CategoryListWidget>(WidgetsPlugin.Key, CategoryListWidget.Definition);
+        services.AddWidget<AdministrationWidget>(WidgetsPlugin.Key, AdministrationWidget.Definition);
 
         services.AddScoped<IEntityPresenter<SiteSetting>, SiteSettingPresenter>();
         services.AddScoped<IEntityPresenter<Post>, PostPresenter>();

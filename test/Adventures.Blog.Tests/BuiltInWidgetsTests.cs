@@ -116,14 +116,14 @@ public sealed class BuiltInWidgetsTests
     }
 
     [Fact]
-    public void AddBlog_RegistersTheThreeWidgets_UnderABuiltInPlugin()
+    public void AddBlog_RegistersTheBuiltInWidgets_UnderABuiltInPlugin()
     {
         var services = new ServiceCollection();
         services.AddBlog();
 
         var keys = services.Where(d => d.ServiceType == typeof(WidgetRegistration)).Select(d => (WidgetRegistration)d.ImplementationInstance!).ToList();
 
-        Assert.Equal(["text-box", "tag-cloud", "category-list"], keys.Select(k => k.Definition.Key));
+        Assert.Equal(["text-box", "tag-cloud", "category-list", "administration"], keys.Select(k => k.Definition.Key));
         Assert.All(keys, k => Assert.Equal(WidgetsPlugin.Key, k.PluginKey));
         Assert.Contains(services, d => d.ServiceType == typeof(PluginDefinition) && ((PluginDefinition)d.ImplementationInstance!).Key == WidgetsPlugin.Key);
     }
@@ -139,5 +139,35 @@ public sealed class BuiltInWidgetsTests
         Assert.Contains("href=\"/tag/angular\"", cleaned);
         Assert.Contains("<span class=\"tag-cloud__count\">5</span>", cleaned);
         Assert.Contains("title=\"5 posts\"", cleaned);
+    }
+}
+
+/// <summary>The Administration widget, as BlogEngine had it: the signed-in administrator's links, shown only to those who may see the admin area.</summary>
+public sealed class AdministrationWidgetTests
+{
+    private static readonly WidgetContext Context = new("right", new Dictionary<string, string>(), null);
+
+    [Fact]
+    public async Task TheAdministrationWidget_ListsTheAdminLinks_AsPlainAddresses()
+    {
+        var html = await new AdministrationWidget().RenderAsync(Context, CancellationToken.None);
+
+        foreach (var (label, href) in new[]
+        {
+            ("Dashboard", "/admin/dashboard"), ("Content", "/admin/posts"), ("Custom", "/admin/plugins"), ("Users", "/admin/users"),
+            ("Settings", "/admin/settings"), ("Profile", "/profile"), ("Change password", "/profile#password"), ("Log off", "/logout"),
+        })
+        {
+            Assert.Contains($"<a href=\"{href}\">{label}</a>", html);
+        }
+
+        Assert.DoesNotContain("<script", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TheAdministrationWidget_IsOfferedOnlyToThoseWithAdminAccess()
+    {
+        Assert.Equal("admin.access", AdministrationWidget.Definition.RequiredRight);
+        Assert.Equal("administration", AdministrationWidget.Definition.Key);
     }
 }
