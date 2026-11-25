@@ -62,6 +62,47 @@ public sealed class TenantAliasEndpointsTests
         Assert.True(afterAdd.HasChanged);
     }
 
+    private static TenantController ControllerOn(string host) => new(new FixedRequestTenant(new CurrentTenant("t1", "DEV Main", "global-webnet.com", host, TenantMatch.Domain)));
+
+    [Theory]
+    [InlineData("temp.example", "temp.example")]
+    [InlineData("TEMP.example:443", "temp.example")]
+    [InlineData("api.temp.example", "temp.example")]
+    public async Task RemovingTheAliasTheRequestCameOn_IsRefused_AndNothingIsRemoved(string currentHost, string alias)
+    {
+        var removed = false;
+        var aliases = new RemovalSpy(() => removed = true);
+
+        var result = await ControllerOn(currentHost).RemoveAlias("t1", alias, aliases, CancellationToken.None);
+
+        Assert.Contains("lock", Assert.IsType<ConflictObjectResult>(result).Value as string, StringComparison.OrdinalIgnoreCase);
+        Assert.False(removed);
+    }
+
+    [Fact]
+    public async Task RemovingAnotherAlias_IsStillAllowed()
+    {
+        var removed = false;
+
+        var result = await ControllerOn("api.temp.example").RemoveAlias("t1", "other.example", new RemovalSpy(() => removed = true), CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+        Assert.True(removed);
+    }
+
+    private sealed class RemovalSpy(Action onRemove) : ITenantAliasEditor
+    {
+        public Task<IReadOnlyList<TenantHostInfo>> ListAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<TenantHostInfo>>([]);
+
+        public Task<IReadOnlyList<string>?> AddAsync(string tenantId, string host, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<string>?> RemoveAsync(string tenantId, string host, CancellationToken cancellationToken = default)
+        {
+            onRemove();
+            return Task.FromResult<IReadOnlyList<string>?>([]);
+        }
+    }
+
     private sealed class Remover(Func<string, string?, IReadOnlyCollection<string>, TenantRemoval?> remove) : ITenantRemover
     {
         public IReadOnlyCollection<string>? Protected { get; private set; }

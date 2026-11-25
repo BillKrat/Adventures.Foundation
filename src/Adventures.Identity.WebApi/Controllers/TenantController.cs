@@ -65,6 +65,7 @@ public sealed class TenantController(IRequestTenant requestTenant, TenantCacheIn
     public Task<IActionResult> RemoveAlias(string id, string host, [FromServices] ITenantAliasEditor aliases, CancellationToken cancellationToken) =>
         GuardedAsync(async () =>
         {
+            TenantAddressGuard.ThrowIfCurrent(requestTenant.Current.Host, host);   // never cut the person off from the address they are using
             var updated = await aliases.RemoveAsync(id, host, cancellationToken);
             caches?.Invalidate();
             return updated is null ? NotFound() : Ok(updated);

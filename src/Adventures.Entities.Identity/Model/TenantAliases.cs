@@ -45,6 +45,23 @@ public static partial class TenantHosts
     private static partial Regex ValidHost();
 }
 
+/// <summary>
+/// Refuses a change that would cut a person off from the address they are using: an alias that the current request came in on (or a name above it) cannot be removed from that
+/// request. It has to be done from another address, which is the proof that there is a way back in.
+/// </summary>
+public static class TenantAddressGuard
+{
+    public static void ThrowIfCurrent(string? currentHost, string? aliasToRemove)
+    {
+        var current = TenantHosts.Normalize(currentHost);
+        var alias = TenantHosts.Normalize(aliasToRemove);
+        if (alias.Length > 0 && current.Length > 0 && (current == alias || current.EndsWith("." + alias, StringComparison.Ordinal)))
+        {
+            throw new BusinessRuleException($"{alias} is the address you are using right now, so removing it would lock you out. Open the site on another address of this tenant and remove it from there.");
+        }
+    }
+}
+
 /// <summary>One tenant with every host name that reaches it: its own domain and its aliases (for example the host's temporary domain that mirrors the real one).</summary>
 public sealed record TenantHostInfo(string Id, string Name, string Domain, IReadOnlyList<string> Aliases);
 
