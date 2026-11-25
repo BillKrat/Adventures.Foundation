@@ -137,6 +137,34 @@ public sealed class TenantAliasEndpointsTests
     }
 
     [Fact]
+    public async Task DeletingTheTenantYouAreWorkingIn_SaysSo_AndPointsAtWorkIn_WithoutAskingTheRemover()
+    {
+        var controller = new TenantController(new FixedRequestTenant(new CurrentTenant("acting-id", "Acting", "acting.test", "www.owner.test", TenantMatch.Acting)));
+        var remover = new Remover((id, _, _) => new TenantRemoval(id, "x", "x.test", []));
+
+        var result = await controller.DeleteTenant("acting-id", "acting.test", remover, new HostResolver("owner-id"), CancellationToken.None);
+
+        var message = Assert.IsType<ConflictObjectResult>(result).Value as string;
+        Assert.Contains("working in", message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Work in", message);
+        Assert.Null(remover.Protected);
+    }
+
+    [Fact]
+    public async Task DeletingTheTenantThatOwnsTheAddressYouAreOn_SaysSo_AndPointsAtAnotherAddress()
+    {
+        var controller = new TenantController(new FixedRequestTenant(new CurrentTenant("acting-id", "Acting", "acting.test", "www.owner.test", TenantMatch.Acting)));
+        var remover = new Remover((id, _, _) => new TenantRemoval(id, "x", "x.test", []));
+
+        var result = await controller.DeleteTenant("owner-id", "owner.test", remover, new HostResolver("owner-id"), CancellationToken.None);
+
+        var message = Assert.IsType<ConflictObjectResult>(result).Value as string;
+        Assert.Contains("address", message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Work in", message);
+        Assert.Null(remover.Protected);
+    }
+
+    [Fact]
     public async Task DeletingAnUnknownTenantIsNotFound_AndARefusalIsA409WithItsReason()
     {
         var controller = Controller();

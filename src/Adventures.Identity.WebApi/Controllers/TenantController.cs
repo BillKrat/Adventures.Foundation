@@ -126,9 +126,22 @@ public sealed class TenantController(IRequestTenant requestTenant, TenantCacheIn
             }
 
             // the tenant that owns the host this request came on: deleting it would leave the site's own address with no tenant
-            if ((await resolver.ResolveAsync(requestTenant.Current.Host, null, cancellationToken)).Id is { } owner)
+            string? owner = null;
+            if ((await resolver.ResolveAsync(requestTenant.Current.Host, null, cancellationToken)).Id is { } ownerId)
             {
-                keep.Add(owner);
+                owner = ownerId;
+                keep.Add(ownerId);
+            }
+
+            // say which of the two it is, so the person knows what to change
+            if (string.Equals(id, requestTenant.Current.Id, StringComparison.Ordinal))
+            {
+                throw new BusinessRuleException("You are working in this tenant right now, so it cannot be deleted. Choose another tenant with Work in (on the Dashboard or at the top of this page), then delete it.");
+            }
+
+            if (string.Equals(id, owner, StringComparison.Ordinal))
+            {
+                throw new BusinessRuleException("This address belongs to that tenant, so deleting it would leave the address with no site. Open the site on another tenant's address, then delete it.");
             }
 
             var removed = await remover.RemoveAsync(id, confirm, keep, cancellationToken);
