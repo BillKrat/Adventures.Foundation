@@ -42,6 +42,7 @@ internal static class AppEntityServices
         services.AddNQuadPlatformAdministrators();
         services.AddNQuadEmailVerification();
         services.AddPasswordReset();
+        services.AddRecovery();
         services.AddScoped<ITenantAliasEditor, TenantAliasEditor>();
         services.AddScoped<ITenantRemover, TenantRemover>();
         services.AddScoped<ITenantCreator, TenantCreator>();

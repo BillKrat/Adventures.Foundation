@@ -17,6 +17,14 @@ public static class IdentityWebApiExtensions
         return builder.AddApplicationPart(typeof(IdentityWebApiExtensions).Assembly);
     }
 
+    /// <summary>Registers recovery without e-mail (a code and a file in App_Data next to the app). Needs a password resetter (<c>AddUserIdentity</c>) and the tenant alias editor.</summary>
+    public static IServiceCollection AddRecovery(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IRecoveryProof>(sp =>
+            new FileRecoveryProof(Path.Combine(sp.GetRequiredService<Microsoft.Extensions.Hosting.IHostEnvironment>().ContentRootPath, FileRecoveryProof.FolderName)));
+        return services;
+    }
+
     /// <summary>Registers forgot-my-password: the directory over the tenant's people and the reset service. Needs <c>AddUserIdentity</c>, the verification store and an <c>IEmailSender</c> as well.</summary>
     public static IServiceCollection AddPasswordReset(this IServiceCollection services)
     {

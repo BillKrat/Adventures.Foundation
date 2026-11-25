@@ -254,6 +254,8 @@ public class TenancyTests
     [InlineData("/api/setup/status")]
     [InlineData("/api/setup/token")]
     [InlineData("/API/SETUP/attach")]
+    [InlineData("/api/recovery/start")]
+    [InlineData("/api/recovery/complete")]
     public async Task TheSetupApi_IsNeverRefusedForAnUnknownHost_ItIsHowAnUnknownHostGetsSetUp(string path)
     {
         var run = await RunAsync(Request("unknown.example.org", path), Options(TenancyEnforcement.Enforce));
@@ -265,6 +267,8 @@ public class TenancyTests
     [InlineData("/api/setupx")]
     [InlineData("/api/posts")]
     [InlineData("/api/setups/status")]
+    [InlineData("/api/recoveryx")]
+    [InlineData("/api/recover")]
     public async Task OnlyTheSetupApiItself_IsExempt_NotANeighbourOfIt(string path)
     {
         var run = await RunAsync(Request("unknown.example.org", path), Options(TenancyEnforcement.Enforce));
