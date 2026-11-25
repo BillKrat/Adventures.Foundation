@@ -44,6 +44,7 @@ internal static class AppEntityServices
         services.AddPasswordReset();
         services.AddRecovery();
         services.AddScoped<ITenantAliasEditor, TenantAliasEditor>();
+        services.AddScoped<ITenantMirrors, TenantMirrors>();
         services.AddScoped<ITenantRemover, TenantRemover>();
         services.AddScoped<ITenantCreator, TenantCreator>();
         services.AddScoped<ITenantFirstRun, TenantFirstRun>();

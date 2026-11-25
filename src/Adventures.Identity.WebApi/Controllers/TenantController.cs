@@ -1,3 +1,4 @@
+using Adventures.Common.Exceptions;
 using Adventures.Entities;
 using Adventures.WebApi;
 using Microsoft.AspNetCore.Authorization;
@@ -20,7 +21,14 @@ public sealed class TenantController(IRequestTenant requestTenant, TenantCacheIn
     public IActionResult Current()
     {
         var current = requestTenant.Current;
-        return Ok(new { current.Host, Tenant = current.Id is null ? null : new { current.Id, current.Name, current.Domain }, Match = current.Match.ToString() });
+        return Ok(new
+        {
+            current.Host,
+            Tenant = current.Id is null ? null : new { current.Id, current.Name, current.Domain },
+            // while the host mirrors another site: the site the host itself belongs to (its pointer is set on that one)
+            Own = current.OwnId is null ? null : new { Id = current.OwnId, Domain = current.OwnDomain },
+            Match = current.Match.ToString(),
+        });
     }
 
     /// <summary>
@@ -46,6 +54,27 @@ public sealed class TenantController(IRequestTenant requestTenant, TenantCacheIn
             var created = await creator.CreateAsync(request.Name ?? string.Empty, request.Domain ?? string.Empty, cancellationToken);
             caches?.Invalidate(); // the new domain works at once
             return StatusCode(StatusCodes.Status201Created, created);
+        });
+
+    /// <summary>
+    /// Sets or clears a tenant's mirror pointer ("use the configuration of"): the tenant's own record and data are untouched, only ignored while it is set. 409 with the reason for a target that is
+    /// unknown, the tenant itself or already mirroring, or a tenant that others mirror. It is refused when the request is on the very site it would change (set it from another site's address, or
+    /// while acting in that tenant), because the person would then be signed out of their own account with no way back; clearing is always allowed.
+    /// </summary>
+    [HttpPut("{id}/mirror")]
+    [RequireRight(Rights.PlatformManage)]
+    public Task<IActionResult> SetMirror(string id, [FromBody] MirrorRequest request, [FromServices] ITenantMirrors mirrors, CancellationToken cancellationToken) =>
+        GuardedAsync(async () =>
+        {
+            var current = requestTenant.Current;
+            if (!string.IsNullOrWhiteSpace(request.Target) && current.Id == id && current.Match is TenantMatch.Domain or TenantMatch.Fallback)
+            {
+                throw new BusinessRuleException("You are on this site's own address, so making it mirror another site would sign you out of your own account with no way back (you would be locked out). Set it from the other site's address instead.");
+            }
+
+            var done = await mirrors.SetAsync(id, request.Target, cancellationToken);
+            caches?.Invalidate();   // the host serves the other site at once
+            return done ? NoContent() : NotFound();
         });
 
     /// <summary>Makes the host an alias of the tenant, so it mirrors the tenant's own domain. 409 when the name is not a plain host name or already reaches another tenant.</summary>
@@ -103,3 +132,6 @@ public sealed record NewTenantRequest(string? Name, string? Domain);
 
 /// <summary>The host name to add as an alias.</summary>
 public sealed record AliasRequest(string Host);
+
+/// <summary>The tenant to mirror (its id); empty or null clears the pointer.</summary>
+public sealed record MirrorRequest(string? Target);
