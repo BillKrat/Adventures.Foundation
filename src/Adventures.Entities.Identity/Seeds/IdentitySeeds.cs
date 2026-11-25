@@ -13,6 +13,7 @@ public static class IdentitySeeds
         new("seed-027-profile-fields.nq", IdentityConstants.ProfileSeedName),
         new("seed-018-role-rights.nq", "018-role-rights"),
         new("seed-020-tenant-aliases.nq", "020-tenant-aliases"),
+        new("seed-028-tenant-mirrors.nq", "028-tenant-mirrors"),
     ];
 }
 

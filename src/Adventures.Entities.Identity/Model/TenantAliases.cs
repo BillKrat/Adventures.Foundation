@@ -62,8 +62,8 @@ public static class TenantAddressGuard
     }
 }
 
-/// <summary>One tenant with every host name that reaches it: its own domain and its aliases (for example the host's temporary domain that mirrors the real one).</summary>
-public sealed record TenantHostInfo(string Id, string Name, string Domain, IReadOnlyList<string> Aliases);
+/// <summary>One tenant with every host name that reaches it: its own domain and its aliases, and the id of the tenant whose configuration it uses while a mirror pointer is set (empty or null: its own).</summary>
+public sealed record TenantHostInfo(string Id, string Name, string Domain, IReadOnlyList<string> Aliases, string? Mirrors = null);
 
 /// <summary>
 /// Which host names reach which tenant. The host calls it from endpoints that need the platform right (a host name decides whose data a request sees, so a tenant administrator
@@ -154,5 +154,6 @@ public sealed class TenantAliasEditor(IEntityBll<Tenant> tenants) : ITenantAlias
         TenantHosts.ParseAliases(tenant.GetValue("Domain") as string).Concat(TenantHosts.ParseAliases(tenant.GetValue("Aliases") as string));
 
     private static TenantHostInfo Describe(Tenant tenant) =>
-        new(tenant.EntityId!.Value, tenant.GetValue("Name") as string ?? string.Empty, tenant.GetValue("Domain") as string ?? string.Empty, TenantHosts.ParseAliases(tenant.GetValue("Aliases") as string));
+        new(tenant.EntityId!.Value, tenant.GetValue("Name") as string ?? string.Empty, tenant.GetValue("Domain") as string ?? string.Empty, TenantHosts.ParseAliases(tenant.GetValue("Aliases") as string),
+            (tenant.GetValue("Mirrors") as string)?.Trim());
 }
