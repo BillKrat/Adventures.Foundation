@@ -133,6 +133,8 @@ public sealed class SetupControllerTests
     {
         public List<string> Created { get; } = [];
 
+        public bool CreatesAccounts => true;
+
         public Task<TenantHostInfo> CreateAsync(string domain, string name, CancellationToken cancellationToken = default)
         {
             Created.Add(domain + "|" + name);

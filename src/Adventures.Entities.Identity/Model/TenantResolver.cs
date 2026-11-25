@@ -17,7 +17,8 @@ public enum TenantMatch
 /// <summary>The tenant a request belongs to (when one was found) and the host it was read from.</summary>
 /// <param name="OwnId">Only while mirroring (<see cref="TenantMatch.Mirror"/>): the tenant the host itself belongs to, whose pointer is set. Null otherwise.</param>
 /// <param name="OwnDomain">The domain of that tenant.</param>
-public sealed record CurrentTenant(string? Id, string? Name, string? Domain, string Host, TenantMatch Match, string? OwnId = null, string? OwnDomain = null);
+/// <param name="Via">Only when a browser site chose the tenant (the registered-origin hint): that site's host name. <see cref="Host"/> stays the address the request reached. Null otherwise.</param>
+public sealed record CurrentTenant(string? Id, string? Name, string? Domain, string Host, TenantMatch Match, string? OwnId = null, string? OwnDomain = null, string? Via = null);
 
 /// <summary>
 /// Works out which tenant a request is for from its host name, so one deployed app serves every tenant's domain: the code is updated once.

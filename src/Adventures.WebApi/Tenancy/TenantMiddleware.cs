@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Text.RegularExpressions;
 
 namespace Adventures.WebApi;
 
@@ -14,7 +15,7 @@ namespace Adventures.WebApi;
 /// infrastructure paths; while a site is being switched over it is only reported. The answer is kept briefly per host so the tenant store is not read on
 /// every request.
 /// </summary>
-public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptions> options, IMemoryCache cache, ILogger<TenantMiddleware> logger, TenantCacheInvalidator? invalidator = null)
+public sealed partial class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptions> options, IMemoryCache cache, ILogger<TenantMiddleware> logger, TenantCacheInvalidator? invalidator = null)
 {
     /// <summary>
     /// The first-run services (an alias for the first address, the first site of an empty install) are asked for only when a host reaches no tenant: they need the sign-in store, which a
@@ -47,6 +48,7 @@ public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptio
             current = await ResolveAsync(settings, host, resolver, context.RequestAborted).ConfigureAwait(false);
         }
 
+        current = await HintedAsync(context, settings, current, host, resolver).ConfigureAwait(false);
         holder.Set(current);
 
         if (current.Match == TenantMatch.None && settings.Enforcement == TenancyEnforcement.Enforce && !IsExempt(settings, context.Request.Path))
@@ -65,6 +67,100 @@ public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptio
             context.Response.Clear();
             await RefuseAsync(context).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// The registered-origin hint (opt in, <see cref="TenancyOriginHint.Registered"/>): when sites share one API address, the browser's Origin (a plain read such as an image carries no Origin, so for GET and HEAD the
+    /// Referer's site is used) names the tenant, but only when it is exactly a host name some tenant answers to (the same list that decides which sites may call the API; a <c>www.</c> form too). It is applied only when
+    /// the request's own host already reaches a tenant (never to an unknown host, so setup and first-run are untouched), never on the setup and recovery paths, and a token still has to belong to the tenant chosen
+    /// (<see cref="TenantTokenMiddleware"/>). A caller outside a browser can claim any registered site, which only shows it that site's public content. The registered names are kept as one set, so an attacker's
+    /// made-up origin costs a lookup and nothing is remembered for it.
+    /// </summary>
+    private async Task<CurrentTenant> HintedAsync(HttpContext context, TenancyOptions settings, CurrentTenant current, string host, ITenantResolver resolver)
+    {
+        if (settings.OriginHint != TenancyOriginHint.Registered)
+        {
+            return current;
+        }
+
+        // the response depends on who is asking, so no shared cache may hand one site's answer to another
+        foreach (var name in new[] { "Origin", "Referer" })
+        {
+            if (!context.Response.Headers.Vary.ToString().Contains(name, StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.Headers.Append("Vary", name);
+            }
+        }
+
+        if (current.Match is not (TenantMatch.Domain or TenantMatch.Mirror) || IsExempt(settings, context.Request.Path)
+            || context.RequestServices?.GetService<ITenantHostSource>() is not { } source)
+        {
+            return current;
+        }
+
+        var via = HintHost(context.Request);
+        if (via is null || string.Equals(via, TenantHosts.Normalize(host), StringComparison.Ordinal))
+        {
+            return current;
+        }
+
+        var names = await RegisteredNamesAsync(source, context.RequestAborted).ConfigureAwait(false);
+        if (!names.Contains(via) && !(via.StartsWith("www.", StringComparison.Ordinal) && names.Contains(via[4..])))
+        {
+            return current;
+        }
+
+        var hinted = await ResolveAsync(settings, via, resolver, context.RequestAborted, useFallback: false).ConfigureAwait(false);
+        return hinted.Match is TenantMatch.Domain or TenantMatch.Mirror ? hinted with { Host = host, Via = via } : current;
+    }
+
+    /// <summary>The host name of the site the browser says it is on: the Origin; for GET and HEAD, when there is no Origin, the Referer's site. Anything but a plain http(s) site name gives null.</summary>
+    private static string? HintHost(HttpRequest request)
+    {
+        var plainRead = HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method);
+        var origin = request.Headers.Origin.ToString();
+        if (request.Headers.Origin.Count > 1)
+        {
+            return null;
+        }
+
+        if (origin.Length > 0)
+        {
+            return OriginSite().IsMatch(origin) && Uri.TryCreate(origin, UriKind.Absolute, out var uri) ? TenantHosts.Normalize(uri.Host) : null;
+        }
+
+        if (plainRead && request.Headers.Referer.Count == 1 && Uri.TryCreate(request.Headers.Referer.ToString(), UriKind.Absolute, out var from)
+            && (from.Scheme == Uri.UriSchemeHttps || from.Scheme == Uri.UriSchemeHttp) && from.UserInfo.Length == 0 && HostName().IsMatch(from.Host))
+        {
+            return TenantHosts.Normalize(from.Host);
+        }
+
+        return null;
+    }
+
+    [GeneratedRegex(@"^https?://[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+(:\d{1,5})?$")]
+    private static partial Regex OriginSite();
+
+    [GeneratedRegex(@"^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$")]
+    private static partial Regex HostName();
+
+    private async Task<HashSet<string>> RegisteredNamesAsync(ITenantHostSource source, CancellationToken cancellationToken)
+    {
+        const string key = "tenant-origin-hint-names";
+        if (cache.TryGetValue(key, out HashSet<string>? kept) && kept is not null)
+        {
+            return kept;
+        }
+
+        var names = new HashSet<string>((await source.AllNamesAsync(cancellationToken).ConfigureAwait(false)).Select(TenantHosts.Normalize), StringComparer.Ordinal);
+        var entry = new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(Math.Max(1, options.Value.CacheSeconds)) };
+        if (invalidator is not null)
+        {
+            entry.AddExpirationToken(invalidator.Token);
+        }
+
+        cache.Set(key, names, entry);
+        return names;
     }
 
     /// <summary>
@@ -91,9 +187,9 @@ public sealed class TenantMiddleware(RequestDelegate next, IOptions<TenancyOptio
         await context.Response.WriteAsJsonAsync(new { title = "No site is set up for this address.", status = StatusCodes.Status404NotFound }, context.RequestAborted).ConfigureAwait(false);
     }
 
-    private async Task<CurrentTenant> ResolveAsync(TenancyOptions settings, string host, ITenantResolver resolver, CancellationToken cancellationToken)
+    private async Task<CurrentTenant> ResolveAsync(TenancyOptions settings, string host, ITenantResolver resolver, CancellationToken cancellationToken, bool useFallback = true)
     {
-        var fallback = settings.AllowFallback ? settings.FallbackDomain : null;
+        var fallback = useFallback && settings.AllowFallback ? settings.FallbackDomain : null;
         if (settings.CacheSeconds > 0 && cache.TryGetValue(CacheKey(host), out CurrentTenant? kept) && kept is not null)
         {
             return kept;

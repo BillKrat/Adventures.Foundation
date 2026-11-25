@@ -27,6 +27,8 @@ public sealed class TenantController(IRequestTenant requestTenant, TenantCacheIn
             Tenant = current.Id is null ? null : new { current.Id, current.Name, current.Domain },
             // while the host mirrors another site: the site the host itself belongs to (its pointer is set on that one)
             Own = current.OwnId is null ? null : new { Id = current.OwnId, Domain = current.OwnDomain },
+            // when a browser site chose the tenant through the shared API address: that site's host name
+            current.Via,
             Match = current.Match.ToString(),
         });
     }
@@ -45,15 +47,23 @@ public sealed class TenantController(IRequestTenant requestTenant, TenantCacheIn
     public async Task<IActionResult> Hosts([FromServices] ITenantAliasEditor aliases, CancellationToken cancellationToken) =>
         Ok(await aliases.ListAsync(cancellationToken));
 
-    /// <summary>Creates a tenant on a domain: a name and the domain, from one place. 409 with the reason when the name or domain is refused or another tenant already reaches the domain.</summary>
+    /// <summary>
+    /// Creates a tenant on a domain: a name and the domain, from one place. On an install with a sign-in store the new tenant comes with its own <c>Admin</c> account (the default password,
+    /// changed at the first sign-in), as a site made on the setup page does; otherwise only the tenant is made. 409 with the reason when the name or domain is refused or another tenant already reaches the domain.
+    /// </summary>
     [HttpPost]
     [RequireRight(Rights.PlatformManage)]
-    public Task<IActionResult> CreateTenant([FromBody] NewTenantRequest request, [FromServices] ITenantCreator creator, CancellationToken cancellationToken) =>
+    public Task<IActionResult> CreateTenant([FromBody] NewTenantRequest request, [FromServices] ITenantCreator creator, [FromServices] ISiteProvisioner provisioner, CancellationToken cancellationToken) =>
         GuardedAsync(async () =>
         {
-            var created = await creator.CreateAsync(request.Name ?? string.Empty, request.Domain ?? string.Empty, cancellationToken);
+            var name = request.Name ?? string.Empty;
+            var domain = request.Domain ?? string.Empty;
+            var made = provisioner.CreatesAccounts
+                ? await provisioner.CreateAsync(domain, name, cancellationToken)
+                : await creator.CreateAsync(name, domain, cancellationToken);
             caches?.Invalidate(); // the new domain works at once
-            return StatusCode(StatusCodes.Status201Created, created);
+            var signIn = provisioner.CreatesAccounts ? new CreatedSignIn(SiteProvisioner.AdminUserName, SiteProvisioner.DefaultPassword, MustChangePassword: true) : null;
+            return StatusCode(StatusCodes.Status201Created, new CreatedTenant(made.Id, made.Name, made.Domain, made.Aliases, signIn));
         });
 
     /// <summary>
@@ -94,7 +104,7 @@ public sealed class TenantController(IRequestTenant requestTenant, TenantCacheIn
     public Task<IActionResult> RemoveAlias(string id, string host, [FromServices] ITenantAliasEditor aliases, CancellationToken cancellationToken) =>
         GuardedAsync(async () =>
         {
-            TenantAddressGuard.ThrowIfCurrent(requestTenant.Current.Host, host);   // never cut the person off from the address they are using
+            TenantAddressGuard.ThrowIfCurrent(requestTenant.Current.Host, host, requestTenant.Current.Via);   // never cut the person off from the address they are using
             var updated = await aliases.RemoveAsync(id, host, cancellationToken);
             caches?.Invalidate();
             return updated is null ? NotFound() : Ok(updated);
@@ -126,6 +136,12 @@ public sealed class TenantController(IRequestTenant requestTenant, TenantCacheIn
             return removed is null ? NotFound() : Ok(removed);
         });
 }
+
+/// <summary>The sign-in a new tenant starts with: the person signs in at the new site's address with it and is made to change the password at once.</summary>
+public sealed record CreatedSignIn(string UserName, string Password, bool MustChangePassword);
+
+/// <summary>The tenant that was made, and (on an install with a sign-in store) the Admin sign-in it starts with.</summary>
+public sealed record CreatedTenant(string Id, string Name, string Domain, IReadOnlyList<string> Aliases, CreatedSignIn? SignIn);
 
 /// <summary>The name and domain of a new tenant.</summary>
 public sealed record NewTenantRequest(string? Name, string? Domain);

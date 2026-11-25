@@ -13,6 +13,19 @@ public enum TenancyEnforcement
     Enforce,
 }
 
+/// <summary>Whether a browser site's own name may choose the tenant when sites share one API address.</summary>
+public enum TenancyOriginHint
+{
+    /// <summary>The default: only the host name the request reached decides the tenant.</summary>
+    Off,
+
+    /// <summary>
+    /// A request whose host reaches a tenant may be answered for another tenant when the browser's <c>Origin</c> (or, for a plain read such as an image, the <c>Referer</c> site) is
+    /// exactly a host name some tenant answers to. Never an unregistered name, never for the setup and recovery paths, and a token still has to belong to the tenant chosen.
+    /// </summary>
+    Registered,
+}
+
 /// <summary>Settings of the <c>Tenancy</c> section.</summary>
 public sealed class TenancyOptions
 {
@@ -32,6 +45,9 @@ public sealed class TenancyOptions
     /// default) switches it off: an unknown host is then reported or refused. Turn it on for the first run, then clear it again.
     /// </summary>
     public string? AutoAliasToTenantDomain { get; set; }
+
+    /// <summary>Default <see cref="TenancyOriginHint.Off"/>. Turn it on (<c>Tenancy:OriginHint</c> = <c>Registered</c>) for an installation whose web sites share one API address, so each site gets its own tenant.</summary>
+    public TenancyOriginHint OriginHint { get; set; } = TenancyOriginHint.Off;
 
     /// <summary>How long the tenant answer for one host name is kept, so not every request reads the tenant store. A new tenant takes at most this long to be recognised. 0 turns the cache off.</summary>
     public int CacheSeconds { get; set; } = 60;

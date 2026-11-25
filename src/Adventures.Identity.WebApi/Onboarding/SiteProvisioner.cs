@@ -10,6 +10,9 @@ namespace Adventures.Identity.WebApi;
 /// </summary>
 public interface ISiteProvisioner
 {
+    /// <summary>True when a new site comes with its own Admin account (an install with a sign-in store); false for an install that cannot make accounts, where only the tenant is made.</summary>
+    bool CreatesAccounts { get; }
+
     /// <summary>
     /// Creates the site. Throws <see cref="BusinessRuleException"/> (nothing is created) for a domain that is not a real name or that another tenant already reaches.
     /// </summary>
@@ -19,6 +22,8 @@ public interface ISiteProvisioner
 /// <summary>For a host with no sign-in store (the Legacy developer mode): no site can be made.</summary>
 public sealed class NoSiteProvisioner : ISiteProvisioner
 {
+    public bool CreatesAccounts => false;
+
     public Task<TenantHostInfo> CreateAsync(string domain, string name, CancellationToken cancellationToken = default) =>
         throw new BusinessRuleException("This install has no sign-in store, so a new site cannot be made.");
 }
@@ -26,6 +31,8 @@ public sealed class NoSiteProvisioner : ISiteProvisioner
 public sealed class SiteProvisioner(
     ITenantAliasEditor tenants, ITenantCreator creator, IAccountCreator accounts, IUserBll people, IUserMembership membership, EntitySchemaOf<User> userSchema) : ISiteProvisioner
 {
+    public bool CreatesAccounts => true;
+
     public const string AdminUserName = "Admin";
     public const string DefaultPassword = "Admin";
 

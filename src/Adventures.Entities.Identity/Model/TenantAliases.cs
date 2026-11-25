@@ -51,11 +51,11 @@ public static partial class TenantHosts
 /// </summary>
 public static class TenantAddressGuard
 {
-    public static void ThrowIfCurrent(string? currentHost, string? aliasToRemove)
+    /// <param name="viaHost">The page address when a browser site chose the tenant (see <see cref="CurrentTenant.Via"/>): it is protected like the address the request reached.</param>
+    public static void ThrowIfCurrent(string? currentHost, string? aliasToRemove, string? viaHost = null)
     {
-        var current = TenantHosts.Normalize(currentHost);
         var alias = TenantHosts.Normalize(aliasToRemove);
-        if (alias.Length > 0 && current.Length > 0 && (current == alias || current.EndsWith("." + alias, StringComparison.Ordinal)))
+        if (alias.Length > 0 && new[] { TenantHosts.Normalize(currentHost), TenantHosts.Normalize(viaHost) }.Any(current => current.Length > 0 && (current == alias || current.EndsWith("." + alias, StringComparison.Ordinal))))
         {
             throw new BusinessRuleException($"{alias} is the address you are using right now, so removing it would lock you out. Open the site on another address of this tenant and remove it from there.");
         }
