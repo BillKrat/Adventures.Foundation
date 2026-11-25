@@ -35,7 +35,15 @@ public sealed partial class FileRecoveryProof(string folder, TimeProvider? clock
 
     public RecoveryChallenge Start()
     {
-        Directory.CreateDirectory(folder);   // so the person has a place to put the file
+        try
+        {
+            Directory.CreateDirectory(folder);   // so the person has a place to put the file
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // the app may not be allowed to make it; the person then makes the folder with the file (the instructions say so)
+        }
+
         var code = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(16));
         var expires = _clock.GetUtcNow().Add(Lifetime);
         lock (_gate)

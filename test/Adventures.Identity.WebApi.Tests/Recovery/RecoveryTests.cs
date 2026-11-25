@@ -55,6 +55,23 @@ public sealed class RecoveryTests : IDisposable
     }
 
     [Fact]
+    public void Start_StillAnswers_WhenTheAppCannotMakeTheFolder_ThePersonMakesItOverFtp()
+    {
+        var blocker = Path.Combine(Path.GetTempPath(), "adv-recovery-blocker-" + Guid.NewGuid().ToString("N"));
+        File.WriteAllText(blocker, "a file where the folder should be");
+        try
+        {
+            var challenge = new FileRecoveryProof(Path.Combine(blocker, "App_Data")).Start();
+
+            Assert.Matches("^[0-9a-f]{32}$", challenge.Code);
+        }
+        finally
+        {
+            File.Delete(blocker);
+        }
+    }
+
+    [Fact]
     public void TheCodeIsProven_OnlyOnceTheFileIsThere_WithOrWithoutTxt()
     {
         var proof = new FileRecoveryProof(_folder);
