@@ -90,6 +90,43 @@ public sealed class CategoryListWidget(IPublicContent content) : IWidget
         WidgetTerms.List(await content.GetCategoriesAsync(cancellationToken).ConfigureAwait(false), "category", WidgetTerms.MaxOf(context));
 }
 
+/// <summary>The newest published posts as a list of links (BlogEngine's Post List).</summary>
+public sealed class PostListWidget(IPublicContent content) : IWidget
+{
+    public static readonly WidgetDefinition Definition = new(
+        "post-list", "Post list", "The newest posts of the blog, each linking to its post.",
+        [new PluginSettingDefinition("Max", "How many", "The most to show (1 to 50).", PluginSettingKind.Number, "5")]);
+
+    public async Task<string> RenderAsync(WidgetContext context, CancellationToken cancellationToken)
+    {
+        var max = int.TryParse(context.Settings.GetValueOrDefault("Max"), out var parsed) ? Math.Clamp(parsed, 1, 50) : 5;
+        var list = await content.ListPostsAsync(1, max, null, null, cancellationToken).ConfigureAwait(false);
+        if (list.Posts.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var items = list.Posts.Take(max).Select(p => $"<li><a href=\"/post/{Uri.EscapeDataString(p.Slug)}\">{WebUtility.HtmlEncode(p.Title)}</a></li>");
+        return $"<ul class=\"widget-terms widget-post-list\">{string.Concat(items)}</ul>";
+    }
+}
+
+/// <summary>The pages of the site menu, with their sub-pages, as a list of links (BlogEngine's Page List).</summary>
+public sealed class PageListWidget(IPublicContent content) : IWidget
+{
+    public static readonly WidgetDefinition Definition = new(
+        "page-list", "Page list", "The pages of the site menu, each linking to its page.");
+
+    public async Task<string> RenderAsync(WidgetContext context, CancellationToken cancellationToken)
+    {
+        var menu = await content.GetMenuAsync(cancellationToken).ConfigureAwait(false);
+        return menu.Count == 0 ? string.Empty : $"<ul class=\"widget-terms widget-page-list\">{Items(menu)}</ul>";
+    }
+
+    private static string Items(IReadOnlyList<PublicMenuItem> items) =>
+        string.Concat(items.Select(i => $"<li><a href=\"/page/{Uri.EscapeDataString(i.Slug)}\">{WebUtility.HtmlEncode(i.Title)}</a>{(i.Children.Count > 0 ? $"<ul>{Items(i.Children)}</ul>" : string.Empty)}</li>"));
+}
+
 internal static class WidgetTerms
 {
     public static readonly PluginSettingDefinition MaxSetting = new("Max", "How many", "The most to show (1 to 100).", PluginSettingKind.Number, "30");

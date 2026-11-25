@@ -123,7 +123,7 @@ public sealed class BuiltInWidgetsTests
 
         var keys = services.Where(d => d.ServiceType == typeof(WidgetRegistration)).Select(d => (WidgetRegistration)d.ImplementationInstance!).ToList();
 
-        Assert.Equal(["text-box", "tag-cloud", "category-list", "administration"], keys.Select(k => k.Definition.Key));
+        Assert.Equal(["text-box", "tag-cloud", "category-list", "administration", "post-list", "page-list"], keys.Select(k => k.Definition.Key));
         Assert.All(keys, k => Assert.Equal(WidgetsPlugin.Key, k.PluginKey));
         Assert.Contains(services, d => d.ServiceType == typeof(PluginDefinition) && ((PluginDefinition)d.ImplementationInstance!).Key == WidgetsPlugin.Key);
     }
@@ -170,4 +170,68 @@ public sealed class AdministrationWidgetTests
         Assert.Equal("admin.access", AdministrationWidget.Definition.RequiredRight);
         Assert.Equal("administration", AdministrationWidget.Definition.Key);
     }
+}
+
+/// <summary>The Post List and Page List widgets (from the legacy widget set): plain lists of links, names encoded so markup in a title injects nothing.</summary>
+public sealed class ListWidgetsTests
+{
+    private sealed class FakeContent(IReadOnlyList<PublicPostSummary> posts, IReadOnlyList<PublicMenuItem> menu) : IPublicContent
+    {
+        public int? AskedPageSize { get; private set; }
+
+        public Task<PublicPostList> ListPostsAsync(int page, int pageSize, string? category, string? tag, CancellationToken cancellationToken = default, bool includeDrafts = false)
+        {
+            AskedPageSize = pageSize;
+            return Task.FromResult(new PublicPostList(posts.Take(pageSize).ToList(), page, pageSize, posts.Count));
+        }
+
+        public Task<PublicPost?> GetPostAsync(string slug, CancellationToken cancellationToken = default, bool includeDrafts = false) => throw new NotSupportedException();
+
+        public Task<PublicPage?> GetPageAsync(string slug, CancellationToken cancellationToken = default, bool includeDrafts = false) => throw new NotSupportedException();
+
+        public Task<PublicPage?> GetFrontPageAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<PublicMenuItem>> GetMenuAsync(CancellationToken cancellationToken = default, bool includeDrafts = false) => Task.FromResult(menu);
+
+        public Task<IReadOnlyList<PublicTerm>> GetCategoriesAsync(CancellationToken cancellationToken = default, bool includeDrafts = false) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<PublicTerm>> GetTagsAsync(CancellationToken cancellationToken = default, bool includeDrafts = false) => throw new NotSupportedException();
+    }
+
+    private static PublicPostSummary Post(string title, string slug) => new(title, slug, null, "2026-11-20", "Bill", [], []);
+
+    private static WidgetContext Context(string max = "5") => new("right", new Dictionary<string, string> { ["Max"] = max }, null);
+
+    [Fact]
+    public async Task ThePostList_LinksTheNewestPosts_ByAddress_WithTitlesEncoded()
+    {
+        var content = new FakeContent([Post("One <b>x</b>", "one"), Post("Two", "two"), Post("Three", "three")], []);
+
+        var html = await new PostListWidget(content).RenderAsync(Context("2"), CancellationToken.None);
+
+        Assert.Equal(2, content.AskedPageSize);
+        Assert.Contains("<a href=\"/post/one\">One &lt;b&gt;x&lt;/b&gt;</a>", html);
+        Assert.Contains("<a href=\"/post/two\">Two</a>", html);
+        Assert.DoesNotContain("three", html);
+    }
+
+    [Fact]
+    public async Task ThePostList_IsEmpty_WhenThereAreNoPosts() =>
+        Assert.Equal(string.Empty, await new PostListWidget(new FakeContent([], [])).RenderAsync(Context(), CancellationToken.None));
+
+    [Fact]
+    public async Task ThePageList_LinksThePagesOfTheMenu_WithTheirSubPages()
+    {
+        var content = new FakeContent([], [new PublicMenuItem("About", "about", [new PublicMenuItem("Team", "team", [])]), new PublicMenuItem("Contact", "contact", [])]);
+
+        var html = await new PageListWidget(content).RenderAsync(Context(), CancellationToken.None);
+
+        Assert.Contains("<a href=\"/page/about\">About</a>", html);
+        Assert.Contains("<ul><li><a href=\"/page/team\">Team</a></li></ul>", html);
+        Assert.Contains("<a href=\"/page/contact\">Contact</a>", html);
+    }
+
+    [Fact]
+    public async Task ThePageList_IsEmpty_WhenThereAreNoPages() =>
+        Assert.Equal(string.Empty, await new PageListWidget(new FakeContent([], [])).RenderAsync(Context(), CancellationToken.None));
 }
