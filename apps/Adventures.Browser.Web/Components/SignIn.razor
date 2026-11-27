@@ -1,0 +1,14 @@
+@inherits ModelView<SiteSignInViewModel>
+
+<form class="sign-in" @onsubmit="() => Model.SignInCommand.Execute(null)">
+    <h2>Sign in to @Model.Domain</h2>
+    <label for="user-name">User name</label>
+    <input id="user-name" @bind="Model.UserName" @bind:event="oninput" autocomplete="username" />
+    <label for="password">Password</label>
+    <input id="password" type="password" value="@Model.Password" @oninput="e => Model.Password = e.Value?.ToString() ?? string.Empty" autocomplete="current-password" />
+    <button type="submit" disabled="@Model.IsBusy">Sign in</button>
+    @if (Model.Error is not null)
+    {
+        <p class="error" role="alert">@Model.Error</p>
+    }
+</form>

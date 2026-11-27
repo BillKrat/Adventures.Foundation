@@ -1,0 +1,34 @@
+:root { --ink: #1d2126; --muted: #5b6470; --line: #d5dae1; --accent: #1b5e9b; --paper: #ffffff; --side: #f3f5f8; }
+@media (prefers-color-scheme: dark) { :root { --ink: #e6e9ee; --muted: #9aa4b1; --line: #343b45; --accent: #7cb8f0; --paper: #15181d; --side: #1c2128; } }
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.45 system-ui, sans-serif; color: var(--ink); background: var(--paper); }
+.loading { padding: 16px; }
+.shell { display: flex; min-height: 100vh; }
+nav { width: 240px; flex: none; padding: 16px; background: var(--side); border-right: 1px solid var(--line); }
+main { flex: 1; min-width: 0; padding: 16px; }
+h1 { font-size: 18px; margin: 0 0 12px; }
+h2 { font-size: 20px; margin: 0 12px 0 0; }
+h3 { font-size: 15px; margin: 14px 0 4px; }
+h4 { font-size: 14px; margin: 14px 0 4px; }
+ul { list-style: none; margin: 0 0 8px; padding: 0; }
+label { display: block; margin: 8px 0 2px; color: var(--muted); font-size: 13px; }
+input { width: 100%; padding: 6px 8px; font: inherit; color: inherit; background: var(--paper); border: 1px solid var(--line); border-radius: 4px; }
+button { margin: 6px 6px 0 0; padding: 5px 12px; font: inherit; color: inherit; background: var(--paper); border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; }
+button.link { margin: 1px 0; padding: 1px 0; border: 0; background: none; color: var(--accent); text-align: left; overflow-wrap: anywhere; }
+button.link.current { font-weight: 700; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+header { display: flex; align-items: center; flex-wrap: wrap; }
+.sign-in { max-width: 340px; margin: 10vh auto 0; }
+.browser { display: flex; gap: 20px; align-items: flex-start; }
+.list { width: 220px; flex: none; }
+.detail { flex: 1; min-width: 0; }
+@media (min-width: 721px) { .list, .detail { max-height: calc(100vh - 130px); overflow: auto; } }
+.id { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; margin: 0 0 8px; }
+.table { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line); }
+.error { color: #c62828; }
+.notice { color: var(--muted); }
+#blazor-error-ui { display: none; position: fixed; bottom: 0; left: 0; right: 0; padding: 10px 16px; background: #fff3cd; color: #533f03; }
+@media (max-width: 720px) { .shell, .browser { flex-direction: column; } nav, .list { width: 100%; border-right: 0; } }

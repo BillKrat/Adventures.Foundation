@@ -161,6 +161,7 @@ public sealed class ViewModelTests
         Assert.Equal("Site one.example", browser.SiteTitle);
         Assert.Equal(["content", "identity"], browser.Areas.Select(a => a.Name));
         Assert.Contains("urn:broken", browser.Notice);
+        Assert.Equal(("Role", "urn:elsewhere"), (browser.NameOf("urn:role"), browser.NameOf("urn:elsewhere")));
         browser.Filter = "ro";
         Assert.Equal(["Role"], browser.Areas.SelectMany(a => a.Schemas).Select(s => s.Name));
         browser.Filter = "IDENT";

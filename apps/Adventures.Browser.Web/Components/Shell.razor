@@ -1,0 +1,59 @@
+@implements IDisposable
+@inject BrowserShellViewModel Model
+
+<div class="shell">
+    <nav aria-label="Domains">
+        <h1>Schema Browser</h1>
+        <ul class="domains">
+            @foreach (var domain in Model.Domains)
+            {
+                <li>
+                    <button type="button" class="@(domain == Model.SelectedDomain ? "link current" : "link")" @onclick="() => Model.SelectedDomain = domain">@domain</button>
+                </li>
+            }
+        </ul>
+        <form @onsubmit="() => Model.AddCommand.Execute(null)">
+            <label for="new-domain">A domain you have access to</label>
+            <input id="new-domain" @bind="Model.NewDomain" @bind:event="oninput" placeholder="example.com" autocomplete="off" />
+            <button type="submit">Add</button>
+            <button type="button" disabled="@(Model.SelectedDomain is null)" @onclick="() => Model.RemoveCommand.Execute(null)">Remove</button>
+        </form>
+        @if (Model.Error is not null)
+        {
+            <p class="error" role="alert">@Model.Error</p>
+        }
+    </nav>
+    <main>
+        @switch (Model.Current)
+        {
+            case SiteSignInViewModel signIn:
+                <SignIn @key="signIn" Model="signIn" />
+                break;
+            case SchemaBrowserViewModel browser:
+                <SchemaBrowser @key="browser" Model="browser" />
+                break;
+            default:
+                <p>Add a domain to begin. Your list stays on this device.</p>
+                break;
+        }
+    </main>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        Model.PropertyChanged += OnChanged;
+        Model.Domains.CollectionChanged += OnDomainsChanged;
+        await Model.LoadAsync();
+    }
+
+    private void OnChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => InvokeAsync(StateHasChanged);
+
+    private void OnDomainsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Model.PropertyChanged -= OnChanged;
+        Model.Domains.CollectionChanged -= OnDomainsChanged;
+    }
+}

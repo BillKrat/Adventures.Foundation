@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <!-- The web schema browser: a stand-alone page that shares the desktop application's view models. It calls one address, the browser API. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.12" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.12" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Adventures.Browser.Client\Adventures.Browser.Client.csproj" />
+  </ItemGroup>
+
+  <!-- The site's IIS settings replace the generated file on every publish. -->
+  <Target Name="PublishSiteSettings" AfterTargets="Publish">
+    <Copy SourceFiles="Hosting/web.config" DestinationFiles="$(PublishDir)web.config" />
+  </Target>
+
+</Project>

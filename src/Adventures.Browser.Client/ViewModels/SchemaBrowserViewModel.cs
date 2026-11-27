@@ -79,6 +79,9 @@ public sealed class SchemaBrowserViewModel : ScreenViewModel
 
     public event EventHandler? SignedOut;
 
+    /// <summary>The short name of a schema a link points at; its id when the list has no such schema.</summary>
+    public string NameOf(string schemaId) => _all.FirstOrDefault(s => s.Id == schemaId)?.Name ?? schemaId;
+
     public async Task LoadAsync()
     {
         Error = null;

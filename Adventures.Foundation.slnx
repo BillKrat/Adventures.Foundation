@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/apps/">
+    <Project Path="apps/Adventures.Browser.Web/Adventures.Browser.Web.csproj" />
     <Project Path="apps/Adventures.Browser.Desktop/Adventures.Browser.Desktop.csproj" />
     <Project Path="apps/Adventures.Browser.Host/Adventures.Browser.Host.csproj" />
   </Folder>
@@ -41,6 +42,7 @@
     <Project Path="src/Adventures.WebApi/Adventures.WebApi.csproj" />
   </Folder>
   <Folder Name="/test/">
+    <Project Path="test/Adventures.Browser.Web.Tests/Adventures.Browser.Web.Tests.csproj" />
     <Project Path="test/Adventures.Browser.Client.Tests/Adventures.Browser.Client.Tests.csproj" />
     <Project Path="test/Adventures.Browser.WebApi.Tests/Adventures.Browser.WebApi.Tests.csproj" />
     <Project Path="test/Adventures.Blog.Tests/Adventures.Blog.Tests.csproj" />

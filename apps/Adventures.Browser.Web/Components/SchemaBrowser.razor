@@ -1,0 +1,96 @@
+@inherits ModelView<SchemaBrowserViewModel>
+
+<header>
+    <h2>@Model.SiteTitle</h2>
+    <button type="button" @onclick="() => Model.RefreshCommand.Execute(null)">Refresh</button>
+    <button type="button" @onclick="() => Model.SignOutCommand.Execute(null)">Sign out</button>
+</header>
+@if (Model.Notice is not null)
+{
+    <p class="notice">@Model.Notice</p>
+}
+@if (Model.Error is not null)
+{
+    <p class="error" role="alert">@Model.Error</p>
+}
+<div class="browser">
+    <section aria-label="Schemas" class="list">
+        <label for="filter">Filter</label>
+        <input id="filter" @bind="Model.Filter" @bind:event="oninput" placeholder="schema or area" />
+        @foreach (var area in Model.Areas)
+        {
+            <h3>@area.Name</h3>
+            <ul>
+                @foreach (var schema in area.Schemas)
+                {
+                    <li><button type="button" class="@(schema.Id == Model.Detail?.Id ? "link current" : "link")" title="@schema.Id" @onclick="() => Open(schema.Id)">@schema.Name</button></li>
+                }
+            </ul>
+        }
+    </section>
+    @if (Model.Detail is { } detail)
+    {
+        <section aria-label="Schema" class="detail">
+            @if (Model.CanGoBack)
+            {
+                <button type="button" @onclick="() => Model.BackCommand.Execute(null)">Back</button>
+            }
+            <h3>@detail.Name</h3>
+            <p class="id">@detail.Id</p>
+            @if (detail.DisplayField is not null)
+            {
+                <p>Shown by its field @detail.DisplayField</p>
+            }
+            <div class="table">
+                <table>
+                    <thead><tr><th>Field</th><th>Label</th><th>Type</th><th>Required</th><th>Read only</th><th>Points at</th><th>Predicate</th></tr></thead>
+                    <tbody>
+                        @foreach (var field in detail.Fields)
+                        {
+                            <tr>
+                                <td>@field.Name</td>
+                                <td>@field.Label</td>
+                                <td title="@field.Type">@(field.RefSchemaId is null ? field.Type : field.Type.Split(':')[0])</td>
+                                <td>@(field.IsRequired ? "yes" : "")</td>
+                                <td>@(field.IsReadOnly ? "yes" : "")</td>
+                                <td>
+                                    @if (field.RefSchemaId is { } target)
+                                    {
+                                        <button type="button" class="link" title="@target" @onclick="() => Open(target)">@Model.NameOf(target)</button>
+                                    }
+                                </td>
+                                <td>@field.Predicate</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (detail.Relations.Count > 0)
+            {
+                <h4>Child collections</h4>
+                <ul>
+                    @foreach (var relation in detail.Relations)
+                    {
+                        <li><button type="button" class="link" title="@relation.ChildSchemaId" @onclick="() => Open(relation.ChildSchemaId)">@relation.Label</button></li>
+                    }
+                </ul>
+            }
+            @if (detail.UsedBy.Count > 0)
+            {
+                <h4>Used by</h4>
+                <ul>
+                    @foreach (var use in detail.UsedBy)
+                    {
+                        <li><button type="button" class="link" title="@use.SchemaId" @onclick="() => Open(use.SchemaId)">@use.SchemaName.@use.FieldName</button></li>
+                    }
+                </ul>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    protected override IEnumerable<System.Collections.Specialized.INotifyCollectionChanged> Collections(SchemaBrowserViewModel model) => [model.Areas];
+
+    private Task Open(string id) => Model.OpenAsync(id);
+}
