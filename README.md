@@ -66,6 +66,26 @@ reference graph so the layers cannot drift. Matching xUnit projects live in `tes
 - **`Adventures.Client`**: a desktop and console client (sign-in session, remote presenter, view models) used by
   the WPF app in `ai-research-blog`.
 
+## The schema browser (`apps/`)
+
+Applications built only from these libraries: browse the schemas (the shape of the data, never the data) of the sites you have access to.
+
+| Application | What it is |
+|---|---|
+| `Adventures.Browser.Host` | The browser API: forwards sign-in and read-only schema requests to the sites its settings list. No database, users or secrets |
+| `Adventures.Browser.Desktop` | Windows (WPF) client |
+| `Adventures.Browser.Web` | Blazor WebAssembly client, a static site |
+
+Both clients share one set of view models (`Adventures.Browser.Client`). A site offers the browser by switching on `Browser:Enabled`; a person needs the `schema.read` right there.
+
+```powershell
+dotnet run --project apps/Adventures.Browser.Host
+```
+
+```powershell
+dotnet run --project apps/Adventures.Browser.Web
+```
+
 ## Consuming this from another repo
 
 Consume the libraries by **project reference** from a sibling clone, as `ai-research-blog` does from its
