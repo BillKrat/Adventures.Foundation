@@ -38,7 +38,8 @@ public sealed partial class TenantCorsPolicyProvider(
             return null;
         }
 
-        var allowed = await AllowedAsync(context.RequestAborted).ConfigureAwait(false);
+        // Not the request's own cancellation: the list is shared by every visitor, so reading it must not stop, or fail closed, because one of them left.
+        var allowed = await AllowedAsync(CancellationToken.None).ConfigureAwait(false);
         return new CorsPolicyBuilder()
             .SetIsOriginAllowed(allowed.Contains)
             .AllowAnyHeader()

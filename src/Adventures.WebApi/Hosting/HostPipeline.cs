@@ -43,7 +43,7 @@ public static class HostPipeline
         app.UseRateLimiter();
 
         // One handler in every environment, so what a developer sees is what production does: the full exception goes to the log file and the exception log,
-        // the client gets a shielded body with a reference (see UnhandledExceptionHandler).
-        app.UseExceptionHandler(errorApp => errorApp.Run(UnhandledExceptionHandler.HandleAsync));
+        // the client gets a shielded body with a reference (see UnhandledExceptionHandler). A visitor who left is not a failure (see AbandonedRequests).
+        app.UseShieldedErrors();
     }
 }

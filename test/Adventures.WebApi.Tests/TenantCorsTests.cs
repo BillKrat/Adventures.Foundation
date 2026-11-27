@@ -22,11 +22,18 @@ public sealed class TenantCorsTests
 
         public bool Throws { get; set; }
 
+        public bool FailsWhenCancelled { get; set; }
+
         public List<string> Names { get; } = [.. names];
 
         public Task<IReadOnlyList<string>> AllNamesAsync(CancellationToken cancellationToken = default)
         {
             Reads++;
+            if (FailsWhenCancelled && cancellationToken.IsCancellationRequested)
+            {
+                throw new InvalidOperationException("Exception while performing SSL handshake", new OperationCanceledException(cancellationToken));
+            }
+
             return Throws ? throw new InvalidOperationException("store down") : Task.FromResult<IReadOnlyList<string>>(Names.ToList());
         }
     }
@@ -191,6 +198,21 @@ public sealed class TenantCorsTests
 
         Assert.False(await AllowsAsync(provider, "https://example.com"));
         Assert.True(await AllowsAsync(provider, "https://configured.test"));
+    }
+
+    [Fact]
+    public async Task AVisitorWhoLeaves_DoesNotStopARegisteredSiteBeingTrusted_ForThemOrForTheNextVisitor()
+    {
+        // The list is shared by every visitor, so reading it must not depend on one of them waiting (a driver reports the cancelled read as its own error).
+        var hosts = new FakeHosts("example.com") { FailsWhenCancelled = true };
+        var provider = Provider(hosts);
+        var left = new DefaultHttpContext { RequestAborted = new CancellationToken(canceled: true) };
+
+        var first = await provider.GetPolicyAsync(left, "Angular");
+
+        Assert.True(first!.IsOriginAllowed("https://example.com"));
+        Assert.True(await AllowsAsync(provider, "https://example.com"));
+        Assert.Equal(1, hosts.Reads);
     }
 
     [Fact]
