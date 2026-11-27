@@ -3,6 +3,7 @@
     "path": "Adventures.Foundation.slnx",
     "projects": [
       "apps\\Adventures.Browser.Host\\Adventures.Browser.Host.csproj",
+      "src\\Adventures.Browser.WebApi\\Adventures.Browser.WebApi.csproj",
       "src\\Adventures.Common\\Adventures.Common.csproj",
       "src\\Adventures.Ioc\\Adventures.Ioc.csproj",
       "src\\Adventures.Collaboration\\Adventures.Collaboration.csproj",
@@ -35,6 +36,7 @@
       "src\\Adventures.Security\\Adventures.Security.csproj",
       "src\\Adventures.Security.AspNetCore\\Adventures.Security.AspNetCore.csproj",
       "src\\Adventures.WebApi\\Adventures.WebApi.csproj",
+      "test\\Adventures.Browser.WebApi.Tests\\Adventures.Browser.WebApi.Tests.csproj",
       "test\\Adventures.Blog.Tests\\Adventures.Blog.Tests.csproj",
       "test\\Adventures.Blog.Legacy.Tests\\Adventures.Blog.Legacy.Tests.csproj",
       "test\\Adventures.Collaboration.Tests\\Adventures.Collaboration.Tests.csproj",

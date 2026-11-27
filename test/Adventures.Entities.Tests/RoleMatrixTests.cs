@@ -24,7 +24,7 @@ public sealed class RoleMatrixTests : IAsyncLifetime
         [
             Rights.AdminAccess, Rights.PostsRead, Rights.PagesRead, Rights.CollaborationRead, Rights.CollaborationWrite, Rights.CollaborationReview, Rights.DecisionsRead,
         ],
-        ["Developer"] = [Rights.AdminAccess, Rights.PostsRead, Rights.CollaborationRead, Rights.CollaborationWrite, Rights.DiagnosticsRead],
+        ["Developer"] = [Rights.AdminAccess, Rights.PostsRead, Rights.CollaborationRead, Rights.CollaborationWrite, Rights.DiagnosticsRead, Rights.SchemaRead],
     };
 
     private IServiceProvider _services = null!;

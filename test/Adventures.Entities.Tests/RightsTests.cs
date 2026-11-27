@@ -135,7 +135,7 @@ public sealed class RightsTests : IAsyncLifetime
         var roles = _services.GetRequiredService<IEntityRepository<Role>>();
         Assert.DoesNotContain("collaboration.write", await RightsTextOfAsync("Reviewer"));
 
-        Assert.Equal(1, await RoleRightsUpgrade.ApplyAsync(new EntityDal<Role>(roles)));
+        Assert.Equal(2, await RoleRightsUpgrade.ApplyAsync(new EntityDal<Role>(roles)));
 
         var reviewer = Rights.Parse(await RightsTextOfAsync("Reviewer"));
         Assert.Contains(Rights.CollaborationReview, reviewer);
@@ -176,10 +176,23 @@ public sealed class RightsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TheUpgradeLetsTheDeveloperBrowseSchemas_AndNoOtherRoleBesidesTheAdministrator()
+    {
+        var roles = _services.GetRequiredService<IEntityRepository<Role>>();
+
+        await RoleRightsUpgrade.ApplyAsync(new EntityDal<Role>(roles));
+
+        Assert.Contains(Rights.SchemaRead, Rights.Parse(await RightsTextOfAsync("Developer")));
+        Assert.Contains(Rights.SchemaRead, Rights.Parse(await RightsTextOfAsync("Admin")));
+        Assert.DoesNotContain(Rights.SchemaRead, Rights.Parse(await RightsTextOfAsync("Editor")));
+        Assert.DoesNotContain(Rights.SchemaRead, Rights.Parse(await RightsTextOfAsync("Reviewer")));
+    }
+
+    [Fact]
     public async Task TheUpgradeIsRepeatable_AndNeverOverwritesRightsAnAdministratorHasEdited()
     {
         var roles = _services.GetRequiredService<IEntityRepository<Role>>();
-        Assert.Equal(1, await RoleRightsUpgrade.ApplyAsync(new EntityDal<Role>(roles)));
+        Assert.Equal(2, await RoleRightsUpgrade.ApplyAsync(new EntityDal<Role>(roles)));
         Assert.Equal(0, await RoleRightsUpgrade.ApplyAsync(new EntityDal<Role>(roles))); // already done
 
         var reviewer = (await roles.ListAsync()).Single(r => (string)r.GetValue("Name")! == "Reviewer");

@@ -18,6 +18,7 @@
     <ProjectReference Include="..\Adventures.Blog.Legacy\Adventures.Blog.Legacy.csproj" />
     <ProjectReference Include="..\Adventures.Blog.Postgres\Adventures.Blog.Postgres.csproj" />
     <ProjectReference Include="..\Adventures.Blog.WebApi\Adventures.Blog.WebApi.csproj" />
+    <ProjectReference Include="..\Adventures.Browser.WebApi\Adventures.Browser.WebApi.csproj" />
     <ProjectReference Include="..\Adventures.Collaboration\Adventures.Collaboration.csproj" />
     <ProjectReference Include="..\Adventures.Collaboration.WebApi\Adventures.Collaboration.WebApi.csproj" />
     <ProjectReference Include="..\Adventures.Common\Adventures.Common.csproj" />

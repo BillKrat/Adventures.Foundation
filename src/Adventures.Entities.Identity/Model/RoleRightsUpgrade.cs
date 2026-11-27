@@ -13,6 +13,10 @@ public static class RoleRightsUpgrade
     private const string ReviewerAfter = "admin.access,posts.read,pages.read,collaboration.read,collaboration.write,collaboration.review,decisions.read";
 
     /// <summary>The Editor as seed 018 first shipped it: before comments could be moderated.</summary>
+    private const string DeveloperBefore = "admin.access,posts.read,collaboration.read,collaboration.write,diagnostics.read";
+
+    private const string DeveloperAfter = DeveloperBefore + ",schema.read";
+
     private const string EditorBefore =
         "admin.access,posts.read,posts.create,posts.edit.any,posts.delete.own,posts.publish,pages.read,pages.edit,pages.publish,taxonomy.manage,media.upload,collaboration.read,decisions.read";
 
@@ -35,6 +39,13 @@ public static class RoleRightsUpgrade
             if (role.GetValue("Name") is "Editor" && string.Equals(role.GetValue("Rights") as string, EditorBefore, StringComparison.Ordinal))
             {
                 role.Set("Rights", Guid.NewGuid().ToString(), EditorAfter);
+                await roles.UpdateAsync(role, cancellationToken).ConfigureAwait(false);
+                changed++;
+            }
+
+            if (role.GetValue("Name") is "Developer" && string.Equals(role.GetValue("Rights") as string, DeveloperBefore, StringComparison.Ordinal))
+            {
+                role.Set("Rights", Guid.NewGuid().ToString(), DeveloperAfter);
                 await roles.UpdateAsync(role, cancellationToken).ConfigureAwait(false);
                 changed++;
             }

@@ -25,3 +25,6 @@ public sealed record SchemaDetail(
 
 /// <summary>Every schema of a store, and the ids of any that could not be read (listed so a broken schema is seen, never dropped silently).</summary>
 public sealed record SchemaCatalogList(IReadOnlyList<SchemaSummary> Schemas, IReadOnlyList<string> Unreadable);
+
+/// <summary>The site that answered a schema browser request.</summary>
+public sealed record SchemaBrowserContext(string? SiteName, string? SiteDomain);

@@ -38,6 +38,7 @@ public static class Rights
     public const string SettingsManage = "settings.manage";
     public const string DiagnosticsRead = "diagnostics.read";
     public const string DiagnosticsAi = "diagnostics.ai";
+    public const string SchemaRead = "schema.read";
 
     /// <summary>The platform administrator: edits what the roles allow for every tenant. Never part of <c>*</c> or <see cref="AllNames"/> and never held by a role: it comes from the platform administrator switch on the person (<see cref="IPlatformAdministrators"/>) and counts in every tenant.</summary>
     public const string PlatformManage = "platform.manage";
@@ -68,6 +69,7 @@ public static class Rights
         new(SettingsManage, "Change the site settings."),
         new(DiagnosticsRead, "See the exception log and request diagnostics."),
         new(DiagnosticsAi, "Use Ask Claude on an exception (it costs money and sends a scrubbed report out)."),
+        new(SchemaRead, "Browse the schemas: the shape of the data, never the data."),
         new(PlatformManage, "Platform administrator: change what the roles allow, for every tenant. Not part of any tenant administrator role."),
     ];
 

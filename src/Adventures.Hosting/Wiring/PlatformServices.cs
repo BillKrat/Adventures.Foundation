@@ -1,4 +1,5 @@
 // Startup composition: CORS, controllers, authentication, M2M, HTTP clients, failure reporting, AI triage (moved out of Program.cs, no behaviour change).
+using Adventures.Browser.WebApi;
 using Adventures.Common.Diagnostics;
 using Adventures.Data;
 using Adventures.Data.Postgres;
@@ -42,6 +43,13 @@ internal static class AppPlatformServices
                 .AddIdentityControllers()
                 .AddToolsControllers()
                 .AddApplicationPart(typeof(RuntimeController).Assembly);
+            // The read-only schema browser routes a site publishes for the browser applications: off unless Browser:Enabled.
+            if (configuration.GetValue<bool>("Browser:Enabled"))
+            {
+                services.AddSchemaBrowser();
+                services.AddSingleton<ISchemaCatalogSource, NQuadSchemaCatalogSource>();
+            }
+
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             services.AddOpenApi();
 
