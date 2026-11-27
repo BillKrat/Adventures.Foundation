@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The WPF desktop client. Windows only: the Windows CI job builds it, and it is not in the Linux solution filter. -->
+  <PropertyGroup>
+	<OutputType>WinExe</OutputType>
+	<TargetFramework>net10.0-windows</TargetFramework>
+	<UseWPF>true</UseWPF>
+	<Nullable>enable</Nullable>
+	<ImplicitUsings>enable</ImplicitUsings>
+	<RootNamespace>Adventures.Browser.Desktop</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
+	<PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<ProjectReference Include="..\..\src\Adventures.Client\Adventures.Client.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

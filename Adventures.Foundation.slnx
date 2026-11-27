@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/apps/">
+    <Project Path="apps/Adventures.Browser.Desktop/Adventures.Browser.Desktop.csproj" />
     <Project Path="apps/Adventures.Browser.Host/Adventures.Browser.Host.csproj" />
   </Folder>
   <Folder Name="/src/">
@@ -63,6 +64,7 @@
     <Project Path="test/Adventures.Security.Tests/Adventures.Security.Tests.csproj" />
     <Project Path="test/Adventures.Security.AspNetCore.Tests/Adventures.Security.AspNetCore.Tests.csproj" />
     <Project Path="test/Adventures.WebApi.Tests/Adventures.WebApi.Tests.csproj" />
+    <Project Path="test/Adventures.Browser.Desktop.Tests/Adventures.Browser.Desktop.Tests.csproj" />
     <Project Path="test/Adventures.Browser.Host.Tests/Adventures.Browser.Host.Tests.csproj" />
   </Folder>
 </Solution>
