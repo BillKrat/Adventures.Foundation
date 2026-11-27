@@ -26,6 +26,8 @@ public class DependencyRulesTests
         "Adventures.Blog.WebApi -> Adventures.Security",
         "Adventures.Blog.WebApi -> Adventures.Tools",
         "Adventures.Blog.WebApi -> Adventures.WebApi",
+        "Adventures.Browser.Client -> Adventures.Client",
+        "Adventures.Browser.Client -> Adventures.Entities",
         "Adventures.Browser.Gateway.WebApi -> Adventures.Entities",
         "Adventures.Browser.WebApi -> Adventures.Entities",
         "Adventures.Browser.WebApi -> Adventures.Entities.Identity",
@@ -265,7 +267,7 @@ public class DependencyRulesTests
         var project = System.Xml.Linq.XDocument.Load(Path.Combine(ProjectGraph.Root, "src", "Adventures.Client", "Adventures.Client.csproj"));
         Assert.Empty(project.Descendants("FrameworkReference"));
         Assert.Equal("net10.0", (string?)project.Descendants("TargetFramework").Single());
-        Assert.Empty(Graph.Projects.Values.Where(p => p.ProjectReferences.Contains("Adventures.Client")));
+        Assert.Equal(["Adventures.Browser.Client"], Graph.Projects.Values.Where(p => p.ProjectReferences.Contains("Adventures.Client")).Select(p => p.Name)); // the browser's client half only; nothing server-side
     }
 
     // S5: Adventures.Data is contracts only - no database driver, no ASP.NET package; the implementations live in the store projects.

@@ -4,6 +4,7 @@
     <Project Path="apps/Adventures.Browser.Host/Adventures.Browser.Host.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/Adventures.Browser.Client/Adventures.Browser.Client.csproj" />
     <Project Path="src/Adventures.Browser.Gateway.WebApi/Adventures.Browser.Gateway.WebApi.csproj" />
     <Project Path="src/Adventures.Browser.WebApi/Adventures.Browser.WebApi.csproj" />
     <Project Path="src/Adventures.Common/Adventures.Common.csproj" Id="1c2babc9-0521-4459-ae72-1933b6d73161" />
@@ -40,6 +41,7 @@
     <Project Path="src/Adventures.WebApi/Adventures.WebApi.csproj" />
   </Folder>
   <Folder Name="/test/">
+    <Project Path="test/Adventures.Browser.Client.Tests/Adventures.Browser.Client.Tests.csproj" />
     <Project Path="test/Adventures.Browser.WebApi.Tests/Adventures.Browser.WebApi.Tests.csproj" />
     <Project Path="test/Adventures.Blog.Tests/Adventures.Blog.Tests.csproj" />
     <Project Path="test/Adventures.Blog.Legacy.Tests/Adventures.Blog.Legacy.Tests.csproj" />
