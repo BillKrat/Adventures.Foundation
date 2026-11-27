@@ -7,9 +7,32 @@ on:
     branches: ["**"]
   workflow_dispatch: {}
 
+# Two jobs cover every project. Linux builds Adventures.Foundation.Linux.slnf (everything that needs no Windows); Windows builds the whole
+# solution, which also takes the desktop applications and their view tests. test/Adventures.Architecture.Tests holds the filter and these
+# jobs in step, so a new project cannot drop out of both.
 jobs:
-  build-and-test:
+  linux:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore Adventures.Foundation.Linux.slnf
+
+      - name: Build
+        run: dotnet build Adventures.Foundation.Linux.slnf -c Release --no-restore
+
+      - name: Test
+        run: dotnet test Adventures.Foundation.Linux.slnf -c Release --no-build
+
+  windows:
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4

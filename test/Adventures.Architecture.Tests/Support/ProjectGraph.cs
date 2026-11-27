@@ -52,7 +52,7 @@ public sealed class ProjectGraph
         return new ProjectGraph(projects);
     }
 
-    /// <summary>The repository root, for the layout rule (every project lives under src or test).</summary>
+    /// <summary>The repository root, for the layout rules (<see cref="LayoutRules"/>).</summary>
     public static string Root => FindRepositoryRoot();
 
     private static string FindRepositoryRoot()

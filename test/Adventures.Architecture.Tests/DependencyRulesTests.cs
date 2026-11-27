@@ -207,17 +207,6 @@ public class DependencyRulesTests
         Assert.Empty(offenders);
     }
 
-    // Layout (S1): every project lives under src or test; none sits beside the solution file.
-    [Fact]
-    public void Every_project_lives_under_src_or_test()
-    {
-        var stray = Directory.GetFiles(ProjectGraph.Root, "*.csproj", SearchOption.AllDirectories)
-            .Select(f => Path.GetRelativePath(ProjectGraph.Root, f).Replace('\\', '/'))
-            .Where(f => !f.StartsWith("src/", StringComparison.Ordinal) && !f.StartsWith("test/", StringComparison.Ordinal))
-            .Where(f => !f.Contains("/obj/") && !f.Contains("/bin/"));
-        Assert.Empty(stray);
-    }
-
     // S3: the blog feature builds on the Entities model and the plug-in seam (the HTML sanitiser is a plug-in) only. It names no store, no security project and no host (the NQuad browser must not pull it in, and it must not pull a store).
     [Fact]
     public void Blog_projects_reference_only_their_layer()
