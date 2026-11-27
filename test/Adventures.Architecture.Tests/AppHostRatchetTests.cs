@@ -12,7 +12,7 @@ public sealed class AppHostRatchetTests
 {
     public static TheoryData<string, int, string> Budgets => new()
     {
-        { "Adventures.Browser.Host", 200, "Adventures.Data.NQuad,Adventures.Data.NQuad.Postgres" },
+        { "Adventures.Browser.Host", 40, "" },
     };
 
     private static readonly string[] StoreProjects =

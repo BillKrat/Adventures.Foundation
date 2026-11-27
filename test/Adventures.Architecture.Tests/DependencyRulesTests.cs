@@ -26,6 +26,7 @@ public class DependencyRulesTests
         "Adventures.Blog.WebApi -> Adventures.Security",
         "Adventures.Blog.WebApi -> Adventures.Tools",
         "Adventures.Blog.WebApi -> Adventures.WebApi",
+        "Adventures.Browser.Gateway.WebApi -> Adventures.Entities",
         "Adventures.Browser.WebApi -> Adventures.Entities",
         "Adventures.Browser.WebApi -> Adventures.Entities.Identity",
         "Adventures.Browser.WebApi -> Adventures.WebApi",

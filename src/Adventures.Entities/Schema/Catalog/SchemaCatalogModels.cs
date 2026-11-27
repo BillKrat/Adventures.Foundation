@@ -28,3 +28,9 @@ public sealed record SchemaCatalogList(IReadOnlyList<SchemaSummary> Schemas, IRe
 
 /// <summary>The site that answered a schema browser request.</summary>
 public sealed record SchemaBrowserContext(string? SiteName, string? SiteDomain);
+
+/// <summary>A sign-in to one site, as the browser applications send it.</summary>
+public sealed record SiteSignIn(string? UserName, string? Password);
+
+/// <summary>What a successful sign-in to a site gives: its access token, when it lapses, and whether the person must change their password first.</summary>
+public sealed record SiteToken(string AccessToken, DateTimeOffset? ExpiresAtUtc, bool MustChangePassword);

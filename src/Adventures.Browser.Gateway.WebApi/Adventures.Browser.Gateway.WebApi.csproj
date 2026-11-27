@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Adventures.Browser.Gateway.WebApi</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Adventures On The Edge</Authors>
+    <Description>The schema browser applications' one API address: forwards sign-in and read-only schema requests to the sites the operator configured, and to nothing else. Holds no database, user store or token.</Description>
+    <PackageLicenseExpression>BUSL-1.1</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/BillKrat/Adventures.Foundation</RepositoryUrl>
+    <PackageTags>schema;browser;gateway;webapi</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Adventures.Entities\Adventures.Entities.csproj" />
+  </ItemGroup>
+
+</Project>

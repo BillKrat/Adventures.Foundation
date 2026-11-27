@@ -3,6 +3,7 @@
     "path": "Adventures.Foundation.slnx",
     "projects": [
       "apps\\Adventures.Browser.Host\\Adventures.Browser.Host.csproj",
+      "src\\Adventures.Browser.Gateway.WebApi\\Adventures.Browser.Gateway.WebApi.csproj",
       "src\\Adventures.Browser.WebApi\\Adventures.Browser.WebApi.csproj",
       "src\\Adventures.Common\\Adventures.Common.csproj",
       "src\\Adventures.Ioc\\Adventures.Ioc.csproj",

@@ -4,6 +4,7 @@
     <Project Path="apps/Adventures.Browser.Host/Adventures.Browser.Host.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/Adventures.Browser.Gateway.WebApi/Adventures.Browser.Gateway.WebApi.csproj" />
     <Project Path="src/Adventures.Browser.WebApi/Adventures.Browser.WebApi.csproj" />
     <Project Path="src/Adventures.Common/Adventures.Common.csproj" Id="1c2babc9-0521-4459-ae72-1933b6d73161" />
     <Project Path="src/Adventures.Ioc/Adventures.Ioc.csproj" Id="4afade36-f01d-4eb6-a0e5-f6b57884849e" />

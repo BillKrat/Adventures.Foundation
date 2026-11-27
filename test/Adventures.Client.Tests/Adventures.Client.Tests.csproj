@@ -20,4 +20,15 @@
 	<ProjectReference Include="..\..\src\Adventures.Ioc\Adventures.Ioc.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The presenter contract test runs a real controller pipeline over a real repository. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
+    <ProjectReference Include="..\..\src\Adventures.WebApi\Adventures.WebApi.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Data.NQuad\Adventures.Data.NQuad.csproj" />
+    <ProjectReference Include="..\..\src\Adventures.Entities.Identity\Adventures.Entities.Identity.csproj" />
+    <None Include="..\..\src\Adventures.Data.NQuad\Sql\seed\seed.nq" Link="Sql\seed\seed.nq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Adventures.Entities.Identity\Sql\seed\seed-004-identity.nq" Link="Sql\seed\seed-004-identity.nq" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
