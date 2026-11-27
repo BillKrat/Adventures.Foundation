@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-	<ProjectReference Include="..\..\src\Adventures.Client\Adventures.Client.csproj" />
+	<ProjectReference Include="..\..\src\Adventures.Browser.Client\Adventures.Browser.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>

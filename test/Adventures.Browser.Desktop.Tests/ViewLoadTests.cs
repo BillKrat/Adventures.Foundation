@@ -1,47 +1,46 @@
-using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using Adventures.Client;
-using Adventures.Entities;
+using Adventures.Browser.Client;
 using Adventures.Browser.Desktop;
-using Adventures.Browser.Desktop.Views;
+using Adventures.Entities;
 using Xunit;
 
 namespace Adventures.Browser.Desktop.Tests;
 
 /// <summary>
-/// Each screen must actually render. A view whose code-behind is missing builds cleanly but shows nothing (found by the human's first run: "New" gave a
-/// blank window), so this loads the real window with the app's data templates, shows each screen and checks that it produced controls.
+/// Each screen must actually render. A view whose code-behind is missing builds cleanly but shows nothing (found by the human's first run), so this loads
+/// the real window with the app's data templates, shows each screen and checks that it produced controls bound to the view model.
 /// </summary>
 public class ViewLoadTests
 {
-    private static readonly EntitySchemaModel Schema = new("urn:t",
-    [
-        new EntityFieldSchema("Id", "Guid", false, "Id", true, 0),
-        new EntityFieldSchema("UserName", "String", true, "User name", false, 1),
-        new EntityFieldSchema("Role", "String", false, "Role", false, 2, Choices: ["Admin", "Editor"]),
-    ]);
-
-    private sealed class FakePresenter : IEntityPresenter<DynamicRecord>
+    private sealed class Api : IBrowserApi
     {
-        public Task<EntityFormModel?> GetNewFormAsync(CancellationToken c = default) =>
-            Task.FromResult<EntityFormModel?>(new EntityFormModel(Schema, new EntityDataModel(string.Empty, new Dictionary<string, string?> { ["UserName"] = null }), new EntityPermissions(true, true)));
+        public bool SignedIn { get; set; }
 
-        public Task<EntityFormModel?> GetFormAsync(string id, CancellationToken c = default) => GetNewFormAsync(c);
+        public bool IsSignedIn(string domain) => SignedIn;
 
-        public Task<EntityGridModel> GetGridAsync(EntityGridQuery q, CancellationToken c = default) =>
-            Task.FromResult(new EntityGridModel(Schema, [new EntityDataModel("u1", new Dictionary<string, string?> { ["Id"] = "u1", ["UserName"] = "Ann" })], new GridPaging(1, 25, 1, null, false), CanCreate: true));
+        public Task<SiteSignInResult> SignInAsync(string domain, string userName, string password, CancellationToken cancellationToken = default) => Task.FromResult(SiteSignInResult.SignedIn);
 
-        public Task<EntityGridModel> GetGridAsync(CancellationToken c = default) => GetGridAsync(new EntityGridQuery(), c);
+        public void SignOut(string domain) => SignedIn = false;
 
-        public async Task<IReadOnlyList<EntityDataModel>> ListAsync(CancellationToken c = default) => (await GetGridAsync(c)).Rows;
+        public Task<SchemaBrowserContext> GetContextAsync(string domain, CancellationToken cancellationToken = default) => Task.FromResult(new SchemaBrowserContext("One", domain));
 
-        public Task<EntityFormModel> CreateAsync(EntityDataModel d, CancellationToken c = default) => throw new NotSupportedException();
+        public Task<SchemaCatalogList> GetSchemasAsync(string domain, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new SchemaCatalogList([new("urn:role", "identity", "Role", 2), new("urn:user", "identity", "User", 5)], []));
 
-        public Task<EntityFormModel?> UpdateAsync(string id, EntityDataModel d, CancellationToken c = default) => throw new NotSupportedException();
+        public Task<SchemaDetail?> GetSchemaAsync(string domain, string schemaId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<SchemaDetail?>(new SchemaDetail(schemaId, "identity", "Role", "Name",
+                [new("Name", "Name", "string", "urn:p:name", true, false, true, null), new("Owner", "Owner", "ref:urn:user", "urn:p:owner", false, false, true, "urn:user")],
+                [new("People", "People", "urn:user", "urn:p:role", true)],
+                [new("urn:user", "User", "Role")]));
+    }
 
-        public Task<bool> DeleteAsync(string id, CancellationToken c = default) => throw new NotSupportedException();
+    private sealed class Store : ISiteListStore
+    {
+        public Task<IReadOnlyList<string>> LoadAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<string>>(["one.example"]);
+
+        public Task SaveAsync(IReadOnlyList<string> domains, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     // WPF needs a single-threaded apartment, and the one Application (with the data templates) belongs to the thread that made it: every test body runs on
@@ -81,19 +80,31 @@ public class ViewLoadTests
         done.Task.GetAwaiter().GetResult();
     }
 
-    private static int Count<T>(DependencyObject root)
+    private static IEnumerable<T> Find<T>(DependencyObject root)
         where T : DependencyObject
     {
-        var found = root is T ? 1 : 0;
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        if (root is T hit)
         {
-            found += Count<T>(VisualTreeHelper.GetChild(root, i));
+            yield return hit;
         }
 
-        return found;
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            foreach (var further in Find<T>(VisualTreeHelper.GetChild(root, i)))
+            {
+                yield return further;
+            }
+        }
     }
 
-    private static Window Show(object screen)
+    private static Window Show(Window window)
+    {
+        window.Show();
+        window.UpdateLayout();
+        return window;
+    }
+
+    private static void EnsureApplication()
     {
         var app = Application.Current ?? new App();
         if (app.Resources.Count == 0)
@@ -103,76 +114,71 @@ public class ViewLoadTests
 
         // the first window shown becomes the main window, and closing it would shut the app down for every later test
         app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        var window = new Window { Content = new ContentControl { Content = screen }, Width = 800, Height = 500 };
-        window.Show();
-        window.UpdateLayout();
-        return window;
     }
 
     [Fact]
-    public void The_edit_screen_renders_its_fields_and_buttons()
+    public void The_window_lists_the_domains_and_shows_the_sign_in_of_the_chosen_one()
     {
         OnSta(() =>
         {
-            var edit = new EntityEditViewModel(new FakePresenter());
-            edit.LoadAsync(null).GetAwaiter().GetResult();
+            EnsureApplication();
+            var shell = new BrowserShellViewModel(new Api(), new Store());
+            shell.LoadAsync().GetAwaiter().GetResult();
 
-            var window = Show(edit);
+            var window = Show(new MainWindow { DataContext = shell });
 
-            Assert.Equal(2, Count<Button>(window));
-            Assert.True(Count<TextBox>(window) >= 3, "one text box per field");
-            Assert.Equal(3, Count<ComboBox>(window));
+            Assert.Equal("one.example", Assert.Single(Find<ListBox>(window)).SelectedItem);
+            Assert.Single(Find<PasswordBox>(window));
+            var buttons = Find<Button>(window).Select(b => b.Content as string).ToList();
+            Assert.Contains("Add", buttons);
+            Assert.Contains("Remove", buttons);
+            Assert.Contains("Sign in", buttons);
+            Assert.Contains(Find<TextBlock>(window), t => t.Text == "Sign in to one.example");
             window.Close();
         });
     }
 
     [Fact]
-    public void The_list_screen_renders_a_grid_with_the_servers_columns()
+    public void The_schema_screen_lists_the_schemas_and_shows_one_with_its_links()
     {
         OnSta(() =>
         {
-            var list = new EntityListViewModel(new FakePresenter());
-            list.LoadAsync().GetAwaiter().GetResult();
+            EnsureApplication();
+            var shell = new BrowserShellViewModel(new Api { SignedIn = true }, new Store());
+            shell.LoadAsync().GetAwaiter().GetResult();
+            shell.Opened.GetAwaiter().GetResult();
+            var browser = Assert.IsType<SchemaBrowserViewModel>(shell.Current);
+            browser.OpenAsync("urn:role").GetAwaiter().GetResult();
 
-            var window = Show(list);
+            var window = Show(new MainWindow { DataContext = shell });
 
-            Assert.Equal(1, Count<DataGrid>(window));
-            var grid = (DataGrid)Find<DataGrid>(window)!;
-            Assert.Equal(3, grid.Columns.Count);
+            var grid = Assert.Single(Find<DataGrid>(window));
+            Assert.Equal(2, grid.Items.Count);
+            var links = Find<Button>(window).Where(b => b.Command == browser.OpenCommand && b.IsVisible).Select(b => (string?)b.CommandParameter).ToList();
+            Assert.Equal(1, links.Count(l => l == "urn:role"));        // the list
+            Assert.Equal(4, links.Count(l => l == "urn:user"));        // the list, the pointer field, the child collection, "used by"
+            Assert.DoesNotContain(null, links);                         // a field that points nowhere shows no link
             window.Close();
         });
     }
 
     [Fact]
-    public void The_sign_in_screen_renders_its_inputs()
+    public void The_sign_in_box_is_emptied_when_another_domain_is_chosen()
     {
         OnSta(() =>
         {
-            var session = new ApiSession(new HttpClient { BaseAddress = new Uri("https://localhost/") }, new Adventures.Security.AmbientPrincipal());
-            var window = Show(new SignInViewModel(session));
+            EnsureApplication();
+            var api = new Api();
+            var view = new Views.SignInView { DataContext = new SiteSignInViewModel(api, "one.example") };
+            var window = Show(new Window { Content = view, Width = 500, Height = 400 });
+            var box = Assert.Single(Find<PasswordBox>(window));
+            box.Password = "typed for one";
 
-            Assert.Equal(1, Count<PasswordBox>(window));
-            Assert.True(Count<TextBox>(window) >= 1);
+            view.DataContext = new SiteSignInViewModel(api, "two.example");
+
+            Assert.Empty(box.Password);
+            Assert.Empty(((SiteSignInViewModel)view.DataContext).Password);
             window.Close();
         });
-    }
-
-    private static DependencyObject? Find<T>(DependencyObject root)
-        where T : DependencyObject
-    {
-        if (root is T)
-        {
-            return root;
-        }
-
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
-        {
-            if (Find<T>(VisualTreeHelper.GetChild(root, i)) is { } hit)
-            {
-                return hit;
-            }
-        }
-
-        return null;
     }
 }

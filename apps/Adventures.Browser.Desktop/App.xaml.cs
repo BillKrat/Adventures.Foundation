@@ -1,6 +1,6 @@
+using System.IO;
 using System.Windows;
-using Adventures.Client;
-using Adventures.Entities;
+using Adventures.Browser.Client;
 using Adventures.Browser.Desktop.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +12,7 @@ public partial class App : Application
 {
     private ServiceProvider? _services;
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         DispatcherUnhandledException += (_, args) =>
@@ -22,22 +22,20 @@ public partial class App : Application
             args.Handled = true;
         };
 
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json", optional: false)
-            .AddEnvironmentVariables("ADVENTURES_")
-            .Build();
-
         try
         {
-            // Api:BaseUrl may be overridden by the environment variable ADVENTURES_Api__BaseUrl. A plain-http address to a remote host is refused by AddAdventuresClient.
+            var settings = new BrowserSettingsFile(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Adventures.Browser", "settings.json"));
+            var defaults = new ConfigurationBuilder().SetBasePath(AppContext.BaseDirectory).AddJsonFile("appsettings.json", optional: false).Build();
+            var environment = new ConfigurationBuilder().AddEnvironmentVariables("ADVENTURES_").Build();
+
+            // The browser API address: the environment variable ADVENTURES_Api__BaseUrl, else the person's settings file, else appsettings.json.
+            var address = environment["Api:BaseUrl"] ?? settings.Read().ApiBaseUrl ?? defaults["Api:BaseUrl"] ?? throw new InvalidOperationException("Api:BaseUrl is not set.");
+
+            // A plain-http address to a remote host is refused by AddAdventuresBrowserClient.
             _services = new ServiceCollection()
-                .AddAdventuresClient(new Uri(configuration["Api:BaseUrl"] ?? throw new InvalidOperationException("Api:BaseUrl is not set.")))
-                .AddRemotePresenter<DynamicRecord>(configuration["Api:UsersRoute"] ?? "api/users")
-                .AddSingleton<SignInViewModel>()
-                .AddSingleton<EntityListViewModel>()
-                .AddSingleton<EntityEditViewModel>()
-                .AddSingleton<ShellViewModel>()
+                .AddAdventuresBrowserClient(new Uri(address))
+                .AddSingleton<ISiteListStore>(settings)
+                .AddSingleton<BrowserShellViewModel>()
                 .BuildServiceProvider(validateScopes: true);
         }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or UriFormatException)
@@ -47,13 +45,10 @@ public partial class App : Application
             return;
         }
 
-        ScreenViewModel[] screens = [_services.GetRequiredService<SignInViewModel>(), _services.GetRequiredService<EntityListViewModel>(), _services.GetRequiredService<EntityEditViewModel>()];
-        foreach (var screen in screens)
-        {
-            screen.Faulted += (_, error) => FileLog.Write("faulted", error);
-        }
-
-        new MainWindow { DataContext = _services.GetRequiredService<ShellViewModel>() }.Show();
+        var shell = _services.GetRequiredService<BrowserShellViewModel>();
+        shell.Failed += (_, error) => FileLog.Write("faulted", error);
+        new MainWindow { DataContext = shell }.Show();
+        await shell.LoadAsync();
     }
 
     protected override void OnExit(ExitEventArgs e)
