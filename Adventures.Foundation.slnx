@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/apps/">
+    <Project Path="apps/Adventures.Browser.Host/Adventures.Browser.Host.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Adventures.Common/Adventures.Common.csproj" Id="1c2babc9-0521-4459-ae72-1933b6d73161" />
     <Project Path="src/Adventures.Ioc/Adventures.Ioc.csproj" Id="4afade36-f01d-4eb6-a0e5-f6b57884849e" />
@@ -60,5 +63,6 @@
     <Project Path="test/Adventures.Security.Tests/Adventures.Security.Tests.csproj" />
     <Project Path="test/Adventures.Security.AspNetCore.Tests/Adventures.Security.AspNetCore.Tests.csproj" />
     <Project Path="test/Adventures.WebApi.Tests/Adventures.WebApi.Tests.csproj" />
+    <Project Path="test/Adventures.Browser.Host.Tests/Adventures.Browser.Host.Tests.csproj" />
   </Folder>
 </Solution>

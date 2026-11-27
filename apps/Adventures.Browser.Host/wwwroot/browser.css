@@ -1,0 +1,27 @@
+:root { color-scheme: light dark; --bg: #fafafa; --fg: #1d1d1f; --muted: #666; --line: #d6d6da; --accent: #2f6fdd; --panel: #fff; --bad: #b3261e; }
+@media (prefers-color-scheme: dark) { :root { --bg: #17181a; --fg: #ececee; --muted: #9a9aa2; --line: #34363a; --accent: #7aa7ff; --panel: #1f2023; --bad: #ff8a80; } }
+body { margin: 0; font: 15px/1.45 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+header h1 { font-size: 17px; margin: 0 12px 0 0; }
+header label { margin: 0; }
+main { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 56px); }
+nav { border-right: 1px solid var(--line); padding: 8px; background: var(--panel); }
+nav button { display: block; width: 100%; text-align: left; margin: 2px 0; padding: 8px 10px; border: 0; border-radius: 6px; background: none; color: inherit; cursor: pointer; font: inherit; }
+nav button.on, nav button:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+section { padding: 16px; overflow-x: auto; }
+table { border-collapse: collapse; min-width: 60%; }
+th, td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; max-width: 38ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+th { color: var(--muted); font-weight: 600; cursor: pointer; }
+tr.row:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); cursor: pointer; }
+input, select, textarea, button.act { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: inherit; }
+textarea { width: 100%; min-height: 6em; box-sizing: border-box; }
+button.act { cursor: pointer; }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button.danger { color: var(--bad); }
+label { display: block; margin: 10px 0 2px; color: var(--muted); font-size: 13px; }
+.bar { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; flex-wrap: wrap; }
+.bar.after { margin-top: 14px; }
+.msg { margin: 8px 0; color: var(--muted); }
+.err { color: var(--bad); }
+.form { max-width: 720px; }
+@media (max-width: 720px) { main { grid-template-columns: 1fr; } nav { border-right: 0; border-bottom: 1px solid var(--line); } }

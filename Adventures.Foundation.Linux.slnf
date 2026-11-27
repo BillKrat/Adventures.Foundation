@@ -2,6 +2,7 @@
   "solution": {
     "path": "Adventures.Foundation.slnx",
     "projects": [
+      "apps\\Adventures.Browser.Host\\Adventures.Browser.Host.csproj",
       "src\\Adventures.Common\\Adventures.Common.csproj",
       "src\\Adventures.Ioc\\Adventures.Ioc.csproj",
       "src\\Adventures.Collaboration\\Adventures.Collaboration.csproj",
@@ -59,7 +60,8 @@
       "test\\Adventures.Tools.WebApi.Tests\\Adventures.Tools.WebApi.Tests.csproj",
       "test\\Adventures.Security.Tests\\Adventures.Security.Tests.csproj",
       "test\\Adventures.Security.AspNetCore.Tests\\Adventures.Security.AspNetCore.Tests.csproj",
-      "test\\Adventures.WebApi.Tests\\Adventures.WebApi.Tests.csproj"
+      "test\\Adventures.WebApi.Tests\\Adventures.WebApi.Tests.csproj",
+      "test\\Adventures.Browser.Host.Tests\\Adventures.Browser.Host.Tests.csproj"
     ]
   }
 }

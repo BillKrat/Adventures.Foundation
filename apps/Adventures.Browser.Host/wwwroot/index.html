@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NQuad Browser</title>
+<link rel="stylesheet" href="browser.css">
+</head>
+<body>
+<header>
+  <h1>NQuad Browser</h1>
+  <label>Token <input id="token" type="password" size="28" placeholder="paste a token from the main API"></label>
+  <button class="act" id="saveToken">Use token</button>
+  <span id="who" class="msg"></span>
+</header>
+<main>
+  <nav id="types"></nav>
+  <section id="view"><p class="msg">Paste a bearer token issued by the main API (an Admin), choose Use token, then pick a kind of entity on the left.</p></section>
+</main>
+<script src="browser.js"></script>
+</body>
+</html>
