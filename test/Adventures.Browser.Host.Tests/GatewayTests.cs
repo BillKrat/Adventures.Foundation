@@ -299,6 +299,15 @@ public sealed class GatewayTests
         Assert.DoesNotContain("UserSecretsId", File.ReadAllText(Path.Combine(root, "apps", "Adventures.Browser.Host", "Adventures.Browser.Host.csproj")));
     }
 
+    // A shared application pool runs only one in-process ASP.NET Core application, and an in-process fault takes the pool's other sites with it.
+    [Fact]
+    public void The_iis_settings_run_the_host_in_its_own_process()
+    {
+        var config = XDocument.Load(Path.Combine(FindRoot(), "apps", "Adventures.Browser.Host", "web.config"));
+
+        Assert.Equal("outofprocess", (string?)config.Descendants("aspNetCore").Single().Attribute("hostingModel"));
+    }
+
     private static string FindRoot()
     {
         for (var d = new DirectoryInfo(AppContext.BaseDirectory); d is not null; d = d.Parent)
